@@ -1,0 +1,10 @@
+0,axe,0,5,3,10
+1,sword,0,7,1,5
+2,bucket,1,0,0,10
+3,bow,0,0,0,10
+4,crossbow,0,0,0,10
+5,spear,0,0,0,10
+6,banner,0,0,0,0
+7,trumpet,0,0,0,0
+8,officer_shoulder_straps,0,0,0,0
+9,shoulder_straps,0,0,0,0
