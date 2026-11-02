@@ -1,0 +1,30 @@
+[
+  {
+    "tick": 0,
+    "sequence": 1,
+    "command": {
+      "kind": 0,
+      "order": {
+        "id": 1,
+        "recipient": 1,
+        "type": 0,
+        "target_regiment": 0,
+        "priority": 10
+      }
+    }
+  },
+  {
+    "tick": 0,
+    "sequence": 2,
+    "command": {
+      "kind": 0,
+      "order": {
+        "id": 2,
+        "recipient": 2,
+        "type": 0,
+        "target_regiment": 0,
+        "priority": 10
+      }
+    }
+  }
+]
