@@ -25,15 +25,18 @@ constexpr StageContract PartStages[]{
     {S::MonitorExecution, Pending, "Track sector progress and request army assistance."},
     {S::ReportUpward, Pending, "Report sector status, losses and unmet needs to the army."}};
 constexpr StageContract GroupStages[]{
-    {S::Perceive, Pending, "Combine regiment observations and nearby support reports."},
-    {S::ReconcileOrders, Pending, "Resolve the group objective and manoeuvre limits."},
-    {S::AssessSituation, Pending, "Assess regiment readiness, threats and mutual support."},
-    {S::GenerateOptions, Pending, "Consider lead, support, screen and reserve assignments."},
-    {S::ScoreOptions, Pending, "Compare joint manoeuvres rather than isolated attacks."},
-    {S::ChoosePlan, Pending, "Choose coordinated action using officer traits."},
-    {S::BuildTasks, Pending, "Issue complementary tasks to individual regiments."},
-    {S::MonitorExecution, Pending, "Track cohesion and synchronise supporting actions."},
-    {S::ReportUpward, Pending, "Report group progress or inability to execute to the part."}};
+    {S::Perceive, StubStatus::Ready, "Combine regiment observations and nearby support reports."},
+    {S::ReconcileOrders, StubStatus::Ready, "Resolve the group objective and manoeuvre limits."},
+    {S::AssessSituation, StubStatus::Ready,
+     "Assess regiment readiness, threats and mutual support."},
+    {S::GenerateOptions, StubStatus::Ready,
+     "Consider lead, support, screen and reserve assignments."},
+    {S::ScoreOptions, StubStatus::Ready, "Compare joint manoeuvres rather than isolated attacks."},
+    {S::ChoosePlan, StubStatus::Ready, "Choose coordinated action using officer traits."},
+    {S::BuildTasks, StubStatus::Ready, "Issue complementary tasks to individual regiments."},
+    {S::MonitorExecution, StubStatus::Ready, "Track cohesion and synchronise supporting actions."},
+    {S::ReportUpward, StubStatus::Ready,
+     "Report group progress or inability to execute to the part."}};
 constexpr StageContract RegimentStages[]{
     {S::Perceive, StubStatus::Ready, "Read local contacts, incoming fire, formation and losses."},
     {S::ReconcileOrders, StubStatus::Ready, "Resolve delivered tasks, priority and expiry."},
@@ -72,9 +75,7 @@ const BrainContract &GroupBrain::Contract() {
         Level::Group, "Group", "Joint manoeuvres and mutual support of regiments.", GroupStages};
     return contract;
 }
-StubResult<DecisionProposal> GroupBrain::Think(const BrainContext &) const {
-    return {Pending, std::nullopt, "Group planning is not implemented."};
-}
+
 const BrainContract &RegimentBrain::Contract() {
     static constexpr BrainContract contract{Level::Regiment, "Regiment",
                                             "Local tactics and regiment execution proposals.",

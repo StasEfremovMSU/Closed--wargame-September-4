@@ -97,6 +97,7 @@ StubResult<LocalSituation> BuildSituation(const World &w, const CommandHierarchy
     p.observer = id;
     p.tick = tick;
     float weight = 0;
+    uint64_t panicked = 0;
     for (auto reg : OwnedRegiments(h, id))
         if (auto *r = FindRegiment(w, reg)) {
             uint32_t living = 0;
@@ -105,7 +106,8 @@ StubResult<LocalSituation> BuildSituation(const World &w, const CommandHierarchy
                     ++living;
             p.own.living += living;
             p.own.initial += uint32_t(r->initial_count);
-            p.own.panic = p.own.panic || r->panic;
+            if (r->panic)
+                panicked += living;
             p.own.pose.position = p.own.pose.position + r->pose.position * float(living);
             p.rally_point = p.rally_point + r->rally_point * float(living);
             if (!weight)
@@ -116,6 +118,7 @@ StubResult<LocalSituation> BuildSituation(const World &w, const CommandHierarchy
         p.own.pose.position = p.own.pose.position * (1 / weight);
         p.rally_point = p.rally_point * (1 / weight);
     }
+    p.own.panic = panicked * 2 > p.own.living;
     auto eye = NodePose(w, h, id);
     float radius = 60;
     if (auto *profile = FindProfile(h, node->commander); profile && profile->command_radius_m)

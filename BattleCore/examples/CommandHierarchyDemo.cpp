@@ -89,6 +89,21 @@ int main() {
         context.profile = &hierarchy.officers[i];
         auto situation = cmd::BuildSituation(world, hierarchy, context.node->id, 0);
         context.situation = situation.value ? &*situation.value : nullptr;
+        std::vector<cmd::CommandNode> children;
+        std::vector<cmd::ChildStatus> child_status;
+        for (auto id : context.node->children) {
+            const auto *child = cmd::FindNode(hierarchy, id);
+            children.push_back(*child);
+            auto observed = cmd::BuildSituation(world, hierarchy, id, 0);
+            cmd::ChildStatus status;
+            status.node = id;
+            status.pose = observed.value->own.pose;
+            status.living = observed.value->own.living;
+            status.initial = observed.value->own.initial;
+            child_status.push_back(status);
+        }
+        context.subordinates = children;
+        context.children_status = child_status;
         switch (contract.level) {
         case cmd::Level::Army:
             ok = Show("  Think", cmd::ArmyBrain{}.Think(context)) && ok;
@@ -97,7 +112,7 @@ int main() {
             ok = Show("  Think", cmd::PartBrain{}.Think(context)) && ok;
             break;
         case cmd::Level::Group:
-            ok = Show("  Think", cmd::GroupBrain{}.Think(context)) && ok;
+            ok = Show("  Think", cmd::GroupBrain{}.Think(context), false) && ok;
             break;
         case cmd::Level::Regiment:
             ok = Show("  Think", cmd::RegimentBrain{}.Think(context), false) && ok;

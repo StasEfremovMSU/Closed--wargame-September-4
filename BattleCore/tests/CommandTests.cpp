@@ -84,3 +84,32 @@ TEST_CASE("command.neural_backend_remains_unavailable") {
     CHECK(result.status == c::StubStatus::NotImplemented);
     CHECK_FALSE(result.value);
 }
+TEST_CASE("command.parent_panic_requires_majority") {
+    test::CommandFixture f;
+    auto second = f.world.regiments[0];
+    second.id = {3};
+    second.units.clear();
+    second.panic = true;
+    for (unsigned i = 0; i < 4; ++i) {
+        auto unit = f.world.units[i];
+        unit.id = {9 + i};
+        unit.regiment = {3};
+        f.world.units.push_back(unit);
+        second.units.push_back(unit.id);
+    }
+    f.world.regiments.push_back(second);
+    c::CommandNode leaf;
+    leaf.id = {5};
+    leaf.parent = {3};
+    leaf.level = c::Level::Regiment;
+    leaf.regiment = {3};
+    f.hierarchy.nodes.push_back(leaf);
+    f.hierarchy.nodes[2].children.push_back({5});
+    auto result = c::BuildSituation(f.world, f.hierarchy, {3}, 0);
+    REQUIRE(result.value);
+    CHECK_FALSE(result.value->own.panic);
+    f.world.regiments[0].panic = true;
+    result = c::BuildSituation(f.world, f.hierarchy, {3}, 0);
+    REQUIRE(result.value);
+    CHECK(result.value->own.panic);
+}

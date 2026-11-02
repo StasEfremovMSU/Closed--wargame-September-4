@@ -1,6 +1,7 @@
 #include "CommandBrainCommon.h"
 #include <array>
 #include <map>
+#include <set>
 #include <tuple>
 namespace battle::command::detail {
 Tick Later(Tick a, Tick b) { return b > UINT64_MAX - a ? UINT64_MAX : a + b; }
@@ -59,6 +60,20 @@ StubResult<Prepared> Prepare(const BrainContext &c, Level level) {
             (p.estimated_strength &&
              (!std::isfinite(*p.estimated_strength) || *p.estimated_strength < 0)))
             return invalid();
+    std::set<uint64_t> child_ids;
+    for (const auto &n : c.subordinates) {
+        if (!n.id || !child_ids.insert(n.id.value).second || n.parent != c.node->id ||
+            n.team != c.node->team || unsigned(n.level) != unsigned(level) + 1 ||
+            std::count(c.node->children.begin(), c.node->children.end(), n.id) != 1)
+            return invalid();
+        auto found = std::find_if(c.children_status.begin(), c.children_status.end(),
+                                  [&](const auto &s) { return s.node == n.id; });
+        if (found == c.children_status.end() || !Finite(found->pose) ||
+            !std::isfinite(found->width_m) || found->width_m <= 0 || found->living > found->initial)
+            return invalid();
+    }
+    if (level != Level::Regiment && child_ids.size() != c.node->children.size())
+        return invalid();
     Prepared p;
     if (c.memory)
         p.memory = *c.memory;

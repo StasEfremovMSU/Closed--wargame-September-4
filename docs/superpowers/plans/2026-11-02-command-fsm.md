@@ -40,9 +40,9 @@
 ## Task 3: Group coordination FSM
 **Files:** new src/CommandGroup.cpp, tests/CommandGroupTests.cpp; Brains/common helpers as needed.
 **Interfaces:** GroupBrain::Think uses child status/readiness and current task. Own reserve child is held until release; deploy wait bounded40 ticks.
-- [ ] RED group.deploys_then_attacks and group.reserve_support_and_withdraw: complementary child tasks, readiness/timeout, no friendly attack, panic/loss report, no children.
-- [ ] GREEN coordinated deployment, attack/support/regroup/withdraw/rally and child task reports; canonical ordering independent of input child order.
-- [ ] Full Debug suite, commit, task-done.
+- [x] RED group.deploys_then_attacks and group.reserve_support_and_withdraw: complementary child tasks, readiness/timeout, no friendly attack, panic/loss report, no children.
+- [x] GREEN coordinated deployment, attack/support/regroup/withdraw/rally and child task reports; canonical ordering independent of input child order.
+- [x] Full Debug suite, commit, task-done.
 
 ## Task 4: Part sector FSM
 **Files:** new src/CommandPart.cpp, tests/CommandPartTests.cpp.
