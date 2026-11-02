@@ -57,4 +57,4 @@
 - [x] GREEN: example constructs one Army/Part/Group/Regiment chain with four distinct officers anchored in existing Unit bodies, calls every placeholder, exits nonzero if any claims success or emits a payload. Print each level and pending services.
 - [x] Write Russian reference: responsibilities/inputs/outputs at all levels, officer cycle and traits, task/report/delivery contracts, succession, scheduling, ownership and future invariants, full file map and example commands. Clearly mark every unimplemented mechanic and current legacy boundary.
 - [x] Build Debug/Release and full CTest including example; run example manually and inspect its output. Check formatting/diff.
-- [ ] Commit, complete ledger and perform one fresh final review of the current task range. Address Important/Critical with RED/GREEN and full suites. Keep local branch.
+- [x] Commit, complete ledger and perform one fresh final review of the current task range. Address Important/Critical with RED/GREEN and full suites. Keep local branch.

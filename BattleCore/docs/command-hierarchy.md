@@ -295,3 +295,5 @@ CommandHierarchy, BrainMemory, CommunicationsState и BrainSchedule пока в�
     ctest --preset headless-release --output-on-failure
 
 Новая группа тестов: battle.command. Исполняемый пример: battle.command-demo. Для примера не нужен Unreal Editor.
+
+Проверка этой версии: Debug и Release — по 14/14 CTest, отдельные 5 тестов каркаса — 1516 проверок. Независимое итоговое ревью не выявило замечаний. Эти результаты подтверждают компиляцию и отсутствие побочных эффектов заглушек; они не подтверждают работу будущих тактических алгоритмов.
