@@ -68,7 +68,7 @@
 ## Task 7: Persistence, CLI scenario and documentation
 **Files:** Snapshot.cpp/h, JsonBindings.h, new tools/CommandJson.h; ReplayIo.cpp/h; new src/CommandState.cpp; tests/{CommandRuntime,Replay}Tests.cpp, CliRejected.cmake; example, fixtures/command-battle.json, docs/command-hierarchy.md, scenario-format.md, README.md.
 **Interfaces:** CommandStateHash/ValidateCommandState; strict JSON for new enums/unsigned fields/optional/variant; version3 snapshots/replays and limited v2 migration. All runtime state is persisted and hashed; v1 rejects.
-- [ ] RED save/resume/replay mid-message, hash sensitivity for each state class, corrupt/missing nested field/timer/ID/immutable topology rejected, command-free v2 accepts and v2-command state rejects, CLI IssueCommandTask changes army plan.
-- [ ] GREEN serialization, hash and validation; meaningful end-to-end fixture and state/trace output; demo asserts actual Ready states/actions instead of placeholder success.
-- [ ] Full Debug/Release CTest, CLI continuous/resume/replay identical state hashes, small/large hierarchy timing sample (no FPS promise); update detailed docs with implemented/remaining boundaries.
+- [x] RED save/resume/replay mid-message, hash sensitivity for each state class, corrupt/missing nested field/timer/ID/immutable topology rejected, command-free v2 accepts and v2-command state rejects, CLI IssueCommandTask changes army plan.
+- [x] GREEN serialization, hash and validation; meaningful end-to-end fixture and state output; demo asserts actual states/actions instead of placeholder success.
+- [x] Full Debug/Release CTest, CLI continuous/resume/replay identical state hashes, small/large hierarchy timing sample (no FPS promise); update detailed docs with implemented/remaining boundaries.
 - [ ] Commit, task-done, one fresh final review from6ad0eaf. One RED/GREEN Important/Critical fix pass; keep local branch.

@@ -2,6 +2,19 @@
 #include "battle/Snapshot.h"
 #include "json.hpp"
 namespace battle {
+inline void to_json(nlohmann::json &j, CommandKind value) { j = uint8_t(value); }
+inline void from_json(const nlohmann::json &j, CommandKind &value) {
+    uint64_t raw{};
+    if (j.is_number_unsigned())
+        raw = j.get<uint64_t>();
+    else if (j.is_number_integer() && j.get<int64_t>() >= 0)
+        raw = uint64_t(j.get<int64_t>());
+    else
+        throw std::invalid_argument("CommandKind must be a nonnegative integer");
+    if (raw > uint8_t(CommandKind::IssueCommandTask))
+        throw std::invalid_argument("invalid CommandKind value");
+    value = CommandKind(raw);
+}
 template <class T> void to_json(nlohmann::json &j, const Id<T> &v) {
     j = v.value;
 }
@@ -12,6 +25,8 @@ template <class T> void from_json(const nlohmann::json &j, Id<T> &v) {
         throw std::invalid_argument("negative ID");
     v.value = j.get<uint64_t>();
 }
+} // namespace battle
+namespace battle {
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Vec3, x, y, z)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Pose, position, yaw)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FormationSpec, columns, spacing_m, body_radius_m)
@@ -56,13 +71,16 @@ inline void from_json(const nlohmann::json &j, Rules &r) {
     } else
         throw std::invalid_argument("ranged_cohorts must be an integer1..64");
 }
+} // namespace battle
+#include "CommandJson.h"
+namespace battle {
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Scenario, schema_version, units, regiments,
-                                                officers, obstacles, rules)
+                                                officers, obstacles, rules, command_setup)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Order, id, issuer, recipient, type, priority, point,
                                                 target_unit, target_regiment, created_tick,
                                                 delivery_tick, expiry_tick, status)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Command, kind, order, regiment, formation, unit,
-                                                target, velocity, pose, sample_tick)
+                                                target, velocity, pose, sample_tick, command_task)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CommandEnvelope, tick, sequence, command)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(BattleEvent, id, tick, kind, source, target,
                                                 regiment, amount, reason, due_tick, hit, projectile,
@@ -113,6 +131,6 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(World, tick, seed, next_event_id
                                                 officers, attacks, pending_orders, commands,
                                                 accepted_sequences, controlled, events,
                                                 neighbor_checks, combat_events, outcome,
-                                                winner_team)
+                                                winner_team, command_state)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Snapshot, schema_version, state)
 } // namespace battle

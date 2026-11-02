@@ -212,7 +212,13 @@ int main(int argc, char **argv) {
                 throw std::runtime_error("cannot open commands");
             nlohmann::json j;
             f >> j;
-            commands = j.get<std::vector<CommandEnvelope>>();
+            auto parsed = j.get<std::vector<CommandEnvelope>>();
+            if (!j.is_array() || j.size() != parsed.size())
+                throw std::invalid_argument("commands must be an array");
+            for (size_t i = 0; i < parsed.size(); ++i)
+                command::ValidateCommandInputTypes(j[i], nlohmann::json(parsed[i]),
+                                                   "commands/" + std::to_string(i));
+            commands = std::move(parsed);
         }
         if (args.contains("--replay-out") &&
             !Report(io::WriteReplay(args["--replay-out"], w.scenario, w.seed, commands)))

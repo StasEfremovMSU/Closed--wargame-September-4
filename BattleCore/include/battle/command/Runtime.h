@@ -31,4 +31,8 @@ bool ValidTaskRequest(const CommandTask &);
 StubResult<bool> InitializeCommand(World &);
 StubResult<TaskId> SubmitTask(World &, CommandTask);
 StubResult<bool> UpdateCommand(World &, const NavigationService &);
+battle::Result<bool> ValidateCommandState(const World &, const CommandState &);
+uint64_t CommandStateHash(const CommandState &);
+uint64_t CommandSetupHash(const CommandSetup &);
+uint64_t CommandTaskHash(const CommandTask &);
 } // namespace battle::command

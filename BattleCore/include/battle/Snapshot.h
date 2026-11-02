@@ -2,7 +2,7 @@
 #include "World.h"
 namespace battle {
 struct Snapshot {
-    uint32_t schema_version{2};
+    uint32_t schema_version{3};
     World state;
 };
 Snapshot Capture(const World &);

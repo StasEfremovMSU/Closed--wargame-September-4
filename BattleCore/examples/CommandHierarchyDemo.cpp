@@ -121,9 +121,18 @@ int main() {
         hit = std::any_of(result.value.events.begin(), result.value.events.end(),
                           [](const auto &event) { return event.kind == EventKind::Hit; });
     }
-    std::cout << "Four-level commander runtime: " << (hit ? "hit confirmed" : "no hit") << '\n';
+    const auto &nodes = world.command_state->nodes;
+    const bool every_level_decided = nodes.size() == 4 &&
+        std::all_of(nodes.begin(), nodes.end(), [](const auto &runtime) {
+            return runtime.memory.state != cmd::FsmState::Idle &&
+                   runtime.memory.state != cmd::FsmState::Failed &&
+                   !runtime.memory.recent_decisions.empty();
+        });
     for (const auto &runtime : world.command_state->nodes)
         std::cout << "Node " << runtime.node.value << ": " << StateName(runtime.memory.state)
                   << ", decisions=" << runtime.memory.recent_decisions.size() << '\n';
-    return hit ? 0 : 1;
+    std::cout << "Four-level commander runtime: "
+              << (hit && every_level_decided ? "hit confirmed; all levels decided" : "incomplete")
+              << '\n';
+    return hit && every_level_decided ? 0 : 1;
 }

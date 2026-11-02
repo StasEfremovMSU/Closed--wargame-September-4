@@ -12,7 +12,12 @@ Result<Scenario> LoadScenario(const std::filesystem::path &p) {
         if (!j.is_object() || !j.contains("schema_version") || !j.contains("units") ||
             !j.contains("regiments"))
             throw std::invalid_argument("scenario requires schema_version, units and regiments");
-        auto r = ValidateScenario(j.get<Scenario>());
+        auto input = j.get<Scenario>();
+        if (j.contains("command_setup") && !j.at("command_setup").is_null())
+            command::ValidateCommandInputTypes(j.at("command_setup"),
+                                               nlohmann::json(*input.command_setup),
+                                               "scenario/command_setup");
+        auto r = ValidateScenario(std::move(input));
         for (auto &d : r.diagnostics)
             d.source = p.string();
         return r;

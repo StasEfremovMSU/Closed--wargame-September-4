@@ -418,6 +418,9 @@ StubResult<bool> UpdateCommand(World &world, const NavigationService &navigation
                 report.observed_tick = world.tick;
                 report.created_tick = world.tick;
                 report.explanation = "Commander lost; command succession resolved.";
+                auto situation = BuildSituation(world, state.hierarchy, node.id, world.tick);
+                if (situation.status == StubStatus::Ready && situation.value)
+                    report.situation = std::move(*situation.value);
                 if (state.next_message_id && state.next_message_id.value != UINT64_MAX)
                     QueueMessage(state, node.id, node.parent, world.tick, std::move(report));
             }

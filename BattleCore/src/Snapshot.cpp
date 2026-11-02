@@ -4,14 +4,20 @@
 #include <set>
 namespace battle {
 Snapshot Capture(const World &w) {
-    return {2, w};
+    return {3, w};
 }
 Result<World> Restore(const Snapshot &s) {
     auto bad = [](std::string message) {
         return Result<World>{Status::InvalidInput, {}, {{"snapshot", 0, std::move(message)}}};
     };
-    if (s.schema_version != 2)
+    if (s.schema_version != 2 && s.schema_version != 3)
         return bad("unsupported snapshot version");
+    if (s.schema_version == 2 &&
+        (s.state.command_state || s.state.scenario.command_setup ||
+         std::any_of(s.state.commands.begin(), s.state.commands.end(), [](const auto &e) {
+             return e.command.kind == CommandKind::IssueCommandTask;
+         })))
+        return bad("version 2 snapshots cannot contain command hierarchy state");
     auto valid = ValidateScenario(s.state.scenario);
     if (!valid)
         return {valid.status, {}, valid.diagnostics};
@@ -126,10 +132,13 @@ Result<World> Restore(const Snapshot &s) {
         if (!e.sequence || !queued.insert(e.sequence).second ||
             !std::binary_search(w.accepted_sequences.begin(), w.accepted_sequences.end(),
                                 e.sequence) ||
-            e.tick < w.tick || uint8_t(e.command.kind) > uint8_t(CommandKind::ExternalPoseSample) ||
+            e.tick < w.tick || uint8_t(e.command.kind) > uint8_t(CommandKind::IssueCommandTask) ||
             !Finite(e.command.pose) || !Finite(e.command.velocity) ||
             !Finite(e.command.order.point))
             return bad("invalid queued command");
+        if (e.command.kind == CommandKind::IssueCommandTask &&
+            (!w.command_state || !command::ValidTaskRequest(e.command.command_task)))
+            return bad("invalid queued command task");
         if (e.command.kind == CommandKind::MoveControlledUnit)
             movement[{e.tick, e.command.unit.value}] |= 1;
         if (e.command.kind == CommandKind::ExternalPoseSample) {
@@ -146,6 +155,13 @@ Result<World> Restore(const Snapshot &s) {
             uint8_t(o.type) > uint8_t(OrderType::Rally) ||
             uint8_t(o.status) > uint8_t(OrderStatus::Cancelled) || !Finite(o.point))
             return bad("invalid pending order");
+    if (w.scenario.command_setup.has_value() != w.command_state.has_value())
+        return bad("command runtime is missing or has no scenario setup");
+    if (w.command_state) {
+        auto command_valid = command::ValidateCommandState(w, *w.command_state);
+        if (!command_valid)
+            return {command_valid.status, {}, command_valid.diagnostics};
+    }
     return {Status::Ok, std::move(w), {}};
 }
 namespace {
@@ -215,6 +231,7 @@ struct Hash {
         vec(c.velocity);
         pose(c.pose);
         n(c.sample_tick);
+        n(command::CommandTaskHash(c.command_task));
     }
     void unit(const UnitSpec &u) {
         n(u.id.value);
@@ -332,6 +349,9 @@ uint64_t StateHash(const World &w) {
         h.f(o.max_y);
     }
     h.n(w.scenario.schema_version);
+    h.n(w.scenario.command_setup.has_value());
+    if (w.scenario.command_setup)
+        h.n(command::CommandSetupHash(*w.scenario.command_setup));
     h.n(w.scenario.units.size());
     for (auto &u : w.scenario.units)
         h.unit(u);
@@ -357,6 +377,9 @@ uint64_t StateHash(const World &w) {
         h.f(o.lead_dist);
         h.n(uint64_t(o.legacy_id));
     }
+    h.n(w.command_state.has_value());
+    if (w.command_state)
+        h.n(command::CommandStateHash(*w.command_state));
     return h.h;
 }
 } // namespace battle

@@ -1,26 +1,84 @@
-# Scenario schema 1
+# Формат сценария, команд и сохранений
 
-UTF-8 JSON object containing `schema_version: 1`, `regiments` and `units` arrays; optional `officers`, `obstacles`, `rules`. See the self-contained `fixtures/duel.json`, `archers.json`, and `bottleneck.json` examples.
+## Сценарий
 
-IDs are nonzero unsigned integers and independent of array indices. Each Unit references one Regiment; each Officer references one existing Unit. The same officer body is counted once. Unit fields include pose, health, speed, armour, archer_skill [0,1], equipment IDs and weapon damage/range/cooldown/windup/projectile speed/base accuracy [0,1]. Regiment fields include team, pose, formation columns/spacing/body radius, speed, turn rate, and rally point. Coordinates are metres, X forward, Y right, Z up; yaw radians.
+Сценарий — UTF-8 JSON со `schema_version: 1`, массивами `regiments` и `units`, а также необязательными `officers`, `obstacles`, `rules` и `command_setup`. Обычные сценарии без `command_setup` работают на прежнем уровне командования.
 
-Legacy import reads `item.txt`, `soldiers.txt`, `officer.txt` and the explicitly selected map. Blank lines and lines starting with `!` are ignored. Numeric fields and composition totals are checked, failures include the original file/line. Original inputs are never modified.
+`command_setup` задаёт дерево должностей и стартовые задачи:
 
-Unity (x,y,z) becomes core (z,x,y); legacy yaw is retained, default scale 1 metre/unit. Legacy regiment 0 becomes internal RegimentId 1. Officer IDs are assigned by row, retaining repeated original values as metadata with warnings. Item lookup uses each item's declared ID. Legacy health defaults to 1, ranged range to 30m, cooldown to 20 ticks. Accuracy/skill zeroes are preserved rather than silently balanced. Team rally points initially use the average of their initial regiment centres.
-
-The backup map has 200 rank-and-file and 3 officer bodies, total 203 living Units, all on side 1. Synthetic two-army fixtures are separate data.
-
-```powershell
-./out/build/debug/battle_cli.exe import-legacy --source fixtures/legacy --map map-backup.txt --out out/legacy.json
-./out/build/debug/battle_cli.exe run --scenario fixtures/duel.json --seed 42 --ticks 100 --out out/duel
+```json
+{
+  "command_setup": {
+    "hierarchy": {
+      "nodes": [
+        { "id": 1, "level": 0, "team": 0, "commander": 1, "children": [2] },
+        { "id": 2, "parent": 1, "level": 1, "team": 0, "commander": 2, "children": [3] },
+        { "id": 3, "parent": 2, "level": 2, "team": 0, "commander": 3, "children": [4] },
+        { "id": 4, "parent": 3, "level": 3, "team": 0, "commander": 4, "regiment": 1 }
+      ],
+      "officers": [
+        { "officer": 1, "command_radius_m": 60 },
+        { "officer": 2, "command_radius_m": 60 },
+        { "officer": 3, "command_radius_m": 60 },
+        { "officer": 4, "command_radius_m": 60 }
+      ],
+      "support": []
+    },
+    "missions": [
+      { "id": 1, "recipient": 1, "action": 2,
+        "intent": { "target_regiment": 2,
+                    "objective_position": { "x": 10, "y": 0, "z": 0 } } }
+    ]
+  }
+}
 ```
 
-Run writes an owned snapshot and a JSON-lines event trace. Invalid input exits 2 with diagnostics; successful execution exits 0.
+Уровни `level`: 0 Army, 1 Part, 2 Group, 3 Regiment. Должность ссылается на существующий `OfficerId`; офицер — на существующий `UnitId`. Полковая должность дополнительно ссылается на существующий физический `RegimentId`. Идентификаторы ненулевые, уникальные в пределах своего типа и не являются индексами массива.
 
-## Ranged scheduling and continuation version2
+Числовые значения перечислений соответствуют порядку элементов C++ enum. Для `TaskKind`: 0 HoldArea, 1 MoveToArea, 2 Attack, 3 Defend, 4 Screen, 5 Support, 6 Flank, 7 Exploit, 8 Reserve, 9 Withdraw, 10 Rally, 11 Reform. Для входной `CommandKind`: 0 IssueOrder, 1 ReformRegiment, 2 AcquireControl, 3 ReleaseControl, 4 MoveControlledUnit, 5 AttackControlledUnit, 6 ExternalPoseSample, 7 IssueCommandTask. В JSON должны быть целые числа из допустимого диапазона, не строки и не дробные числа.
 
-Scenario authoring remains schema1. Optional `rules.ranged_cohorts` defaults to4 and must be1..64. AI archers attempt initial/idle target acquisition in their stable UnitId/RegimentId phase; four phases spread attempts over200ms with at most150ms initial wait. A nonzero exact `ready_tick` is always eligible once cooldown finishes, so arbitrary cooldown periods retain sustained cadence. Idle retries use the next phase. PlayerControlled archers bypass phase scheduling; their weapon cooldown still applies. Set cohorts1 for simultaneous AI acquisition/release. Dead/panicked units cannot start attacks; already launched projectiles remain independent.
+Пример команды армии из отдельного `--commands` JSON-файла:
 
-Snapshots and recorded replay bundles now use schema2, including the ranged rule. The current reader explicitly rejects version1 continuation files. Keep the preserved baseline executable for old files or start a new run from a scenario; do not merely relabel an old save as version2. Scenario defaults and authored `--commands` files remain distinct from fully persisted continuation records. Derived phases need no new per-unit scheduler field; stable IDs, the configured rule and existing ready_tick are sufficient for save/resume.
+```json
+[
+  {
+    "tick": 0,
+    "sequence": 1,
+    "command": {
+      "kind": 7,
+      "command_task": {
+        "recipient": 1,
+        "action": 2,
+        "intent": {
+          "target_regiment": 2,
+          "objective_position": { "x": 10, "y": 0, "z": 0 }
+        }
+      }
+    }
+  }
+]
+```
 
-Benchmark comparison: `bench --units 10000 --modes volley --ranged-cohorts 1|4 --ticks 1200 --warmup 200 --out DIR`. The flag is benchmark-only; normal runs read the rule from the scenario.
+Для внешней задачи `recipient` должен быть корневой должностью Army. Между внутренними уровнями задачу принимает только непосредственный начальник. Неизвестные цели, чужая сторона, несуществующие должности и недопустимые поля отклоняются.
+
+См. полный запускаемый сценарий с двумя полками и всеми четырьмя должностями: [`fixtures/command-battle.json`](../fixtures/command-battle.json).
+
+## Продолжение и replay
+
+Snapshot и replay используют схему 3. Snapshot записывает полное состояние боя и командования: память и фазы автоматов, задачи и донесения, расписания, очередь сообщений, выбранный payload и счётчики ID. `StateHash` учитывает это состояние. Читатель проверяет обязательные поля, целочисленные таймеры, диапазоны enum, ссылки и неизменность дерева относительно сценария.
+
+Snapshot/replay схемы 2 мигрируются в схему 3 только для сценариев без `command_setup`, runtime без `command_state` и журнала без `IssueCommandTask`. Если в данных схемы 2 присутствует новая часть командования, запись отклоняется. Схема 1 и ниже не поддерживается. Нельзя менять номер схемы вручную.
+
+```powershell
+./out/build/debug/battle_cli.exe run --scenario fixtures/command-battle.json --commands path/to/commands.json --ticks 100 --out out/command-battle
+./out/build/debug/battle_cli.exe run --resume out/command-battle/snapshot.json --ticks 100 --out out/command-resume
+./out/build/debug/battle_cli.exe replay --replay out/command-battle/replay.json --ticks 100 --out out/command-replay
+```
+
+`--replay-out FILE` сохраняет исходный сценарий, seed и входные команды. Продолжение с `--resume` записывается в snapshot; преобразование загруженного snapshot в новый replay не выполняется.
+
+## Прочие данные и legacy import
+
+Размеры и координаты — метры, X вперёд, Y вправо, Z вверх; yaw — радианы. Каждый боец относится к одному полку; офицерское тело учитывается один раз. `rules.ranged_cohorts` по умолчанию равно 4, допустимо 1..64.
+
+Legacy import читает `item.txt`, `soldiers.txt`, `officer.txt` и явно выбранную карту. Пустые строки и строки с `!` игнорируются. Числовые поля и суммы состава проверяются; ошибки указывают файл и строку. Исходные файлы не изменяются. Unity `(x,y,z)` преобразуется в core `(z,x,y)`; единица масштаба — метр; внутренний `RegimentId` на единицу больше legacy ID. Импортный формат не меняется.

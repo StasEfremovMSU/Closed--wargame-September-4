@@ -27,4 +27,10 @@ Task 5: complete (commit 6de314d; tests: Debug18/18).
 
 Task6 RED: communication and translation tests failed against NotImplemented; runtime tests showed no command state after CreateWorld and IssueCommandTask was rejected. GREEN validated setup initialization, one-tick Signal per hierarchy hop, direct plus dated report contacts, order translation including Reform columns/spacing, successor choices excluding occupied officers, route-time/death checks for Courier, task/authority/side validation, external-order precedence and order deduplication. Integration reaches a regiment Attack, visible movement and Hit; NoPath raises NeedSupport. Demo now runs this battle. Full Debug19/19 and Release19/19.
 Ruling: suppress repeated regiment orders while the goal shifts <=1m, then refresh on a larger move; prevents order churn without freezing target pursuit.
-Task 6: implementation complete; commit and Task7 work pending (tests: Debug19/19, Release19/19).
+Task 6: complete (commit 9ede397; tests: Debug19/19, Release19/19).
+
+Task7 RED: the first command persistence test failed as expected: Capture still wrote schema2, StateHash ignored command state, and snapshots lost CommandState. CLI 31-tick run exposed a CommanderLost report without its observation; added a focused failing regression before fixing the producer.
+GREEN: schema3 snapshot/replay JSON now round-trips hierarchy, each FSM memory/schedule, tasks, reports, message variant/payload and counters. Added full command-state validation/hash, strict enum and integer checks, bounded command-free v2 migration, command JSON input, fixture and demo assertions. CommanderLost now carries a valid current observation.
+Verification: Debug CTest 19/19; Release CTest 19/19. CLI continuous 31 ticks, resume after tick1, and replay after tick1 produce identical final hashes. Corrupt timer, task counter, message ID, immutable topology, missing nested field, enum and signed-unsigned cases reject; plain v2 snapshot/replay migrate, commandful v2 reject.
+Scale sample (Release CLI, 25 ticks, 3 runs, wall time includes process/JSON/file I/O): 4 nodes/2 regiments/6 units median13.68ms; synthetic126 nodes/120 regiments/246 units median326.57ms. This is an execution smoke sample, not an FPS or thousands-of-units claim.
+Task 7: implementation and verification complete; local commit/review pending.

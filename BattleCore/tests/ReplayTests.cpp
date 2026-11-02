@@ -4,6 +4,183 @@
 #include "battle/Control.h"
 #include "doctest.h"
 using namespace battle;
+namespace command = battle::command;
+
+namespace {
+Scenario CommandScenario() {
+    auto scenario = test::Duel(4);
+    for (unsigned i = 0; i < 4; ++i)
+        scenario.officers.push_back({{i + 1}, {i + 1}, i ? 1u : 2u});
+    command::CommandSetup setup;
+    for (unsigned i = 0; i < 4; ++i) {
+        command::CommandNode node;
+        node.id = {i + 1};
+        node.level = command::Level(i);
+        node.parent = {i};
+        node.team = 0;
+        node.commander = {4 - i};
+        if (i < 3)
+            node.children.push_back({i + 2});
+        else
+            node.regiment = {1};
+        setup.hierarchy.nodes.push_back(node);
+        command::OfficerProfile profile;
+        profile.officer = node.commander;
+        profile.tactical_skill = .7f;
+        profile.initiative = i == 3 ? 0.f : .7f;
+        profile.discipline = .8f;
+        profile.aggression = .8f;
+        profile.command_radius_m = 60;
+        setup.hierarchy.officers.push_back(profile);
+    }
+    command::CommandTask mission;
+    mission.id = {1};
+    mission.recipient = {1};
+    mission.action = command::TaskKind::Attack;
+    mission.intent.target_regiment = {2};
+    mission.intent.objective_position = {10, 0, 0};
+    mission.status = command::TaskStatus::Active;
+    setup.missions.push_back(mission);
+    scenario.command_setup = std::move(setup);
+    return scenario;
+}
+} // namespace
+
+TEST_CASE("replay.command_runtime_roundtrips_mid_message_and_hashes_every_part") {
+    auto made = CreateWorld(CommandScenario(), 42);
+    REQUIRE(made);
+    World a = std::move(made.value);
+    FlatNavigationService nav;
+    REQUIRE(Step(a, {}, {}, nav));
+    REQUIRE(a.command_state);
+    REQUIRE_FALSE(a.command_state->communications.messages.empty());
+    const auto schema = Capture(a);
+    CHECK(schema.schema_version == 3);
+
+    auto changed = a;
+    changed.command_state->nodes[0].schedule.next_think_tick++;
+    CHECK(StateHash(changed) != StateHash(a));
+    changed = a;
+    changed.command_state->nodes[0].memory.state = command::FsmState::Holding;
+    CHECK(StateHash(changed) != StateHash(a));
+    changed = a;
+    changed.command_state->communications.messages[0].status =
+        command::DeliveryStatus::Lost;
+    CHECK(StateHash(changed) != StateHash(a));
+    changed = a;
+    changed.command_state->hierarchy.nodes[0].sector_role = command::SectorRole::Vanguard;
+    CHECK(StateHash(changed) != StateHash(a));
+    REQUIRE_FALSE(a.command_state->nodes[0].orders.empty());
+    changed = a;
+    changed.command_state->nodes[0].orders[0].priority++;
+    CHECK(StateHash(changed) != StateHash(a));
+    changed = a;
+    changed.command_state->nodes[0].reports.push_back({});
+    CHECK(StateHash(changed) != StateHash(a));
+    changed = a;
+    changed.command_state->next_message_id.value++;
+    CHECK(StateHash(changed) != StateHash(a));
+
+    test::TempDir dir;
+    REQUIRE(io::SaveSnapshot(dir.path / "command-save.json", Capture(a)));
+    auto loaded = io::LoadSnapshot(dir.path / "command-save.json");
+    REQUIRE(loaded);
+    REQUIRE(loaded.value.state.command_state);
+    World b = std::move(loaded.value.state);
+    for (int tick = 0; tick < 40; ++tick) {
+        REQUIRE(Step(a, {}, {}, nav));
+        REQUIRE(Step(b, {}, {}, nav));
+    }
+    CHECK(StateHash(a) == StateHash(b));
+
+    Command task_command;
+    task_command.kind = CommandKind::IssueCommandTask;
+    task_command.command_task.recipient = {1};
+    task_command.command_task.action = command::TaskKind::HoldArea;
+    std::vector<CommandEnvelope> input{{0, 1, task_command}};
+    auto replay_world = CreateWorld(CommandScenario(), 84);
+    REQUIRE(replay_world);
+    World continuous = std::move(replay_world.value);
+    REQUIRE(Step(continuous, input, {}, nav));
+    REQUIRE_FALSE(continuous.command_state->communications.messages.empty());
+    for (int tick = 0; tick < 30; ++tick)
+        REQUIRE(Step(continuous, {}, {}, nav));
+    REQUIRE(io::WriteReplay(dir.path / "command-replay.json", CommandScenario(), 84, input));
+    auto replay = io::LoadReplay(dir.path / "command-replay.json");
+    REQUIRE(replay);
+    auto replay_made = CreateWorld(replay.value.scenario, replay.value.seed);
+    REQUIRE(replay_made);
+    World replayed = std::move(replay_made.value);
+    for (int tick = 0; tick < 31; ++tick)
+        REQUIRE(Step(replayed, tick == 0 ? std::span<const CommandEnvelope>(replay.value.commands)
+                                         : std::span<const CommandEnvelope>{}, {}, nav));
+    CHECK(StateHash(continuous) == StateHash(replayed));
+}
+
+TEST_CASE("replay.command_snapshot_rejects_corruption_and_migrates_only_plain_v2") {
+    auto made = CreateWorld(CommandScenario(), 42);
+    REQUIRE(made);
+    REQUIRE(Step(made.value, {}, {}, FlatNavigationService{}));
+    auto canonical = nlohmann::json(Capture(made.value));
+    test::TempDir dir;
+    for (const auto &damage : {"timer", "counter", "message-id", "topology", "missing", "enum",
+                               "negative"}) {
+        auto broken = canonical;
+        if (damage == std::string("timer"))
+            broken["state"]["command_state"]["nodes"][0]["schedule"]["interval_ticks"] = 2.5;
+        else if (damage == std::string("counter"))
+            broken["state"]["command_state"]["next_task_id"] = 1;
+        else if (damage == std::string("message-id"))
+            broken["state"]["command_state"]["communications"]["messages"][0]["id"] = 0;
+        else if (damage == std::string("topology"))
+            broken["state"]["command_state"]["hierarchy"]["nodes"][0]["children"] =
+                nlohmann::json::array();
+        else if (damage == std::string("missing"))
+            broken["state"]["command_state"]["nodes"][0]["memory"].erase("goal");
+        else if (damage == std::string("enum"))
+            broken["state"]["command_state"]["hierarchy"]["nodes"][0]["level"] = 99;
+        else
+            broken["state"]["command_state"]["next_message_id"] = -1;
+        test::Write(dir.path / "bad-command-save.json", broken.dump());
+        CAPTURE(damage);
+        CHECK_FALSE(io::LoadSnapshot(dir.path / "bad-command-save.json"));
+    }
+
+    auto old_plain = nlohmann::json(Capture(CreateWorld(test::Duel(), 7).value));
+    old_plain["schema_version"] = 2;
+    old_plain["state"].erase("command_state");
+    old_plain["state"]["scenario"].erase("command_setup");
+    for (auto &entry : old_plain["state"]["commands"])
+        entry["command"].erase("command_task");
+    test::Write(dir.path / "plain-v2.json", old_plain.dump());
+    auto migrated = io::LoadSnapshot(dir.path / "plain-v2.json");
+    REQUIRE(migrated);
+    CHECK(migrated.value.schema_version == 3);
+
+    auto old_command = canonical;
+    old_command["schema_version"] = 2;
+    test::Write(dir.path / "command-v2.json", old_command.dump());
+    CHECK_FALSE(io::LoadSnapshot(dir.path / "command-v2.json"));
+
+    REQUIRE(io::WriteReplay(dir.path / "plain-replay.json", test::Duel(), 7, {}));
+    std::ifstream replay_file(dir.path / "plain-replay.json");
+    nlohmann::json plain_replay;
+    replay_file >> plain_replay;
+    plain_replay["schema_version"] = 2;
+    plain_replay["scenario"].erase("command_setup");
+    test::Write(dir.path / "plain-replay-v2.json", plain_replay.dump());
+    auto replay_migrated = io::LoadReplay(dir.path / "plain-replay-v2.json");
+    REQUIRE(replay_migrated);
+    CHECK(replay_migrated.value.schema_version == 3);
+
+    REQUIRE(io::WriteReplay(dir.path / "command-replay.json", CommandScenario(), 7, {}));
+    std::ifstream command_replay_file(dir.path / "command-replay.json");
+    nlohmann::json command_replay;
+    command_replay_file >> command_replay;
+    command_replay["schema_version"] = 2;
+    test::Write(dir.path / "command-replay-v2.json", command_replay.dump());
+    CHECK_FALSE(io::LoadReplay(dir.path / "command-replay-v2.json"));
+}
 TEST_CASE("replay.save_resume_same_state") {
     auto s = test::Duel();
     s.units[0].archer = true;

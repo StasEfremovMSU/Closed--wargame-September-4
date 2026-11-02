@@ -3,7 +3,7 @@
 #include <filesystem>
 namespace battle::io {
 struct ReplayRecord {
-    uint32_t schema_version{1};
+    uint32_t schema_version{3};
     Scenario scenario;
     uint64_t seed{};
     std::vector<CommandEnvelope> commands;

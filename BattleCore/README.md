@@ -22,11 +22,11 @@ MinGW standalone executables link their C++ runtime statically. The core is buil
 
 Implementation plan: `../docs/superpowers/plans/2026-11-02-battle-core-migration.md`.
 
-## Command hierarchy scaffold
+## Command hierarchy
 
-[Detailed Russian reference](docs/command-hierarchy.md) describes Army, Part, Group and Regiment brains, officer profiles, tasks, reports, communications, perception and evaluator boundaries. The new `battle::command` API is deliberately inactive: every computation returns `NotImplemented` with no payload. Existing regiment AI and save/replay formats remain unchanged.
+[Detailed Russian reference](docs/command-hierarchy.md) describes the operational Army, Part, Group and Regiment state machines, officer succession, tasks, reports, communications, map perception and persistence. The brains use deterministic rules; no neural evaluator or model runtime is connected.
 
-Run `./out/build/debug/battle_command_demo.exe` (or the Release equivalent) to inspect the compiled four-level example. No Unreal or neural runtime is required.
+Run `./out/build/debug/battle_command_demo.exe` (or the Release equivalent) for a small command battle. `fixtures/command-battle.json` is a runnable four-level scenario; command tasks can enter through the regular `--commands` JSON interface as `CommandKind::IssueCommandTask`.
 
 ## Run and inspect
 
@@ -39,7 +39,7 @@ From `BattleCore/` (PowerShell):
 ./out/build/debug/battle_cli.exe run --resume out/artifacts/battle-view/snapshot.json --ticks 100 --out out/resumed
 ```
 
-Snapshots contain complete simulation state. `--replay-out FILE` records the initial scenario, seed and supplied commands; `replay --replay FILE --ticks N --out DIR` reproduces them. See [scenario and save formats](docs/scenario-format.md).
+Snapshots contain complete simulation and command runtime state. `--replay-out FILE` records the initial scenario, seed and supplied commands; `replay --replay FILE --ticks N --out DIR` reproduces them. See [scenario and save formats](docs/scenario-format.md).
 
 Generated views (recreate with the commands above and navigation tests):
 - Bottleneck [0](out/artifacts/navigation/0.svg), [200](out/artifacts/navigation/200.svg), [400](out/artifacts/navigation/400.svg): a column crosses the wall opening, with no teleport or wall penetration. The view follows the formation/route; long obstacle ends are clipped.
@@ -60,4 +60,4 @@ A resumed snapshot cannot currently be exported as a new scenario-based replay; 
 
 ## Current ranged rules
 
-AI archers use four deterministic firing/acquisition phases by default, with at most150ms initial/idle acquisition delay. Exact cooldown completion stays eligible; player-controlled shooting has no added phase delay. Set `rules.ranged_cohorts` to1 in a scenario for synchronous AI release. Snapshots/replay bundles now use schema2; old version1 continuation files are explicitly rejected. Legacy TXT/scenario authoring import remains supported. See [ranged results and reproduction](docs/ranged-performance.md).
+AI archers use four deterministic firing/acquisition phases by default, with at most150ms initial/idle acquisition delay. Exact cooldown completion stays eligible; player-controlled shooting has no added phase delay. Set `rules.ranged_cohorts` to1 in a scenario for synchronous AI release. Snapshots/replay bundles use schema3 and include the full command state; plain schema2 files migrate automatically, while command-enabled schema2 files and schema1 continuation files are rejected. Legacy TXT/scenario authoring import remains supported. See [ranged results and reproduction](docs/ranged-performance.md).

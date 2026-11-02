@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "units": [
+    { "id": 1, "regiment": 1, "name": "Officer A" },
+    { "id": 2, "regiment": 1, "name": "Officer B" },
+    { "id": 3, "regiment": 1, "name": "Officer C" },
+    { "id": 4, "regiment": 1, "name": "Officer D" },
+    { "id": 5, "regiment": 2, "name": "Enemy A" },
+    { "id": 6, "regiment": 2, "name": "Enemy B" }
+  ],
+  "regiments": [
+    {
+      "id": 1,
+      "team": 0,
+      "name": "Blue regiment",
+      "pose": { "position": { "x": -10, "y": 0, "z": 0 }, "yaw": 0 }
+    },
+    {
+      "id": 2,
+      "team": 1,
+      "name": "Red regiment",
+      "pose": { "position": { "x": 10, "y": 0, "z": 0 }, "yaw": 3.14159265 }
+    }
+  ],
+  "officers": [
+    { "id": 1, "unit": 1, "role": 2 },
+    { "id": 2, "unit": 2, "role": 2 },
+    { "id": 3, "unit": 3, "role": 2 },
+    { "id": 4, "unit": 4, "role": 2 }
+  ],
+  "command_setup": {
+    "hierarchy": {
+      "nodes": [
+        { "id": 1, "level": 0, "team": 0, "commander": 1, "children": [2] },
+        { "id": 2, "parent": 1, "level": 1, "team": 0, "commander": 2, "children": [3] },
+        { "id": 3, "parent": 2, "level": 2, "team": 0, "commander": 3, "children": [4] },
+        { "id": 4, "parent": 3, "level": 3, "team": 0, "commander": 4, "regiment": 1 }
+      ],
+      "officers": [
+        { "officer": 1, "command_radius_m": 60 },
+        { "officer": 2, "command_radius_m": 60 },
+        { "officer": 3, "command_radius_m": 60 },
+        { "officer": 4, "command_radius_m": 60 }
+      ],
+      "support": []
+    },
+    "missions": []
+  }
+}

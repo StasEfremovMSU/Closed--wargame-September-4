@@ -1,4 +1,5 @@
 #include "CommandSupport.h"
+#include "battle/Snapshot.h"
 #include "battle/command/Services.h"
 #include "doctest.h"
 using namespace battle;
@@ -248,6 +249,35 @@ TEST_CASE("runtime.unreachable_regiment_reports_support_request") {
                           const auto *report = std::get_if<c::SituationReport>(&message.payload);
                           return report && report->kind == c::ReportKind::NeedSupport;
                       }));
+}
+
+TEST_CASE("runtime.commander_loss_report_retains_a_valid_observation") {
+    auto made = CreateWorld(CommandDuel(false), 47);
+    REQUIRE(made);
+    World world = std::move(made.value);
+    auto *fallen = FindUnit(world, {1});
+    REQUIRE(fallen);
+    fallen->alive = false;
+    fallen->health = 0;
+    fallen->control = ControlMode::Dead;
+    auto *regiment = FindRegiment(world, {1});
+    REQUIRE(regiment);
+    std::erase(regiment->units, UnitId{1});
+
+    FlatNavigationService nav;
+    auto updated = command::UpdateCommand(world, nav);
+    REQUIRE(updated.status == command::StubStatus::Ready);
+    REQUIRE(world.command_state);
+    auto lost = std::find_if(world.command_state->communications.messages.begin(),
+                             world.command_state->communications.messages.end(), [](const auto &m) {
+                                 const auto *report = std::get_if<command::SituationReport>(&m.payload);
+                                 return report && report->kind == command::ReportKind::CommanderLost;
+                             });
+    REQUIRE(lost != world.command_state->communications.messages.end());
+    const auto &report = std::get<command::SituationReport>(lost->payload);
+    CHECK(report.situation.observer == report.sender);
+    CHECK(report.situation.tick == report.created_tick);
+    CHECK(Restore(Capture(world)));
 }
 
 TEST_CASE("runtime.task_submission_checks_authority_side_and_ids") {
