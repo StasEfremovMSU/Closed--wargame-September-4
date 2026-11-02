@@ -26,6 +26,7 @@ struct BrainContract {
 };
 
 struct TacticalOption {
+    bool operator==(const TacticalOption &) const = default;
     TaskKind action{TaskKind::HoldArea};
     NodeId recipient{}, target_command{};
     RegimentId target_regiment{};
@@ -60,18 +61,49 @@ class NeuralEvaluatorStub final : public ITacticalEvaluator {
 };
 
 struct DecisionRecord {
+    bool operator==(const DecisionRecord &) const = default;
     Tick tick{};
     TaskId cause{};
     TacticalOption selected;
     std::string explanation;
 };
+enum class FsmState : uint8_t {
+    Idle,
+    Deploying,
+    Holding,
+    Advancing,
+    Attacking,
+    Supporting,
+    Regrouping,
+    Withdrawing,
+    Rallying,
+    Reserve,
+    Failed,
+    Complete
+};
 struct BrainMemory {
+    bool operator==(const BrainMemory &) const = default;
+    FsmState state{FsmState::Idle};
+    Tick state_entered_tick{}, task_started_tick{};
+    TaskId active_task{};
+    TaskStatus task_status{TaskStatus::Draft};
+    RegimentId target{};
+    Vec3 goal{};
     std::vector<KnownContact> remembered_contacts;
     std::vector<DecisionRecord> recent_decisions;
     std::vector<TaskId> acknowledged_tasks;
     Tick last_think_tick{};
 };
 
+struct ChildStatus {
+    NodeId node{};
+    Pose pose{};
+    uint32_t living{}, initial{};
+    float width_m{2};
+    bool panic{};
+    FsmState state{FsmState::Idle};
+    TaskStatus task_status{TaskStatus::Draft};
+};
 // Borrowed, read-only views valid for the duration of Think. No World access here.
 struct BrainContext {
     Tick tick{};
@@ -83,6 +115,9 @@ struct BrainContext {
     std::span<const CommandTask> orders;
     std::span<const SituationReport> reports;
     const ITacticalEvaluator *evaluator{};
+    std::span<const ChildStatus> children_status;
+    std::optional<FormationSpec> current_formation;
+    bool formation_ready{true};
 };
 
 enum class FireDiscipline : uint8_t { HoldFire, Volley, AtWill, Conserve };

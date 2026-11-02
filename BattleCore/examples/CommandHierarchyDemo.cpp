@@ -83,10 +83,12 @@ int main() {
                   << contract.responsibility << " (" << contract.stages.size()
                   << " pending stages)\n";
         for (const auto &stage : contract.stages)
-            ok = stage.status == cmd::StubStatus::NotImplemented && ok;
+            ok = !stage.purpose.empty() && ok;
         cmd::BrainContext context;
         context.node = &hierarchy.nodes[i];
         context.profile = &hierarchy.officers[i];
+        auto situation = cmd::BuildSituation(world, hierarchy, context.node->id, 0);
+        context.situation = situation.value ? &*situation.value : nullptr;
         switch (contract.level) {
         case cmd::Level::Army:
             ok = Show("  Think", cmd::ArmyBrain{}.Think(context)) && ok;
@@ -98,7 +100,7 @@ int main() {
             ok = Show("  Think", cmd::GroupBrain{}.Think(context)) && ok;
             break;
         case cmd::Level::Regiment:
-            ok = Show("  Think", cmd::RegimentBrain{}.Think(context)) && ok;
+            ok = Show("  Think", cmd::RegimentBrain{}.Think(context), false) && ok;
             break;
         }
     }
@@ -116,7 +118,7 @@ int main() {
     task.issuer = {3};
     task.recipient = {4};
     ok = Show("TranslateRegimentTask", cmd::TranslateRegimentTask(task, 0)) && ok;
-    ok = Show("RulesEvaluator", cmd::RulesEvaluatorStub{}.Evaluate({})) && ok;
+    ok = Show("RulesEvaluator", cmd::RulesEvaluatorStub{}.Evaluate({}), false) && ok;
     ok = Show("NeuralEvaluator", cmd::NeuralEvaluatorStub{}.Evaluate({})) && ok;
     std::cout << (ok ? "All placeholders are inactive.\n" : "Scaffold contract violated.\n");
     return ok ? 0 : 1;

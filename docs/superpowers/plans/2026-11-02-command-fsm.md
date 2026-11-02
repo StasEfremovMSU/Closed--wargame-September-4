@@ -33,9 +33,9 @@
 ## Task 2: Regiment FSM and rules evaluator
 **Files:** command/Brains.h, CommandBrains.cpp; new src/CommandRegiment.cpp, src/CommandBrainCommon.{h,cpp}; tests/CommandRegimentTests.cpp; CMake test group and demo.
 **Interfaces:** FsmState enum and persisted BrainMemory{state,state_entered_tick,active_task,task_status,target,goal,...existing history}; ChildStatus snapshots and BrainContext.current_formation/children_status; pure shared helpers for task selection, memory transition/report building. RulesEvaluatorStub becomes a functioning deterministic evaluator; NeuralEvaluatorStub stays NotImplemented.
-- [ ] RED regiment transitions: hold/move completion, attack visible/dead/unavailable target, panic override, priority/expiry/not-before, minimum commitment, autonomous initiative, flank two phases, reform input; empty/mismatched contexts return InvalidInput. Evaluator produces finite indexed scores.
-- [ ] GREEN implement polk states and transitions with bounded memory and reports only on changes. Task kinds map to existing actions/directives; no hidden World access.
-- [ ] Full Debug suite, commit, task-done.
+- [x] RED regiment transitions: hold/move completion, attack visible/dead/unavailable target, panic override, priority/expiry/not-before, minimum commitment, autonomous initiative, flank two phases, reform input; empty/mismatched contexts return InvalidInput. Evaluator produces finite indexed scores.
+- [x] GREEN implement polk states and transitions with bounded memory and reports only on changes. Task kinds map to existing actions/directives; no hidden World access.
+- [x] Full Debug suite, commit, task-done.
 
 ## Task 3: Group coordination FSM
 **Files:** new src/CommandGroup.cpp, tests/CommandGroupTests.cpp; Brains/common helpers as needed.

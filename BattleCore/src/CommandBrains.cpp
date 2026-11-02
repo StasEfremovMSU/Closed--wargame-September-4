@@ -35,15 +35,20 @@ constexpr StageContract GroupStages[]{
     {S::MonitorExecution, Pending, "Track cohesion and synchronise supporting actions."},
     {S::ReportUpward, Pending, "Report group progress or inability to execute to the part."}};
 constexpr StageContract RegimentStages[]{
-    {S::Perceive, Pending, "Read local contacts, incoming fire, formation and losses."},
-    {S::ReconcileOrders, Pending, "Resolve delivered tasks, priority and expiry."},
-    {S::AssessSituation, Pending, "Assess targets, flank threats and ability to obey."},
-    {S::GenerateOptions, Pending, "Consider hold, move, attack, reform, fire and withdrawal."},
-    {S::ScoreOptions, Pending, "Score legal options from officer-visible information."},
-    {S::ChoosePlan, Pending, "Apply judgement, discipline, reaction delay and persistence."},
-    {S::BuildTasks, Pending, "Propose one regiment order and separate formation/fire directives."},
-    {S::MonitorExecution, Pending, "Track completion, unreachable targets and emergencies."},
-    {S::ReportUpward, Pending, "Acknowledge orders and report threats or support needs."}};
+    {S::Perceive, StubStatus::Ready, "Read local contacts, incoming fire, formation and losses."},
+    {S::ReconcileOrders, StubStatus::Ready, "Resolve delivered tasks, priority and expiry."},
+    {S::AssessSituation, StubStatus::Ready, "Assess targets, flank threats and ability to obey."},
+    {S::GenerateOptions, StubStatus::Ready,
+     "Consider hold, move, attack, reform, fire and withdrawal."},
+    {S::ScoreOptions, StubStatus::Ready, "Score legal options from officer-visible information."},
+    {S::ChoosePlan, StubStatus::Ready,
+     "Apply judgement, discipline, reaction delay and persistence."},
+    {S::BuildTasks, StubStatus::Ready,
+     "Propose one regiment order and separate formation/fire directives."},
+    {S::MonitorExecution, StubStatus::Ready,
+     "Track completion, unreachable targets and emergencies."},
+    {S::ReportUpward, StubStatus::Ready,
+     "Acknowledge orders and report threats or support needs."}};
 } // namespace
 
 const BrainContract &ArmyBrain::Contract() {
@@ -76,12 +81,28 @@ const BrainContract &RegimentBrain::Contract() {
                                             RegimentStages};
     return contract;
 }
-StubResult<DecisionProposal> RegimentBrain::Think(const BrainContext &) const {
-    return {Pending, std::nullopt,
-            "New regiment planning is not implemented; legacy AI remains active."};
-}
-StubResult<std::vector<ActionScore>> RulesEvaluatorStub::Evaluate(const EvaluationRequest &) const {
-    return {Pending, std::nullopt, "Command-level rule scoring is not implemented."};
+
+StubResult<std::vector<ActionScore>>
+RulesEvaluatorStub::Evaluate(const EvaluationRequest &r) const {
+    if (r.feature_schema > 1)
+        return {StubStatus::InvalidInput, std::nullopt, "Unknown feature schema."};
+    for (float x : r.features)
+        if (!std::isfinite(x) || x < 0)
+            return {StubStatus::InvalidInput, std::nullopt, "Invalid rule features."};
+    float own = r.features.size() > 0 ? r.features[0] : 1;
+    float enemy = r.features.size() > 1 ? r.features[1] : 1;
+    float distance = r.features.size() > 2 ? r.features[2] : 0;
+    std::vector<ActionScore> scores;
+    for (size_t i = 0; i < r.options.size(); ++i) {
+        auto action = r.options[i].action;
+        if (unsigned(action) > unsigned(TaskKind::Reform))
+            return {StubStatus::InvalidInput, std::nullopt, "Invalid action."};
+        float score = 5;
+        if (action == TaskKind::Attack || action == TaskKind::Exploit)
+            score = 10 * std::min(100.f, own / std::max(1.f, enemy)) / (1 + distance / 100);
+        scores.push_back({uint32_t(i), score, "Deterministic rule utility."});
+    }
+    return {StubStatus::Ready, std::move(scores), "Rule options scored."};
 }
 StubResult<std::vector<ActionScore>>
 NeuralEvaluatorStub::Evaluate(const EvaluationRequest &) const {

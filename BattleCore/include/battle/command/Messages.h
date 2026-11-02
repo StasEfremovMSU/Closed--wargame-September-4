@@ -52,6 +52,7 @@ struct CommandTask {
     TaskStatus status{TaskStatus::Draft};
     std::optional<uint32_t> formation_columns;
     std::optional<float> formation_spacing_m;
+    std::optional<Tick> received_tick;
 };
 
 enum class ReportKind : uint8_t {
