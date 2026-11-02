@@ -81,3 +81,86 @@ TEST_CASE("navigation.bottleneck_complete_motion") {
     }
     CHECK(w.regiments[0].pose.position.x == doctest::Approx(10));
 }
+namespace {
+std::optional<UnitPosition> RadiusReference(const std::vector<UnitPosition> &points, Vec3 p,
+                                            float radius, int team) {
+    std::optional<UnitPosition> best;
+    float distance = radius;
+    for (const auto &point : points) {
+        auto d = point.position - p;
+        if (point.team == team ||
+            double(d.x) * d.x + double(d.y) * d.y + double(d.z) * d.z > double(radius) * radius)
+            continue;
+        float candidate = Length(d);
+        if (!best || candidate < distance || (candidate == distance && point.id < best->id)) {
+            best = point;
+            distance = candidate;
+        }
+    }
+    return best;
+}
+} // namespace
+TEST_CASE("navigation.nearest_enemy_matches_radius_reference") {
+    std::vector<UnitPosition> points;
+    uint64_t state = 123;
+    auto sample = [&]() {
+        state = state * 6364136223846793005ull + 1442695040888963407ull;
+        return float(int((state >> 32) % 40001) - 20000) / 100.f;
+    };
+    for (size_t i = 0; i < 2000; ++i)
+        points.push_back(
+            {{i * 17 + 5}, {sample(), sample(), sample() * .1f}, int(i % 3), i + 9000});
+    for (bool reverse : {false, true}) {
+        if (reverse)
+            std::reverse(points.begin(), points.end());
+        SpatialIndex index;
+        index.Rebuild(points);
+        for (int query = 0; query < 300; ++query) {
+            Vec3 p{sample(), sample(), sample() * .1f};
+            float radius = query % 7 ? 35.f : 100000.f;
+            int team = query % 3;
+            auto expected = RadiusReference(points, p, radius, team);
+            auto actual = index.FindNearestEnemy(p, radius, team);
+            REQUIRE(bool(actual) == bool(expected));
+            if (expected) {
+                CHECK(actual->id == expected->id);
+                CHECK(actual->payload_index == expected->payload_index);
+                CHECK(actual->distance == Distance(p, expected->position));
+            }
+        }
+    }
+    points = {{{99}, {4, 0, 0}, 1, 700},
+              {{2}, {-4, .0001f, 0}, 1, 12345},
+              {{1}, {0, 0, 0}, 0, 5},
+              {{3}, {0, 0, 10}, 1, 6}};
+    SpatialIndex index;
+    index.Rebuild(points);
+    auto tied = index.FindNearestEnemy({0, 0, 0}, 5, 0);
+    REQUIRE(tied);
+    CHECK(tied->id == UnitId{2});
+    CHECK(tied->payload_index == 12345);
+    CHECK_FALSE(index.FindNearestEnemy({0, 0, 0}, 3.9f, 0));
+    CHECK_FALSE(index.FindNearestEnemy({0, 0, 0}, -1, 0));
+    CHECK_FALSE(index.FindNearestEnemy({0, 0, 0}, std::numeric_limits<float>::infinity(), 0));
+    CHECK_FALSE(index.FindNearestEnemy({NAN, 0, 0}, 10, 0));
+    points = {{{91}, {1e30f, 1e30f, 0}, 1, 42}};
+    index.Rebuild(points);
+    auto saturated = index.FindNearestEnemy({1e30f, 1e30f, 0}, 1, 0);
+    REQUIRE(saturated);
+    CHECK(saturated->payload_index == 42);
+    SpatialIndex bad(0);
+    bad.Rebuild(points);
+    CHECK_FALSE(bad.FindNearestEnemy({0, 0, 0}, 10, 0));
+}
+TEST_CASE("navigation.nearest_enemy_prunes") {
+    std::vector<UnitPosition> points{{{1}, {1, 0, 0}, 1, 0}};
+    for (size_t i = 1; i < 4001; ++i)
+        points.push_back({{i + 1}, {60 + float(i % 50), 60 + float(i / 50), 0}, 1, i});
+    SpatialIndex index;
+    index.Rebuild(points);
+    uint64_t checks = 0;
+    auto nearest = index.FindNearestEnemy({0, 0, 0}, 200, 0, &checks);
+    REQUIRE(nearest);
+    CHECK(nearest->id == UnitId{1});
+    CHECK(checks < 100);
+}

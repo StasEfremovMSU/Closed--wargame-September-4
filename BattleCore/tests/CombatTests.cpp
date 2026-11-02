@@ -188,3 +188,47 @@ TEST_CASE("combat.rally_is_interrupted_and_panic_no_path") {
     UpdateMorale(w);
     CHECK(w.regiments[0].calm_counter == 0);
 }
+TEST_CASE("combat.indexed_target_matches_full_radius_rule") {
+    auto w = CreateWorld(test::Duel(64), 42).value;
+    uint64_t random = 123;
+    auto sample = [&]() {
+        random = random * 6364136223846793005ull + 1;
+        return float(int((random >> 32) % 6001) - 3000) / 100.f;
+    };
+    for (auto &u : w.units) {
+        u.pose.position = {sample(), sample(), 0};
+        u.archer = true;
+        u.weapon.range = 30;
+    }
+    w.units.back().alive = false;
+    w.units.back().health = 0;
+    w.units.back().control = ControlMode::Dead;
+    std::vector<BattleEvent> events;
+    BuildCombatEvents(w, events);
+    for (const auto &u : w.units) {
+        if (!u.alive)
+            continue;
+        const UnitState *expected = nullptr;
+        float best = u.weapon.range;
+        for (const auto &t : w.units) {
+            auto delta = t.pose.position - u.pose.position;
+            if (!t.alive ||
+                FindRegiment(w, t.regiment)->team == FindRegiment(w, u.regiment)->team ||
+                double(delta.x) * delta.x + double(delta.y) * delta.y + double(delta.z) * delta.z >
+                    double(u.weapon.range) * u.weapon.range)
+                continue;
+            float d = Length(delta);
+            if (!expected || d < best || (d == best && t.id < expected->id)) {
+                expected = &t;
+                best = d;
+            }
+        }
+        auto found =
+            std::find_if(events.begin(), events.end(), [&](auto &e) { return e.source == u.id; });
+        REQUIRE((found != events.end()) == bool(expected));
+        if (expected)
+            CHECK(found->target == expected->id);
+    }
+    CHECK(std::none_of(events.begin(), events.end(),
+                       [&](auto &e) { return e.target == w.units.back().id; }));
+}

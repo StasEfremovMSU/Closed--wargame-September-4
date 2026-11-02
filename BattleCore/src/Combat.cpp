@@ -40,41 +40,48 @@ void BuildCombatEvents(const World &w, std::vector<BattleEvent> &out, uint64_t *
         }
     if (!enemies)
         return;
-    std::vector<UnitId> neighbors;
-    std::vector<UnitPosition> positions;
-    positions.reserve(w.units.size());
-    for (auto &u : w.units)
-        if (u.alive)
-            positions.push_back({u.id, u.pose.position});
-    SpatialIndex index;
-    index.Rebuild(positions);
-    for (const auto &u : w.units) {
+    struct Shooter {
+        size_t index;
+        int32_t team;
+    };
+    std::vector<Shooter> shooters;
+    for (size_t i = 0; i < w.units.size(); ++i) {
+        const auto &u = w.units[i];
         if (!u.alive || u.ready_tick > w.tick)
             continue;
         auto *r = FindRegiment(w, u.regiment);
-        if (!r || r->panic)
-            continue;
+        if (r && !r->panic)
+            shooters.push_back({i, r->team});
+    }
+    if (shooters.empty())
+        return;
+    bool need_index = std::any_of(shooters.begin(), shooters.end(), [&](auto s) {
+        return w.units[s.index].control != ControlMode::PlayerControlled;
+    });
+    SpatialIndex index;
+    if (need_index) {
+        std::vector<UnitPosition> positions;
+        positions.reserve(w.units.size());
+        for (size_t i = 0; i < w.units.size(); ++i) {
+            auto &u = w.units[i];
+            if (u.alive)
+                if (auto *r = FindRegiment(w, u.regiment))
+                    positions.push_back({u.id, u.pose.position, r->team, i});
+        }
+        index.Rebuild(positions);
+    }
+    for (const auto &shooter : shooters) {
+        const auto &u = w.units[shooter.index];
         const UnitState *target = nullptr;
-        float best = u.weapon.range;
         if (u.control == ControlMode::PlayerControlled) {
             auto *t = FindUnit(w, u.attack_target);
-            if (t && t->alive && FindRegiment(w, t->regiment)->team != r->team &&
-                Distance(u.pose.position, t->pose.position) <= best)
+            if (t && t->alive && FindRegiment(w, t->regiment)->team != shooter.team &&
+                Distance(u.pose.position, t->pose.position) <= u.weapon.range)
                 target = t;
-        } else {
-            index.QueryRadiusInto(u.pose.position, u.weapon.range, neighbors);
-            for (auto id : neighbors) {
-                if (checks)
-                    ++*checks;
-                auto *t = FindUnit(w, id);
-                if (!t || FindRegiment(w, t->regiment)->team == r->team)
-                    continue;
-                float d = Distance(u.pose.position, t->pose.position);
-                if (!target || d < best || (d == best && t->id < target->id)) {
-                    best = d;
-                    target = t;
-                }
-            }
+        } else if (auto nearest = index.FindNearestEnemy(u.pose.position, u.weapon.range,
+                                                         shooter.team, checks)) {
+            // World units are not mutated until commit; payload indices remain valid here.
+            target = &w.units[nearest->payload_index];
         }
         if (!target)
             continue;
