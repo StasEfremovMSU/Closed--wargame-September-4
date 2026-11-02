@@ -43,7 +43,9 @@ Result<TickResult> Step(World &w, std::span<const CommandEnvelope> input,
             continue;
         if (!e.sequence || !Finite(e.command.pose) || !Finite(e.command.velocity) ||
             !Finite(e.command.order.point) || e.tick < w.tick ||
-            uint8_t(e.command.kind) > uint8_t(CommandKind::ExternalPoseSample) ||
+            uint8_t(e.command.kind) > uint8_t(CommandKind::IssueCommandTask) ||
+            (e.command.kind == CommandKind::IssueCommandTask &&
+             !command::ValidTaskRequest(e.command.command_task)) ||
             (e.command.kind == CommandKind::ExternalPoseSample && e.command.sample_tick != e.tick))
             return {Status::InvalidInput, {}, {{"commands", 0, "invalid command packet"}}};
         inspect(e);
@@ -75,7 +77,11 @@ Result<TickResult> Step(World &w, std::span<const CommandEnvelope> input,
             status = SubmitOrder(w, e.command.order);
         else if (e.command.kind == CommandKind::ReformRegiment)
             status = ReformRegiment(w, e.command.regiment, e.command.formation);
-        else
+        else if (e.command.kind == CommandKind::IssueCommandTask) {
+            auto submitted = command::SubmitTask(w, e.command.command_task);
+            status =
+                submitted.status == command::StubStatus::Ready ? Status::Ok : Status::InvalidInput;
+        } else
             status = ApplyControlCommand(w, e.command);
         if (status != Status::Ok)
             w.events.push_back({EventId{w.next_event_id++},
@@ -89,6 +95,9 @@ Result<TickResult> Step(World &w, std::span<const CommandEnvelope> input,
     }
     w.commands = std::move(future);
     UpdateMorale(w);
+    auto command = command::UpdateCommand(w, nav);
+    if (command.status != command::StubStatus::Ready)
+        return {Status::InvalidInput, {}, {{"command.runtime", 0, "command update rejected"}}};
     UpdateOfficers(w, nav);
     mark(&StepProfile::orders_ms);
     AdvanceFormations(w, .05f);

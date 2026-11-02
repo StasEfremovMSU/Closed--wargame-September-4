@@ -1,5 +1,6 @@
 #pragma once
 #include "Orders.h"
+#include "battle/command/Runtime.h"
 namespace battle {
 struct UnitState : UnitSpec {
     bool alive{true};
@@ -49,6 +50,7 @@ struct World {
     uint64_t neighbor_checks{}, combat_events{};
     BattleOutcome outcome{BattleOutcome::Running};
     int32_t winner_team{};
+    std::optional<command::CommandState> command_state;
 };
 struct WorldStats {
     uint64_t living_units{}, dead_units{}, regiment_count{}, rank_and_file_count{},

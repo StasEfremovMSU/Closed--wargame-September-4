@@ -1,46 +1,14 @@
-#include "battle/World.h"
-#include "battle/command/Services.h"
+#include "battle/Simulation.h"
+#include "battle/command/Runtime.h"
 #include <array>
 #include <iostream>
 
 namespace cmd = battle::command;
 using namespace battle;
+
 namespace {
-template <class T>
-bool Show(std::string_view name, const cmd::StubResult<T> &result, bool pending = true) {
-    const bool inactive =
-        pending ? result.status == cmd::StubStatus::NotImplemented && !result.value.has_value()
-                : result.status == cmd::StubStatus::Ready && result.value.has_value();
-    std::cout << name << ": "
-              << (inactive ? (pending ? "NOT_IMPLEMENTED" : "READY") : "UNEXPECTED_OUTPUT") << " - "
-              << result.reason << '\n';
-    return inactive;
-}
-Scenario ExampleBattle() {
-    Scenario scenario;
-    for (unsigned side = 0; side < 2; ++side) {
-        RegimentSpec regiment;
-        regiment.id = {side + 1};
-        regiment.team = int32_t(side);
-        regiment.pose.position.x = side ? 10.f : -10.f;
-        regiment.formation.columns = 4;
-        scenario.regiments.push_back(regiment);
-        for (unsigned i = 0; i < 4; ++i) {
-            UnitSpec unit;
-            unit.id = {side * 4 + i + 1};
-            unit.regiment = regiment.id;
-            unit.pose = regiment.pose;
-            scenario.units.push_back(unit);
-        }
-    }
-    // Four different officers share a physical regiment, not a physical body.
-    // Their command positions are independent of their legacy numeric roles.
-    for (unsigned i = 0; i < 4; ++i)
-        scenario.officers.push_back({{i + 1}, {i + 1}, i == 0 ? 2u : 1u});
-    return scenario;
-}
-cmd::CommandHierarchy ExampleHierarchy() {
-    cmd::CommandHierarchy hierarchy;
+cmd::CommandSetup ExampleSetup() {
+    cmd::CommandSetup setup;
     const std::array levels{cmd::Level::Army, cmd::Level::Part, cmd::Level::Group,
                             cmd::Level::Regiment};
     const std::array names{"Example army", "Center", "Infantry group", "First regiment"};
@@ -50,91 +18,112 @@ cmd::CommandHierarchy ExampleHierarchy() {
         node.level = levels[i];
         node.name = names[i];
         node.commander = {4 - i};
+        node.team = 0;
         if (i)
             node.parent = {i};
         if (i + 1 < levels.size())
             node.children.push_back({i + 2});
         else
             node.regiment = {1};
-        hierarchy.nodes.push_back(node);
+        setup.hierarchy.nodes.push_back(node);
         cmd::OfficerProfile profile;
         profile.officer = node.commander;
-        hierarchy.officers.push_back(profile);
+        profile.tactical_skill = .7f;
+        profile.initiative = .7f;
+        profile.discipline = .8f;
+        profile.aggression = .8f;
+        profile.command_radius_m = 60;
+        if (node.level == cmd::Level::Regiment)
+            profile.initiative = 0;
+        setup.hierarchy.officers.push_back(profile);
     }
-    return hierarchy;
+    cmd::CommandTask mission;
+    mission.id = {1};
+    mission.recipient = {1};
+    mission.action = cmd::TaskKind::Attack;
+    mission.intent.target_regiment = {2};
+    mission.intent.objective_position = {10, 0, 0};
+    mission.status = cmd::TaskStatus::Active;
+    setup.missions.push_back(mission);
+    return setup;
+}
+
+Scenario ExampleBattle() {
+    Scenario scenario;
+    for (unsigned side = 0; side < 2; ++side) {
+        RegimentSpec regiment;
+        regiment.id = {side + 1};
+        regiment.team = int32_t(side);
+        regiment.pose.position.x = side ? 10.f : -10.f;
+        regiment.formation.columns = 4;
+        regiment.speed = 2;
+        scenario.regiments.push_back(regiment);
+        for (unsigned i = 0; i < 4; ++i) {
+            UnitSpec unit;
+            unit.id = {side * 4 + i + 1};
+            unit.regiment = regiment.id;
+            unit.pose = regiment.pose;
+            scenario.units.push_back(unit);
+        }
+    }
+    for (unsigned i = 0; i < 4; ++i)
+        scenario.officers.push_back({{i + 1}, {i + 1}, i == 0 ? 2u : 1u});
+    scenario.command_setup = ExampleSetup();
+    return scenario;
+}
+
+const char *StateName(cmd::FsmState state) {
+    switch (state) {
+    case cmd::FsmState::Idle:
+        return "Idle";
+    case cmd::FsmState::Deploying:
+        return "Deploying";
+    case cmd::FsmState::Holding:
+        return "Holding";
+    case cmd::FsmState::Advancing:
+        return "Advancing";
+    case cmd::FsmState::Attacking:
+        return "Attacking";
+    case cmd::FsmState::Supporting:
+        return "Supporting";
+    case cmd::FsmState::Regrouping:
+        return "Regrouping";
+    case cmd::FsmState::Withdrawing:
+        return "Withdrawing";
+    case cmd::FsmState::Rallying:
+        return "Rallying";
+    case cmd::FsmState::Reserve:
+        return "Reserve";
+    case cmd::FsmState::Failed:
+        return "Failed";
+    case cmd::FsmState::Complete:
+        return "Complete";
+    }
+    return "Unknown";
 }
 } // namespace
 
 int main() {
     auto created = CreateWorld(ExampleBattle(), 42);
-    if (!created) {
-        std::cerr << "Example world construction failed.\n";
+    if (!created || !created.value.command_state) {
+        std::cerr << "Could not initialize the command battle.\n";
         return 1;
     }
-    const auto &world = created.value;
-    const auto hierarchy = ExampleHierarchy();
-    const std::array contracts{&cmd::ArmyBrain::Contract(), &cmd::PartBrain::Contract(),
-                               &cmd::GroupBrain::Contract(), &cmd::RegimentBrain::Contract()};
-    bool ok = true;
-    std::cout << "Command hierarchy scaffold. No tactical decisions are executed.\n";
-    for (size_t i = 0; i < contracts.size(); ++i) {
-        const auto &contract = *contracts[i];
-        std::cout << contract.name << " / " << hierarchy.nodes[i].name << ": "
-                  << contract.responsibility << " (" << contract.stages.size()
-                  << " pending stages)\n";
-        for (const auto &stage : contract.stages)
-            ok = !stage.purpose.empty() && ok;
-        cmd::BrainContext context;
-        context.node = &hierarchy.nodes[i];
-        context.profile = &hierarchy.officers[i];
-        auto situation = cmd::BuildSituation(world, hierarchy, context.node->id, 0);
-        context.situation = situation.value ? &*situation.value : nullptr;
-        std::vector<cmd::CommandNode> children;
-        std::vector<cmd::ChildStatus> child_status;
-        for (auto id : context.node->children) {
-            const auto *child = cmd::FindNode(hierarchy, id);
-            children.push_back(*child);
-            auto observed = cmd::BuildSituation(world, hierarchy, id, 0);
-            cmd::ChildStatus status;
-            status.node = id;
-            status.pose = observed.value->own.pose;
-            status.living = observed.value->own.living;
-            status.initial = observed.value->own.initial;
-            child_status.push_back(status);
+    auto world = std::move(created.value);
+    GridNavigationService navigation(world.scenario.obstacles);
+    bool hit = false;
+    for (unsigned tick = 0; tick < 400 && !hit; ++tick) {
+        auto result = Step(world, {}, {}, navigation);
+        if (result.status != Status::Ok) {
+            std::cerr << "Simulation rejected tick " << tick << ".\n";
+            return 1;
         }
-        context.subordinates = children;
-        context.children_status = child_status;
-        switch (contract.level) {
-        case cmd::Level::Army:
-            ok = Show("  Think", cmd::ArmyBrain{}.Think(context)) && ok;
-            break;
-        case cmd::Level::Part:
-            ok = Show("  Think", cmd::PartBrain{}.Think(context), false) && ok;
-            break;
-        case cmd::Level::Group:
-            ok = Show("  Think", cmd::GroupBrain{}.Think(context), false) && ok;
-            break;
-        case cmd::Level::Regiment:
-            ok = Show("  Think", cmd::RegimentBrain{}.Think(context), false) && ok;
-            break;
-        }
+        hit = std::any_of(result.value.events.begin(), result.value.events.end(),
+                          [](const auto &event) { return event.kind == EventKind::Hit; });
     }
-    ok = Show("ValidateHierarchy", cmd::ValidateHierarchy(hierarchy, world), false) && ok;
-    ok = Show("BuildSituation", cmd::BuildSituation(world, hierarchy, {4}, 0), false) && ok;
-    ok = Show("SelectSuccessor", cmd::SelectSuccessor(world, hierarchy.nodes[0]), false) && ok;
-    cmd::CommunicationsState communications;
-    ok = Show("AdvanceCommunications", cmd::AdvanceCommunications(communications, 0)) && ok;
-    std::array<cmd::BrainSchedule, 4> schedules;
-    for (size_t i = 0; i < schedules.size(); ++i)
-        schedules[i].node = hierarchy.nodes[i].id;
-    ok = Show("ScheduleBrains", cmd::ScheduleBrains(schedules, 0), false) && ok;
-    cmd::CommandTask task;
-    task.id = {1};
-    task.issuer = {3};
-    task.recipient = {4};
-    ok = Show("TranslateRegimentTask", cmd::TranslateRegimentTask(task, 0)) && ok;
-    ok = Show("RulesEvaluator", cmd::RulesEvaluatorStub{}.Evaluate({}), false) && ok;
-    ok = Show("NeuralEvaluator", cmd::NeuralEvaluatorStub{}.Evaluate({})) && ok;
-    std::cout << (ok ? "All placeholders are inactive.\n" : "Scaffold contract violated.\n");
-    return ok ? 0 : 1;
+    std::cout << "Four-level commander runtime: " << (hit ? "hit confirmed" : "no hit") << '\n';
+    for (const auto &runtime : world.command_state->nodes)
+        std::cout << "Node " << runtime.node.value << ": " << StateName(runtime.memory.state)
+                  << ", decisions=" << runtime.memory.recent_decisions.size() << '\n';
+    return hit ? 0 : 1;
 }

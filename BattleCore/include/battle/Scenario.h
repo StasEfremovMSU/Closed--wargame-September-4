@@ -1,5 +1,6 @@
 #pragma once
 #include "Types.h"
+#include "battle/command/Setup.h"
 namespace battle {
 struct FormationSpec {
     bool operator==(const FormationSpec &) const = default;
@@ -59,6 +60,7 @@ struct Scenario {
     std::vector<OfficerSpec> officers;
     std::vector<Obstacle> obstacles;
     Rules rules{};
+    std::optional<command::CommandSetup> command_setup;
 };
 Result<Scenario> ValidateScenario(Scenario input);
 } // namespace battle

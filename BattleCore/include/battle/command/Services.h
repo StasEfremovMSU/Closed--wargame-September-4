@@ -21,5 +21,10 @@ StubResult<LocalSituation> BuildSituation(const World &, const CommandHierarchy 
 StubResult<OfficerId> SelectSuccessor(const World &, const CommandNode &);
 StubResult<CommunicationsUpdate> AdvanceCommunications(const CommunicationsState &, Tick);
 StubResult<std::vector<NodeId>> ScheduleBrains(std::span<const BrainSchedule>, Tick);
-StubResult<battle::Order> TranslateRegimentTask(const CommandTask &, Tick);
+struct RegimentTaskTranslation {
+    battle::Order order;
+    std::optional<battle::FormationSpec> formation;
+};
+StubResult<RegimentTaskTranslation> TranslateRegimentTask(const CommandTask &, RegimentId,
+                                                          battle::FormationSpec, Tick);
 } // namespace battle::command

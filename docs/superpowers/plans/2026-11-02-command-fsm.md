@@ -61,9 +61,9 @@
 ## Task 6: Communication and live command runtime
 **Files:** new command/Runtime.h, src/CommandRuntime.cpp; Scenario.h, World.h, World.cpp, Simulation.cpp, Orders.h; CommandServices.cpp; tests/CommandRuntimeTests.cpp, example.
 **Interfaces:** optional command_setup in Scenario, command_state in World. NodeRuntime holds memory/active tasks/reports/schedule/last_order_id/last child assignments; CommandState owns mutable hierarchy, nodes, communication and monotonic counters. InitializeCommand(World&), UpdateCommand(World&,const NavigationService&), SubmitTask(World&,const CommandTask&). Add CommandKind::IssueCommandTask with Command.command_task.
-- [ ] RED pure queue no-early/expiry/dedup, task->Order translation, invalid authority/side, four-level delivery and visible movement/combat, reserve/reports/succession, no-path failure, external-order/control precedence and no order spam. Courier route/time/death checked; no physical courier animation claimed.
-- [ ] GREEN message transport and owner runtime; first1-tick abstract Signal per hop. Capture direct and aged report knowledge; run due/urgent brains; publish child tasks only on changed plan; set single leaf order owner. Wire between UpdateMorale and UpdateOfficers. Legacy scenarios without setup unchanged.
-- [ ] Full Debug/Release suites and demo; commit, task-done.
+- [x] RED pure queue no-early/expiry/dedup, task->Order translation, invalid authority/side, four-level delivery and visible movement/combat, reserve/reports/succession, no-path failure, external-order/control precedence and no order spam. Courier route/time/death checked; no physical courier animation claimed.
+- [x] GREEN message transport and owner runtime; first1-tick abstract Signal per hop. Capture direct and aged report knowledge; run due/urgent brains; publish child tasks only on changed plan; set single leaf order owner. Wire between UpdateMorale and UpdateOfficers. Legacy scenarios without setup unchanged.
+- [x] Full Debug/Release suites and demo; commit, task-done.
 
 ## Task 7: Persistence, CLI scenario and documentation
 **Files:** Snapshot.cpp/h, JsonBindings.h, new tools/CommandJson.h; ReplayIo.cpp/h; new src/CommandState.cpp; tests/{CommandRuntime,Replay}Tests.cpp, CliRejected.cmake; example, fixtures/command-battle.json, docs/command-hierarchy.md, scenario-format.md, README.md.

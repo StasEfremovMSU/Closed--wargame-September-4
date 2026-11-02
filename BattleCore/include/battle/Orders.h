@@ -22,7 +22,8 @@ enum class CommandKind : uint8_t {
     ReleaseControl,
     MoveControlledUnit,
     AttackControlledUnit,
-    ExternalPoseSample
+    ExternalPoseSample,
+    IssueCommandTask
 };
 // A tagged wire record; only fields belonging to kind are consumed.
 struct Command {
@@ -34,6 +35,7 @@ struct Command {
     Vec3 velocity{};
     Pose pose{};
     Tick sample_tick{};
+    command::CommandTask command_task{};
 };
 struct CommandEnvelope {
     Tick tick{};

@@ -1,3 +1,4 @@
+#include "CommandBrainCommon.h"
 #include "battle/World.h"
 #include "battle/command/Services.h"
 #include <set>
@@ -130,10 +131,114 @@ StubResult<std::vector<NodeId>> ScheduleBrains(std::span<const BrainSchedule> sc
     std::sort(due.begin(), due.end());
     return {StubStatus::Ready, std::move(due), "Due command nodes."};
 }
-StubResult<CommunicationsUpdate> AdvanceCommunications(const CommunicationsState &, Tick) {
-    return {StubStatus::NotImplemented, std::nullopt, "Transport follows in the runtime task."};
+StubResult<CommunicationsUpdate> AdvanceCommunications(const CommunicationsState &state,
+                                                       Tick tick) {
+    std::set<uint64_t> ids;
+    for (const auto &message : state.messages) {
+        if (!message.id || !message.sender || !message.recipient ||
+            !ids.insert(message.id.value).second ||
+            unsigned(message.channel) > unsigned(DeliveryChannel::Courier) ||
+            unsigned(message.status) > unsigned(DeliveryStatus::RecipientUnavailable) ||
+            message.created_tick > message.delivery_tick ||
+            (message.expiry_tick && *message.expiry_tick < message.created_tick) ||
+            (message.channel == DeliveryChannel::Courier && !message.courier))
+            return {StubStatus::InvalidInput, std::nullopt, "Invalid or duplicate message."};
+        if (auto *task = std::get_if<CommandTask>(&message.payload)) {
+            if (!detail::ValidTask(*task) || task->issuer != message.sender ||
+                task->recipient != message.recipient)
+                return {StubStatus::InvalidInput, std::nullopt, "Message task identity mismatch."};
+        } else if (auto *report = std::get_if<SituationReport>(&message.payload)) {
+            if (report->sender != message.sender || report->recipient != message.recipient ||
+                report->observed_tick > report->created_tick || report->created_tick > tick)
+                return {StubStatus::InvalidInput, std::nullopt,
+                        "Message report identity mismatch."};
+        }
+    }
+    CommunicationsUpdate update;
+    update.next = state;
+    std::vector<size_t> order(update.next.messages.size());
+    for (size_t i = 0; i < order.size(); ++i)
+        order[i] = i;
+    std::sort(order.begin(), order.end(), [&](size_t a, size_t b) {
+        const auto &x = update.next.messages[a];
+        const auto &y = update.next.messages[b];
+        return x.delivery_tick != y.delivery_tick ? x.delivery_tick < y.delivery_tick : x.id < y.id;
+    });
+    for (auto index : order) {
+        auto &message = update.next.messages[index];
+        if (message.status != DeliveryStatus::Queued && message.status != DeliveryStatus::InTransit)
+            continue;
+        if (message.expiry_tick && *message.expiry_tick <= tick) {
+            message.status = DeliveryStatus::Expired;
+            continue;
+        }
+        if (message.delivery_tick > tick)
+            continue;
+        message.status = DeliveryStatus::Delivered;
+        update.delivered.push_back(message);
+    }
+    return {StubStatus::Ready, std::move(update), "Due messages advanced once."};
 }
-StubResult<battle::Order> TranslateRegimentTask(const CommandTask &, Tick) {
-    return {StubStatus::NotImplemented, std::nullopt, "Translation follows in the runtime task."};
+StubResult<RegimentTaskTranslation> TranslateRegimentTask(const CommandTask &task,
+                                                          RegimentId regiment,
+                                                          battle::FormationSpec current,
+                                                          Tick tick) {
+    if (!detail::ValidTask(task) || !regiment || !current.columns ||
+        !std::isfinite(current.spacing_m) || current.spacing_m <= 0 ||
+        !std::isfinite(current.body_radius_m) || current.body_radius_m <= 0)
+        return {StubStatus::InvalidInput, std::nullopt, "Invalid regiment translation input."};
+    RegimentTaskTranslation result;
+    auto &order = result.order;
+    order.issuer = task.author;
+    order.recipient = regiment;
+    order.priority = task.priority;
+    order.point = task.intent.objective_position;
+    order.target_regiment = task.intent.target_regiment;
+    order.created_tick = tick;
+    order.delivery_tick = tick;
+    order.expiry_tick = detail::TaskExpiry(task, task.received_tick.value_or(tick)).value_or(0);
+    switch (task.action) {
+    case TaskKind::HoldArea:
+    case TaskKind::Defend:
+    case TaskKind::Reserve:
+        order.type = OrderType::Hold;
+        break;
+    case TaskKind::MoveToArea:
+    case TaskKind::Screen:
+    case TaskKind::Support:
+    case TaskKind::Flank:
+        order.type = OrderType::MoveTo;
+        break;
+    case TaskKind::Attack:
+    case TaskKind::Exploit:
+        if (!task.intent.target_regiment)
+            return {StubStatus::InvalidInput, std::nullopt,
+                    "Attack translation needs an assigned regiment target."};
+        order.type = OrderType::Attack;
+        break;
+    case TaskKind::Withdraw:
+        order.type = OrderType::Withdraw;
+        break;
+    case TaskKind::Rally:
+        order.type = OrderType::Rally;
+        break;
+    case TaskKind::Reform: {
+        if (!task.formation_columns)
+            return {StubStatus::InvalidInput, std::nullopt,
+                    "Reform translation needs an explicit column count."};
+        FormationSpec formation = current;
+        formation.columns = *task.formation_columns;
+        if (task.formation_spacing_m)
+            formation.spacing_m = *task.formation_spacing_m;
+        if (!std::isfinite(formation.spacing_m) || formation.spacing_m <= 0)
+            return {StubStatus::InvalidInput, std::nullopt,
+                    "Reform translation needs positive spacing."};
+        result.formation = formation;
+        order.type = OrderType::Hold;
+        break;
+    }
+    }
+    order.status = OrderStatus::Pending;
+    return {StubStatus::Ready, std::move(result), "Regiment task translated."};
 }
 } // namespace battle::command

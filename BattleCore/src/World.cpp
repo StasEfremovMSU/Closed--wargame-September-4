@@ -79,6 +79,11 @@ Result<World> CreateWorld(const Scenario &s, uint64_t seed) {
     for (auto &r : w.regiments)
         r.initial_count = r.units.size();
     InitializeFormations(w);
+    auto command = command::InitializeCommand(w);
+    if (command.status != command::StubStatus::Ready)
+        return {Status::InvalidInput,
+                {},
+                {{"scenario.command_setup", 0, "invalid command hierarchy or missions"}}};
     return {Status::Ok, std::move(w), {}};
 }
 UnitState *FindUnit(World &w, UnitId id) {

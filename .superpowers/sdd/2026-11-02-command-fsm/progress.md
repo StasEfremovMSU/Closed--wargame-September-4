@@ -23,4 +23,8 @@ Task4 RED: Part tests first failed against the existing stub. GREEN stable front
 Task 4: complete (commit 66bf3a1; tests: 'S:/Virtual Life/VirtualLife/out/tools/cmake-3.31.6-windows-x86_64/bin/ctest.exe' --test-dir BattleCore/out/build/debug --output-on-failure → 17/17).
 
 Task5 RED: army mission/balance/lost-target and reserve tests first failed against the Army stub. GREEN explicit Hold obedience, deterministic rule-based autonomous attack only with a visible worthwhile target, safe target loss, 25% loss/panic reserve release, reserve hold and empty-force handling. Full Debug18/18.
-Task 5: complete (pending local commit; tests: 'S:/Virtual Life/VirtualLife/out/tools/cmake-3.31.6-windows-x86_64/bin/ctest.exe' --test-dir BattleCore/out/build/debug --output-on-failure → 18/18).
+Task 5: complete (commit 6de314d; tests: Debug18/18).
+
+Task6 RED: communication and translation tests failed against NotImplemented; runtime tests showed no command state after CreateWorld and IssueCommandTask was rejected. GREEN validated setup initialization, one-tick Signal per hierarchy hop, direct plus dated report contacts, order translation including Reform columns/spacing, successor choices excluding occupied officers, route-time/death checks for Courier, task/authority/side validation, external-order precedence and order deduplication. Integration reaches a regiment Attack, visible movement and Hit; NoPath raises NeedSupport. Demo now runs this battle. Full Debug19/19 and Release19/19.
+Ruling: suppress repeated regiment orders while the goal shifts <=1m, then refresh on a larger move; prevents order churn without freezing target pursuit.
+Task 6: implementation complete; commit and Task7 work pending (tests: Debug19/19, Release19/19).
