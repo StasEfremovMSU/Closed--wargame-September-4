@@ -280,6 +280,18 @@ TEST_CASE("runtime.commander_loss_report_retains_a_valid_observation") {
     CHECK(Restore(Capture(world)));
 }
 
+TEST_CASE("runtime.future_dated_initial_mission_is_rejected") {
+    auto scenario = CommandDuel(false);
+    c::CommandTask mission;
+    mission.id = {1};
+    mission.recipient = {1};
+    mission.action = c::TaskKind::HoldArea;
+    mission.created_tick = 1;
+    mission.status = c::TaskStatus::Active;
+    scenario.command_setup->missions.push_back(mission);
+    CHECK(CreateWorld(scenario, 48).status == Status::InvalidInput);
+}
+
 TEST_CASE("runtime.task_submission_checks_authority_side_and_ids") {
     auto made = CreateWorld(CommandDuel(false), 46);
     REQUIRE(made.status == Status::Ok);

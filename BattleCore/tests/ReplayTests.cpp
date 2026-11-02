@@ -123,11 +123,14 @@ TEST_CASE("replay.command_snapshot_rejects_corruption_and_migrates_only_plain_v2
     REQUIRE(Step(made.value, {}, {}, FlatNavigationService{}));
     auto canonical = nlohmann::json(Capture(made.value));
     test::TempDir dir;
-    for (const auto &damage : {"timer", "counter", "message-id", "topology", "missing", "enum",
-                               "negative"}) {
+    for (const auto &damage : {"timer", "timer-range", "counter", "message-id", "topology",
+                               "missing", "enum", "negative", "payload-identity"}) {
         auto broken = canonical;
         if (damage == std::string("timer"))
             broken["state"]["command_state"]["nodes"][0]["schedule"]["interval_ticks"] = 2.5;
+        else if (damage == std::string("timer-range"))
+            broken["state"]["command_state"]["nodes"][0]["schedule"]["interval_ticks"] =
+                1000001;
         else if (damage == std::string("counter"))
             broken["state"]["command_state"]["next_task_id"] = 1;
         else if (damage == std::string("message-id"))
@@ -139,6 +142,8 @@ TEST_CASE("replay.command_snapshot_rejects_corruption_and_migrates_only_plain_v2
             broken["state"]["command_state"]["nodes"][0]["memory"].erase("goal");
         else if (damage == std::string("enum"))
             broken["state"]["command_state"]["hierarchy"]["nodes"][0]["level"] = 99;
+        else if (damage == std::string("payload-identity"))
+            broken["state"]["command_state"]["communications"]["messages"][0]["recipient"] = 4;
         else
             broken["state"]["command_state"]["next_message_id"] = -1;
         test::Write(dir.path / "bad-command-save.json", broken.dump());

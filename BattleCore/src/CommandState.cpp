@@ -253,7 +253,7 @@ Result<bool> ValidateCommandState(const World &world, const CommandState &state)
         const auto &runtime = state.nodes[i];
         if (!runtime.node || !runtime_nodes.insert(runtime.node.value).second ||
             !FindNode(state.hierarchy, runtime.node) || runtime.schedule.node != runtime.node ||
-            !runtime.schedule.interval_ticks ||
+            !runtime.schedule.interval_ticks || runtime.schedule.interval_ticks > 1000000 ||
             !EnumAtMost(runtime.memory.state, unsigned(FsmState::Complete)) ||
             !EnumAtMost(runtime.memory.task_status, unsigned(TaskStatus::Cancelled)) ||
             !Finite(runtime.memory.goal) || runtime.memory.state_entered_tick > world.tick ||
@@ -316,15 +316,20 @@ Result<bool> ValidateCommandState(const World &world, const CommandState &state)
             return bad("invalid communications envelope");
         max_message = std::max(max_message, message.id.value);
         if (const auto *task = std::get_if<CommandTask>(&message.payload)) {
-            if (!ValidTask(*task, state.hierarchy, world, world.tick))
+            if (!ValidTask(*task, state.hierarchy, world, world.tick) ||
+                task->issuer != message.sender || task->recipient != message.recipient)
                 return bad("invalid task message payload");
             max_task = std::max(max_task, task->id.value);
-        } else if (!ValidReport(std::get<SituationReport>(message.payload), state.hierarchy,
-                                world, world.tick))
-            return bad("invalid report message payload");
-        else if (const auto *report = std::get_if<SituationReport>(&message.payload);
-                 report && report->about_task)
-            max_task = std::max(max_task, report->about_task.value);
+            if (task->parent_task)
+                max_task = std::max(max_task, task->parent_task.value);
+        } else {
+            const auto &report = std::get<SituationReport>(message.payload);
+            if (!ValidReport(report, state.hierarchy, world, world.tick) ||
+                report.sender != message.sender || report.recipient != message.recipient)
+                return bad("invalid report message payload");
+            if (report.about_task)
+                max_task = std::max(max_task, report.about_task.value);
+        }
     }
     if (max_task >= state.next_task_id.value || max_message >= state.next_message_id.value)
         return bad("command ID counter does not exceed persisted IDs");

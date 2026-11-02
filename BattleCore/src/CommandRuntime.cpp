@@ -308,7 +308,8 @@ StubResult<bool> InitializeCommand(World &world) {
     std::set<uint64_t> task_ids;
     for (auto mission : world.scenario.command_setup->missions) {
         const auto *recipient = FindNode(state.hierarchy, mission.recipient);
-        if (!ValidTaskRequest(mission) || mission.issuer || !recipient ||
+        if (!ValidTaskRequest(mission) || mission.issuer || mission.created_tick > world.tick ||
+            !recipient ||
             recipient->level != Level::Army ||
             unsigned(mission.status) > unsigned(TaskStatus::Cancelled))
             return {StubStatus::InvalidInput, std::nullopt, "Invalid initial army mission."};

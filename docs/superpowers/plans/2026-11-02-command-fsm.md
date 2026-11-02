@@ -71,4 +71,4 @@
 - [x] RED save/resume/replay mid-message, hash sensitivity for each state class, corrupt/missing nested field/timer/ID/immutable topology rejected, command-free v2 accepts and v2-command state rejects, CLI IssueCommandTask changes army plan.
 - [x] GREEN serialization, hash and validation; meaningful end-to-end fixture and state output; demo asserts actual states/actions instead of placeholder success.
 - [x] Full Debug/Release CTest, CLI continuous/resume/replay identical state hashes, small/large hierarchy timing sample (no FPS promise); update detailed docs with implemented/remaining boundaries.
-- [ ] Commit, task-done, one fresh final review from6ad0eaf. One RED/GREEN Important/Critical fix pass; keep local branch.
+- [x] Commit, task-done, one fresh final review from6ad0eaf. One RED/GREEN Important/Critical fix pass; keep local branch.
