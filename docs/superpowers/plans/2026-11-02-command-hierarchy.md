@@ -40,10 +40,10 @@
 - ITacticalEvaluator::Evaluate(const EvaluationRequest&) const -> StubResult<vector<ActionScore>>; RulesEvaluatorStub and NeuralEvaluatorStub.
 - ValidateHierarchy(const CommandHierarchy&,const World&); BuildSituation(const World&,const CommandHierarchy&,NodeId,Tick); SelectSuccessor(const World&,const CommandNode&); AdvanceCommunications(const CommunicationsState&,Tick); ScheduleBrains(span<const BrainSchedule>,Tick); TranslateRegimentTask(const CommandTask&,Tick). All return typed StubResult values.
 
-- [ ] RED: command.brains_are_explicitly_inactive calls each brain for empty and populated contexts; no output, no false success. command.services_do_not_validate_or_consume covers malformed hierarchy, queued tasks and messages, schedule and translation; no output. command.scaffold_does_not_change_battle compares seeded Step/StateHash with and without intervening stub calls. Build fails because new public API is missing.
-- [ ] GREEN: implement documented data structures, four static stage contracts, inactive brains/evaluators/services. Only metadata and NotImplemented returns, no tactical implementation or runtime integration.
-- [ ] Build Debug and run full CTest; inspect output, no failures.
-- [ ] Commit explicit files and record task completion.
+- [x] RED: command.brains_are_explicitly_inactive calls each brain for empty and populated contexts; no output, no false success. command.services_do_not_validate_or_consume covers malformed hierarchy, queued tasks and messages, schedule and translation; no output. command.scaffold_does_not_change_battle compares seeded Step/StateHash with and without intervening stub calls. Build fails because new public API is missing.
+- [x] GREEN: implement documented data structures, four static stage contracts, inactive brains/evaluators/services. Only metadata and NotImplemented returns, no tactical implementation or runtime integration.
+- [x] Build Debug and run full CTest; inspect output, no failures.
+- [x] Commit explicit files and record task completion.
 
 ## Task 2: Detailed reference and executable example
 
