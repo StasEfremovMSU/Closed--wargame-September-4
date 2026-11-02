@@ -70,3 +70,22 @@ TEST_CASE("batch.spatial_output_buffer_reuse") {
     index.QueryRadiusInto({100, 0, 0}, 1, results);
     CHECK(results.empty());
 }
+TEST_CASE("batch.profile_is_observational") {
+    auto a = CreateWorld(io::MakeBenchmarkScenario("volley", 200), 42).value;
+    auto b = a;
+    FlatNavigationService nav;
+    for (int tick = 0; tick < 30; ++tick) {
+        StepProfile profile;
+        REQUIRE(Step(a, {}, {}, nav, &profile));
+        REQUIRE(Step(b, {}, {}, nav));
+        CHECK(StateHash(a) == StateHash(b));
+        CHECK(profile.orders_ms >= 0);
+        CHECK(profile.movement_ms >= 0);
+        CHECK(profile.targeting_ms >= 0);
+        CHECK(profile.commit_ms >= 0);
+    }
+    StepProfile rejected{1, 1, 1, 1};
+    CHECK_FALSE(Step(a, {}, {25, 1}, nav, &rejected));
+    CHECK(rejected.orders_ms == 0);
+    CHECK(rejected.targeting_ms == 0);
+}

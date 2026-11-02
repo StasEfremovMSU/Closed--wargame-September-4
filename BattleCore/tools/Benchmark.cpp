@@ -88,6 +88,7 @@ BenchmarkResult RunBenchmark(const std::string &mode, uint32_t units, uint32_t t
     result.ticks = ticks;
     result.warmup = warmup;
     result.step_ms.reserve(ticks);
+    result.phases.reserve(ticks);
     uint64_t start_checks = 0;
     for (uint64_t t = 0; t < uint64_t(ticks) + warmup; ++t) {
         std::vector<CommandEnvelope> input = t == 0 ? initial : std::vector<CommandEnvelope>{};
@@ -102,7 +103,8 @@ BenchmarkResult RunBenchmark(const std::string &mode, uint32_t units, uint32_t t
         if (t == warmup)
             start_checks = w.neighbor_checks;
         auto before = std::chrono::steady_clock::now();
-        auto step = Step(w, input, {50, workers}, nav);
+        StepProfile profile;
+        auto step = Step(w, input, {50, workers}, nav, &profile);
         auto after = std::chrono::steady_clock::now();
         if (!step)
             throw std::runtime_error("benchmark Step failed");
@@ -110,6 +112,7 @@ BenchmarkResult RunBenchmark(const std::string &mode, uint32_t units, uint32_t t
             result.step_ms.push_back(
                 std::chrono::duration<double, std::milli>(after - before).count());
             result.events += step.value.events.size();
+            result.phases.push_back(profile);
         }
     }
     result.neighbor_checks = w.neighbor_checks - start_checks;
@@ -120,6 +123,19 @@ BenchmarkResult RunBenchmark(const std::string &mode, uint32_t units, uint32_t t
     result.p50_ms = percentile(.5);
     result.p95_ms = percentile(.95);
     result.p99_ms = percentile(.99);
+    result.max_ms = sorted.back();
+    auto phase99 = [&](double StepProfile::*member) {
+        std::vector<double> samples;
+        samples.reserve(ticks);
+        for (auto &p : result.phases)
+            samples.push_back(p.*member);
+        std::sort(samples.begin(), samples.end());
+        return samples[size_t(std::ceil(.99 * samples.size())) - 1];
+    };
+    result.orders_p99_ms = phase99(&StepProfile::orders_ms);
+    result.movement_p99_ms = phase99(&StepProfile::movement_ms);
+    result.targeting_p99_ms = phase99(&StepProfile::targeting_ms);
+    result.commit_p99_ms = phase99(&StepProfile::commit_ms);
 #ifdef _WIN32
     PROCESS_MEMORY_COUNTERS memory{};
     if (GetProcessMemoryInfo(GetCurrentProcess(), &memory, sizeof(memory))) {

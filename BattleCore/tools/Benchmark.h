@@ -1,5 +1,5 @@
 #pragma once
-#include "battle/Scenario.h"
+#include "battle/Simulation.h"
 #include <string>
 namespace battle::io {
 struct BenchmarkResult {
@@ -7,7 +7,9 @@ struct BenchmarkResult {
     uint32_t units{}, workers{}, ticks{}, warmup{};
     uint64_t seed{42}, hash{}, neighbor_checks{}, events{}, working_set_bytes{},
         peak_working_set_bytes{};
-    double p50_ms{}, p95_ms{}, p99_ms{};
+    double p50_ms{}, p95_ms{}, p99_ms{}, max_ms{};
+    double orders_p99_ms{}, movement_p99_ms{}, targeting_p99_ms{}, commit_p99_ms{};
+    std::vector<StepProfile> phases;
     std::vector<double> step_ms;
 };
 Scenario MakeBenchmarkScenario(const std::string &mode, uint32_t units);

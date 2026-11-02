@@ -3,11 +3,23 @@
 #include "battle/Control.h"
 #include "battle/Formation.h"
 #include "battle/Officers.h"
+#include <chrono>
 #include <map>
 namespace battle {
 Result<TickResult> Step(World &w, std::span<const CommandEnvelope> input,
-                        const SimulationOptions &o, const NavigationService &nav) {
-    (void)nav;
+                        const SimulationOptions &o, const NavigationService &nav,
+                        StepProfile *profile) {
+    if (profile)
+        *profile = {};
+    using Clock = std::chrono::steady_clock;
+    auto previous = profile ? Clock::now() : Clock::time_point{};
+    auto mark = [&](double StepProfile::*member) {
+        if (profile) {
+            auto now = Clock::now();
+            profile->*member = std::chrono::duration<double, std::milli>(now - previous).count();
+            previous = now;
+        }
+    };
     if (o.tick_ms != 50 || o.worker_count == 0)
         return {Status::InvalidInput,
                 {},
@@ -78,12 +90,16 @@ Result<TickResult> Step(World &w, std::span<const CommandEnvelope> input,
     w.commands = std::move(future);
     UpdateMorale(w);
     UpdateOfficers(w, nav);
+    mark(&StepProfile::orders_ms);
     AdvanceFormations(w, .05f);
     AdvanceControlled(w, .05f);
+    mark(&StepProfile::movement_ms);
     std::vector<BattleEvent> attacks;
     BuildCombatEvents(w, attacks, &w.neighbor_checks);
+    mark(&StepProfile::targeting_ms);
     CommitCombatEvents(w, attacks);
     ++w.tick;
+    mark(&StepProfile::commit_ms);
     return {Status::Ok, {w.tick, w.events}, {}};
 }
 } // namespace battle

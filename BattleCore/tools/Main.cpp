@@ -101,7 +101,8 @@ int main(int argc, char **argv) {
             std::ofstream summary(dir / "summary.jsonl"), raw(dir / "ticks.csv");
             if (!summary || !raw)
                 throw std::runtime_error("cannot write benchmark");
-            raw << "mode,units,workers,rep,tick,step_ms\n";
+            raw << "mode,units,workers,rep,tick,step_ms,orders_ms,movement_ms,targeting_ms,commit_"
+                   "ms\n";
             for (unsigned size : unit_counts)
                 for (auto &mode : modes)
                     for (unsigned rep = 0; rep < reps; ++rep) {
@@ -119,6 +120,11 @@ int main(int argc, char **argv) {
                             {"p50_ms", r.p50_ms},
                             {"p95_ms", r.p95_ms},
                             {"p99_ms", r.p99_ms},
+                            {"max_ms", r.max_ms},
+                            {"orders_p99_ms", r.orders_p99_ms},
+                            {"movement_p99_ms", r.movement_p99_ms},
+                            {"targeting_p99_ms", r.targeting_p99_ms},
+                            {"commit_p99_ms", r.commit_p99_ms},
                             {"neighbor_checks", r.neighbor_checks},
                             {"events", r.events},
                             {"working_set_bytes", r.working_set_bytes},
@@ -129,7 +135,9 @@ int main(int argc, char **argv) {
                         summary.flush();
                         for (size_t k = 0; k < r.step_ms.size(); ++k)
                             raw << mode << ',' << r.units << ',' << r.workers << ',' << rep << ','
-                                << k + warmup << ',' << r.step_ms[k] << "\n";
+                                << k + warmup << ',' << r.step_ms[k] << ',' << r.phases[k].orders_ms
+                                << ',' << r.phases[k].movement_ms << ',' << r.phases[k].targeting_ms
+                                << ',' << r.phases[k].commit_ms << "\n";
                         raw.flush();
                         std::cout << mode << " units=" << r.units << " rep=" << rep
                                   << " p95_ms=" << r.p95_ms << std::endl;
