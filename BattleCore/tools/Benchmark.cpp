@@ -116,6 +116,27 @@ BenchmarkResult RunBenchmark(const std::string &mode, uint32_t units, uint32_t t
             result.step_ms.push_back(
                 std::chrono::duration<double, std::milli>(after - before).count());
             result.events += step.value.events.size();
+            uint64_t launches = 0;
+            for (const auto &event : step.value.events) {
+                switch (event.kind) {
+                case EventKind::AttackLaunched:
+                    ++result.launches;
+                    ++launches;
+                    break;
+                case EventKind::Hit:
+                    ++result.hits;
+                    break;
+                case EventKind::Miss:
+                    ++result.misses;
+                    break;
+                case EventKind::Died:
+                    ++result.deaths;
+                    break;
+                default:
+                    break;
+                }
+            }
+            result.max_launches_per_tick = std::max(result.max_launches_per_tick, launches);
             result.phases.push_back(profile);
         }
     }

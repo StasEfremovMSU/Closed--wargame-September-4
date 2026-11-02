@@ -16,3 +16,11 @@ The backup map has 200 rank-and-file and 3 officer bodies, total 203 living Unit
 ```
 
 Run writes an owned snapshot and a JSON-lines event trace. Invalid input exits 2 with diagnostics; successful execution exits 0.
+
+## Ranged scheduling and continuation version2
+
+Scenario authoring remains schema1. Optional `rules.ranged_cohorts` defaults to4 and must be1..64. AI archers attempt initial/idle target acquisition in their stable UnitId/RegimentId phase; four phases spread attempts over200ms with at most150ms initial wait. A nonzero exact `ready_tick` is always eligible once cooldown finishes, so arbitrary cooldown periods retain sustained cadence. Idle retries use the next phase. PlayerControlled archers bypass phase scheduling; their weapon cooldown still applies. Set cohorts1 for simultaneous AI acquisition/release. Dead/panicked units cannot start attacks; already launched projectiles remain independent.
+
+Snapshots and recorded replay bundles now use schema2, including the ranged rule. The current reader explicitly rejects version1 continuation files. Keep the preserved baseline executable for old files or start a new run from a scenario; do not merely relabel an old save as version2. Scenario defaults and authored `--commands` files remain distinct from fully persisted continuation records. Derived phases need no new per-unit scheduler field; stable IDs, the configured rule and existing ready_tick are sufficient for save/resume.
+
+Benchmark comparison: `bench --units 10000 --modes volley --ranged-cohorts 1|4 --ticks 1200 --warmup 200 --out DIR`. The flag is benchmark-only; normal runs read the rule from the scenario.

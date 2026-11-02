@@ -22,3 +22,11 @@ Combat fixtures use 100 HP to keep combat active throughout the measurement. The
 Workers=1 is the serial reference. Requests for 2/4 currently use the same serial implementation (`workers_effective=1`), deliberately: no parallel speedup has been established. Tests compare those modes and reversed input/commit orders. Do not interpret the worker parameter as proof of multithreading.
 
 Desired CPU budget for 5k/10k is p95 <=10 ms. Headless CPU measurements cannot establish rendering FPS, animation cost, Mass performance, Pawn cost, or packaged UE performance. Before deciding capacity, repeat in the actual UE host with its compiler, thread scheduling and camera workloads. This machine is shared with desktop/background applications; sample variation and machine contention remain possible.
+
+## Ranged optimization measurements
+
+New optional StepProfile records four disjoint phases: commands/morale/officers, formation/controlled movement, targeting/attack generation, and combat commit. They are elapsed steady_clock durations, including OS scheduling effects; they are not sampled hardware CPU counters. Total Step includes the returned-event copy and timing overhead that are not included in phase sums. Enabling profiling is tested to preserve StateHash; timings are not persisted in World or snapshots.
+
+Current summaries also report max step, individual launches/hits/misses/deaths and maximum launches in one measured tick. These counters are collected outside Step timing. Raw CSV retains all phase timings. Compare cohorts1 and4 explicitly: cohorts4 changes the timing of AI first/idle acquisition and thus may change hit rolls, target survival and outcomes. New-build state hashes are expected to agree across independent repetitions, not across this authorized mechanics change. The exact-query-only checkpoint did retain all three10k baseline hashes before cohorts were changed.
+
+After the query rewrite, neighbor_checks means visited spatial point candidates before team/radius rejection. The original baseline counted radius results returned to targeting. These counts are not directly interchangeable. This machine is shared with desktop/background workloads; the task avoids concurrent compilation during measurement, but CPU frequency and unrelated activity are not controlled.

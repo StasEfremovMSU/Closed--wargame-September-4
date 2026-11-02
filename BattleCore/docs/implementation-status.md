@@ -1,5 +1,7 @@
 # Autonomous delivery status
 
+Current ranged update: [measured results](ranged-performance.md). AI phase scheduling and exact indexed targeting are implemented; continuation format is now version2. The original validation hash/report below describe the initial delivery.
+
 Tasks 1–11 are implemented in `D:/September 4/BattleCore`, branch `codex/battle-core`. The original Unity content and pre-existing uncommitted edits are preserved. Task 12 (an actual Unreal/Mass host) awaits an installed engine and selected UE-compatible toolchain.
 
 ## Validation

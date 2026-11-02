@@ -89,3 +89,10 @@ TEST_CASE("batch.profile_is_observational") {
     CHECK(rejected.orders_ms == 0);
     CHECK(rejected.targeting_ms == 0);
 }
+TEST_CASE("batch.benchmark_individual_event_counters") {
+    auto result = io::RunBenchmark("melee", 200, 25, 2, 1);
+    CHECK(result.launches > 0);
+    CHECK(result.hits > 0);
+    CHECK(result.deaths == 0);
+    CHECK(result.launches + result.hits + result.misses + result.deaths <= result.events);
+}

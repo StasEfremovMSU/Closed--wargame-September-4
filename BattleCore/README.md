@@ -47,7 +47,11 @@ SVG files open in any browser. Output is a diagnostic top view; animation, camer
 
 [Benchmark protocol](docs/benchmark-protocol.md) explains fixtures, samples and limits. The current implementation is serial, including requests for 2/4 workers; tests verify equivalent results, without claiming a parallel speedup.
 
-[Measured results](docs/benchmark-results.md): all 120 baseline/optimized runs and matching state hashes. The measured 5k/10k fixtures meet the CPU p95 target, but synchronized 10k volleys reach 225 ms at p99. Smooth real-time play and rendering remain unverified.
+[Initial measurements](docs/benchmark-results.md) record the first delivery. [Current ranged optimization](docs/ranged-performance.md) reduces10k volley p99 from268ms to14ms in the new comparison. Individual combat remains; rendering is unmeasured.
 
 
 A resumed snapshot cannot currently be exported as a new scenario-based replay; `--resume` together with `--replay-out` is rejected. Continue with snapshots or replay the original command log. Returning soldiers stop at static walls; individual detour routing is a later extension.
+
+## Current ranged rules
+
+AI archers use four deterministic firing/acquisition phases by default, with at most150ms initial/idle acquisition delay. Exact cooldown completion stays eligible; player-controlled shooting has no added phase delay. Set `rules.ranged_cohorts` to1 in a scenario for synchronous AI release. Snapshots/replay bundles now use schema2; old version1 continuation files are explicitly rejected. Legacy TXT/scenario authoring import remains supported. See [ranged results and reproduction](docs/ranged-performance.md).

@@ -137,6 +137,12 @@ Result<ReplayRecord> LoadReplay(const std::filesystem::path &p) {
         r.scenario = j.at("scenario").get<Scenario>();
         r.seed = j.at("seed");
         r.commands = j.at("commands").get<std::vector<CommandEnvelope>>();
+        CompleteFields(j,
+                       Json{{"schema_version", 2},
+                            {"scenario", r.scenario},
+                            {"seed", r.seed},
+                            {"commands", r.commands}},
+                       "replay");
         auto world = CreateWorld(r.scenario, r.seed);
         if (!world)
             return {world.status, {}, world.diagnostics};
