@@ -1,4 +1,5 @@
 #include "battle/World.h"
+#include "battle/Formation.h"
 #include <set>
 namespace battle {
 Result<Scenario> ValidateScenario(Scenario s){
@@ -20,6 +21,7 @@ Result<World> CreateWorld(const Scenario&s,uint64_t seed){
     std::sort(w.regiments.begin(),w.regiments.end(),[](auto&a,auto&b){return a.id<b.id;});w.officers=s.officers;
     for(const auto&u:w.units)FindRegiment(w,u.regiment)->units.push_back(u.id);
     for(auto&r:w.regiments)r.initial_count=r.units.size();
+    InitializeFormations(w);
     return {Status::Ok,std::move(w),{}};
 }
 UnitState* FindUnit(World&w,UnitId id){auto i=std::lower_bound(w.units.begin(),w.units.end(),id,[](const auto&u,UnitId x){return u.id<x;});return i!=w.units.end()&&i->id==id?&*i:nullptr;}
