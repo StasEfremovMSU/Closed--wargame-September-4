@@ -54,9 +54,9 @@
 ## Task 5: Army FSM
 **Files:** new src/CommandArmy.cpp, tests/CommandArmyTests.cpp.
 **Interfaces:** ArmyBrain::Think chooses mission or defensive/attacking fallback by visible balance and profile, assigns parts by sector roles, controls reserve.
-- [ ] RED army.mission_and_autonomous_balance, army.reserve_release_and_target_loss: explicit Hold obeyed, no enemy means defensive posture, adequate forces advance, reserve release on >=25% own losses or panic, safe missing target.
-- [ ] GREEN army-level task allocation and monitoring, no physical action output; contract metadata marks implemented stages accurately.
-- [ ] Full Debug suite, commit, task-done.
+- [x] RED army.mission_and_autonomous_balance, army.reserve_release_and_target_loss: explicit Hold obeyed, no enemy means defensive posture, adequate forces advance, reserve release on >=25% own losses or panic, safe missing target.
+- [x] GREEN army-level task allocation and monitoring, no physical action output; contract metadata marks implemented stages accurately.
+- [x] Full Debug suite, commit, task-done.
 
 ## Task 6: Communication and live command runtime
 **Files:** new command/Runtime.h, src/CommandRuntime.cpp; Scenario.h, World.h, World.cpp, Simulation.cpp, Orders.h; CommandServices.cpp; tests/CommandRuntimeTests.cpp, example.

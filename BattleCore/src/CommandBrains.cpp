@@ -5,15 +5,22 @@ namespace {
 using S = BrainStage;
 constexpr auto Pending = StubStatus::NotImplemented;
 constexpr StageContract ArmyStages[]{
-    {S::Perceive, Pending, "Collect dated reports from parts; distinguish facts and estimates."},
-    {S::ReconcileOrders, Pending, "Read the battle mission, constraints and superior intent."},
-    {S::AssessSituation, Pending, "Assess force balance, terrain, fronts and reserve needs."},
-    {S::GenerateOptions, Pending, "Consider defence, advance, envelopment or withdrawal."},
-    {S::ScoreOptions, Pending, "Compare plans with rules or a trained evaluator."},
-    {S::ChoosePlan, Pending, "Apply commander judgement, risk tolerance and commitment."},
-    {S::BuildTasks, Pending, "Assign sectors, objectives and reserves to parts."},
-    {S::MonitorExecution, Pending, "Track progress and decide whether to release reserves."},
-    {S::ReportUpward, Pending, "Produce a battle-level progress report for the caller."}};
+    {S::Perceive, StubStatus::Ready, "Read observed battle strength, enemy contacts and reports."},
+    {S::ReconcileOrders, StubStatus::Ready, "Resolve the army mission, intent and task expiry."},
+    {S::AssessSituation, StubStatus::Ready,
+     "Assess visible force balance, losses and threatened sectors."},
+    {S::GenerateOptions, StubStatus::Ready,
+     "Choose hold, advance, support or organized withdrawal."},
+    {S::ScoreOptions, StubStatus::Ready,
+     "Compare autonomous attack with holding using deterministic rules."},
+    {S::ChoosePlan, StubStatus::Ready,
+     "Apply panic, mission intent, reserve trigger and commitment."},
+    {S::BuildTasks, StubStatus::Ready,
+     "Assign objectives and reserve duties to subordinate parts."},
+    {S::MonitorExecution, StubStatus::Ready,
+     "Track visible losses, local panic and support requests."},
+    {S::ReportUpward, StubStatus::Ready,
+     "Report a changed army plan to its superior, if present."}};
 constexpr StageContract PartStages[]{
     {S::Perceive, StubStatus::Ready, "Combine group reports and information about adjacent parts."},
     {S::ReconcileOrders, StubStatus::Ready, "Resolve army intent and the assigned sector mission."},
@@ -60,9 +67,6 @@ const BrainContract &ArmyBrain::Contract() {
     static constexpr BrainContract contract{
         Level::Army, "Army", "Battle intent, part coordination and army reserves.", ArmyStages};
     return contract;
-}
-StubResult<DecisionProposal> ArmyBrain::Think(const BrainContext &) const {
-    return {Pending, std::nullopt, "Army planning is not implemented."};
 }
 const BrainContract &PartBrain::Contract() {
     static constexpr BrainContract contract{
