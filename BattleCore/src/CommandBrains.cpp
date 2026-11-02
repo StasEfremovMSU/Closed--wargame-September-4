@@ -15,15 +15,17 @@ constexpr StageContract ArmyStages[]{
     {S::MonitorExecution, Pending, "Track progress and decide whether to release reserves."},
     {S::ReportUpward, Pending, "Produce a battle-level progress report for the caller."}};
 constexpr StageContract PartStages[]{
-    {S::Perceive, Pending, "Combine group reports and information about adjacent parts."},
-    {S::ReconcileOrders, Pending, "Resolve army intent and the assigned sector mission."},
-    {S::AssessSituation, Pending, "Assess local balance, gaps, frontage and support."},
-    {S::GenerateOptions, Pending, "Consider lines, concentration, reinforcement and fallback."},
-    {S::ScoreOptions, Pending, "Compare group allocations and local reserve use."},
-    {S::ChoosePlan, Pending, "Choose a sector plan within the granted initiative."},
-    {S::BuildTasks, Pending, "Assign coordinated objectives and timing to groups."},
-    {S::MonitorExecution, Pending, "Track sector progress and request army assistance."},
-    {S::ReportUpward, Pending, "Report sector status, losses and unmet needs to the army."}};
+    {S::Perceive, StubStatus::Ready, "Combine group reports and information about adjacent parts."},
+    {S::ReconcileOrders, StubStatus::Ready, "Resolve army intent and the assigned sector mission."},
+    {S::AssessSituation, StubStatus::Ready, "Assess local balance, gaps, frontage and support."},
+    {S::GenerateOptions, StubStatus::Ready,
+     "Consider lines, concentration, reinforcement and fallback."},
+    {S::ScoreOptions, StubStatus::Ready, "Compare group allocations and local reserve use."},
+    {S::ChoosePlan, StubStatus::Ready, "Choose a sector plan within the granted initiative."},
+    {S::BuildTasks, StubStatus::Ready, "Assign coordinated objectives and timing to groups."},
+    {S::MonitorExecution, StubStatus::Ready, "Track sector progress and request army assistance."},
+    {S::ReportUpward, StubStatus::Ready,
+     "Report sector status, losses and unmet needs to the army."}};
 constexpr StageContract GroupStages[]{
     {S::Perceive, StubStatus::Ready, "Combine regiment observations and nearby support reports."},
     {S::ReconcileOrders, StubStatus::Ready, "Resolve the group objective and manoeuvre limits."},
@@ -67,9 +69,7 @@ const BrainContract &PartBrain::Contract() {
         Level::Part, "Part", "Sector mission, group allocation and local reserves.", PartStages};
     return contract;
 }
-StubResult<DecisionProposal> PartBrain::Think(const BrainContext &) const {
-    return {Pending, std::nullopt, "Part planning is not implemented."};
-}
+
 const BrainContract &GroupBrain::Contract() {
     static constexpr BrainContract contract{
         Level::Group, "Group", "Joint manoeuvres and mutual support of regiments.", GroupStages};

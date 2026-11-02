@@ -74,3 +74,15 @@ TEST_CASE("group_fsm.commitment_delays_child_attack") {
     CHECK(wait.value->next_memory->state == c::FsmState::Deploying);
     CHECK(wait.value->subordinate_tasks[0].action == c::TaskKind::MoveToArea);
 }
+TEST_CASE("group_fsm.preserves_assigned_frontage_and_flank") {
+    test::UpperBrainFixture f;
+    f.tasks[0].intent.objective_position = {30, 20, 0};
+    auto plan = c::GroupBrain{}.Think(f.Context());
+    REQUIRE(plan.value);
+    CHECK(plan.value->next_memory->goal.y > 5);
+    f.tasks[0].action = c::TaskKind::Flank;
+    f.memory = *plan.value->next_memory;
+    plan = c::GroupBrain{}.Think(f.Context(41));
+    REQUIRE(plan.value);
+    CHECK(plan.value->subordinate_tasks[0].action == c::TaskKind::Flank);
+}

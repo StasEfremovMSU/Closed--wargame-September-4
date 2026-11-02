@@ -109,7 +109,7 @@ int main() {
             ok = Show("  Think", cmd::ArmyBrain{}.Think(context)) && ok;
             break;
         case cmd::Level::Part:
-            ok = Show("  Think", cmd::PartBrain{}.Think(context)) && ok;
+            ok = Show("  Think", cmd::PartBrain{}.Think(context), false) && ok;
             break;
         case cmd::Level::Group:
             ok = Show("  Think", cmd::GroupBrain{}.Think(context), false) && ok;

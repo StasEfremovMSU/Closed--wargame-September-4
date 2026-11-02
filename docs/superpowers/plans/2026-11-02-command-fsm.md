@@ -47,9 +47,9 @@
 ## Task 4: Part sector FSM
 **Files:** new src/CommandPart.cpp, tests/CommandPartTests.cpp.
 **Interfaces:** PartBrain::Think gives stable frontage positions, main/support/reserve assignments and upstream requests.
-- [ ] RED part.frontage_reserve_and_threat and part.expiry_and_loss: distinct child goals, reserve held/released, unsupported/empty/dead subtree safe, orderly withdrawal.
-- [ ] GREEN sector deployment/hold/advance/support/withdraw, deterministic offsets based on child widths/roles; respect superior intent and time limits.
-- [ ] Full Debug suite, commit, task-done.
+- [x] RED part.frontage_reserve_and_threat and part.expiry_and_loss: distinct child goals, reserve held/released, unsupported/empty/dead subtree safe, orderly withdrawal.
+- [x] GREEN sector deployment/hold/advance/support/withdraw, deterministic offsets based on child widths/roles; respect superior intent and time limits.
+- [x] Full Debug suite, commit, task-done.
 
 ## Task 5: Army FSM
 **Files:** new src/CommandArmy.cpp, tests/CommandArmyTests.cpp.

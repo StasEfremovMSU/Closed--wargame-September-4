@@ -54,8 +54,13 @@ StubResult<DecisionProposal> GroupBrain::Think(const BrainContext &c) const {
         option.target_regiment = target->regiment;
         Vec3 delta = target->estimated_pose.position - c.situation->own.pose.position;
         float length = Length(delta);
-        Vec3 staging = length > 15 ? target->estimated_pose.position - delta * (15 / length)
-                                   : c.situation->own.pose.position;
+        Vec3 assigned = p.task && p.task->intent.objective_position != Vec3{}
+                            ? p.task->intent.objective_position
+                            : target->estimated_pose.position;
+        Vec3 assigned_delta = assigned - c.situation->own.pose.position;
+        float assigned_distance = Length(assigned_delta);
+        Vec3 staging = assigned_distance > 15 ? assigned - assigned_delta * (15 / assigned_distance)
+                                              : c.situation->own.pose.position;
         if (!p.new_task && p.memory.state == FsmState::Deploying)
             staging = p.memory.goal;
         bool ready = true;
@@ -146,7 +151,8 @@ StubResult<DecisionProposal> GroupBrain::Think(const BrainContext &c) const {
             goal = s.pose.position;
             child_target = {};
         } else if (state == FsmState::Attacking) {
-            kind = child == lead ? TaskKind::Attack : TaskKind::Support;
+            kind = child == lead ? (action == TaskKind::Flank ? TaskKind::Flank : TaskKind::Attack)
+                                 : TaskKind::Support;
             if (child != lead)
                 child_target = lead->regiment;
         } else {
