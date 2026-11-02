@@ -62,3 +62,25 @@ TEST_CASE("import.json_validation") {
     test::Write(t.path / "bad.json", "{bad");
     CHECK_FALSE(io::LoadScenario(t.path / "bad.json"));
 }
+TEST_CASE("import.ranged_rule_json_requires_integer") {
+    test::TempDir dir;
+    auto file = dir.path / "ranged.json";
+    for (const std::string value :
+         {"4.5", "-4294967292", "4294967300", "\"4\"", "null", "0", "65"}) {
+        CAPTURE(value);
+        test::Write(
+            file,
+            "{\"schema_version\":1,\"units\":[],\"regiments\":[],\"rules\":{\"ranged_cohorts\":" +
+                value + "}}");
+        CHECK_FALSE(io::LoadScenario(file));
+    }
+    for (const std::string value : {"1", "4", "64"}) {
+        test::Write(
+            file,
+            "{\"schema_version\":1,\"units\":[],\"regiments\":[],\"rules\":{\"ranged_cohorts\":" +
+                value + "}}");
+        auto loaded = io::LoadScenario(file);
+        REQUIRE(loaded);
+        CHECK(loaded.value.rules.ranged_cohorts == std::stoul(value));
+    }
+}

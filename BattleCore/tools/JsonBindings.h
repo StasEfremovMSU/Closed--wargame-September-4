@@ -25,9 +25,37 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(RegimentSpec, id, team, pose, fo
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(OfficerSpec, id, unit, role, charisma, tactic_mind,
                                                 lead_skill, lead_dist, legacy_id)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Obstacle, min_x, min_y, max_x, max_y)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Rules, panic_fraction, calm_ticks,
-                                                rally_tolerance_m, rally_safe_radius_m,
-                                                ranged_cohorts)
+inline void to_json(nlohmann::json &j, const Rules &r) {
+    j = {{"panic_fraction", r.panic_fraction},
+         {"calm_ticks", r.calm_ticks},
+         {"rally_tolerance_m", r.rally_tolerance_m},
+         {"rally_safe_radius_m", r.rally_safe_radius_m},
+         {"ranged_cohorts", r.ranged_cohorts}};
+}
+inline void from_json(const nlohmann::json &j, Rules &r) {
+    const Rules defaults;
+    r.panic_fraction = j.value("panic_fraction", defaults.panic_fraction);
+    r.calm_ticks = j.value("calm_ticks", defaults.calm_ticks);
+    r.rally_tolerance_m = j.value("rally_tolerance_m", defaults.rally_tolerance_m);
+    r.rally_safe_radius_m = j.value("rally_safe_radius_m", defaults.rally_safe_radius_m);
+    r.ranged_cohorts = defaults.ranged_cohorts;
+    if (!j.contains("ranged_cohorts"))
+        return;
+    const auto &count = j.at("ranged_cohorts");
+    // Check the JSON type and wide value before narrowing to avoid wrapping into1..64.
+    if (count.is_number_unsigned()) {
+        auto n = count.get<uint64_t>();
+        if (n < 1 || n > 64)
+            throw std::invalid_argument("ranged_cohorts must be an integer1..64");
+        r.ranged_cohorts = uint32_t(n);
+    } else if (count.is_number_integer()) {
+        auto n = count.get<int64_t>();
+        if (n < 1 || n > 64)
+            throw std::invalid_argument("ranged_cohorts must be an integer1..64");
+        r.ranged_cohorts = uint32_t(n);
+    } else
+        throw std::invalid_argument("ranged_cohorts must be an integer1..64");
+}
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Scenario, schema_version, units, regiments,
                                                 officers, obstacles, rules)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Order, id, issuer, recipient, type, priority, point,

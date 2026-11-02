@@ -58,7 +58,7 @@ From BattleCore, build headless-release and run:
 ./out/build/release/battle_cli.exe bench --units 10000,20000 --modes melee --ticks 1200 --warmup 200 --out out/ranged-performance/melee
 ```
 
-[Baseline summaries](benchmarks/ranged-baseline.jsonl), [exact-query checkpoint](benchmarks/ranged-exact-query.jsonl), [final cohorts4](benchmarks/ranged-final.jsonl), [final cohorts1](benchmarks/ranged-cohort-one.jsonl), [melee](benchmarks/ranged-melee.jsonl). Raw per-tick phases and preserved measured executables remain under out/ranged-performance. The final I/O-only replay completeness correction does not change the measured simulation/benchmark path.
+[Baseline summaries](benchmarks/ranged-baseline.jsonl), [exact-query checkpoint](benchmarks/ranged-exact-query.jsonl), [final cohorts4](benchmarks/ranged-final.jsonl), [final cohorts1](benchmarks/ranged-cohort-one.jsonl), [melee](benchmarks/ranged-melee.jsonl). Raw per-tick phases and preserved measured executables remain under out/ranged-performance. The final I/O-only replay/rule-validation corrections do not change the measured simulation/benchmark path.
 
 ## Persistence and limits
 
