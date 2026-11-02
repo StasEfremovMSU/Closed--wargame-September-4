@@ -40,3 +40,12 @@ Generated views (recreate with the commands above and navigation tests):
 - Battle [0](out/artifacts/battle-view/0.svg), [200](out/artifacts/battle-view/200.svg), [400](out/artifacts/battle-view/400.svg): initial ranks, contact, then losses and closing ranks. Blue/red are sides, grey crosses fallen, green rings player control; labels mark panic when active. Coordinates and geometry come directly from snapshots.
 
 SVG files open in any browser. Output is a diagnostic top view; animation, camera and physical melee belong to the Unreal stage.
+
+## Unreal boundary
+
+[Adapter contract](docs/unreal-adapter-contract.md) defines owned presentation frames, stable IDs, deferred updates, event deduplication and possession. The mock adapter is tested without Unreal. Actual Mass entities, animation, Pawn, rendering and a UE build remain Task 12 after the engine is installed.
+
+[Benchmark protocol](docs/benchmark-protocol.md) explains fixtures, samples and limits. The current implementation is serial, including requests for 2/4 workers; tests verify equivalent results, without claiming a parallel speedup.
+
+[Measured results](docs/benchmark-results.md): all 120 baseline/optimized runs and matching state hashes. The measured 5k/10k fixtures meet the desired CPU p95 budget; rendering remains unmeasured.
+

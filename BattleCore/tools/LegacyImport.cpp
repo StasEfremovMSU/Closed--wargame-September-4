@@ -3,27 +3,230 @@
 #include <map>
 #include <set>
 #include <sstream>
-namespace battle::io {namespace {
-struct Row{uint32_t line;std::vector<std::string> cells;};
-std::vector<Row> Read(const std::filesystem::path&p){std::ifstream f(p);if(!f)throw std::runtime_error("cannot read "+p.string());std::vector<Row> rows;std::string s;uint32_t line=0;while(std::getline(f,s)){++line;auto first=s.find_first_not_of(" \t\r");if(first==std::string::npos||s[first]=='!')continue;Row r{line,{}};std::stringstream ss(s);std::string cell;while(std::getline(ss,cell,',')){auto a=cell.find_first_not_of(" \t\r"),b=cell.find_last_not_of(" \t\r");r.cells.push_back(a==std::string::npos?"":cell.substr(a,b-a+1));}rows.push_back(std::move(r));}return rows;}
-float Num(const std::string&s){size_t n;float v=std::stof(s,&n);if(n!=s.size()||!std::isfinite(v))throw std::invalid_argument("invalid number: "+s);return v;}
-int Int(const std::string&s){size_t n;int v=std::stoi(s,&n);if(n!=s.size())throw std::invalid_argument("invalid integer: "+s);return v;}
-struct Item{std::string name;float armour,damage;};
-void Equip(UnitSpec&u,const std::vector<std::string>&a,size_t start,const std::map<int,Item>&items){for(size_t k=start;k<a.size();++k){int id=Int(a[k]);auto i=items.find(id);if(i==items.end())throw std::invalid_argument("unknown item ID");u.equipment.push_back(uint32_t(id));u.armour+=i->second.armour;u.weapon.damage+=i->second.damage;if(i->second.name=="bow"||i->second.name=="crossbow")u.archer=true;}if(u.archer)u.weapon.range=30;}
+namespace battle::io {
+namespace {
+struct Row {
+    uint32_t line;
+    std::vector<std::string> cells;
+};
+std::vector<Row> Read(const std::filesystem::path &p) {
+    std::ifstream f(p);
+    if (!f)
+        throw std::runtime_error("cannot read " + p.string());
+    std::vector<Row> rows;
+    std::string s;
+    uint32_t line = 0;
+    while (std::getline(f, s)) {
+        ++line;
+        auto first = s.find_first_not_of(" \t\r");
+        if (first == std::string::npos || s[first] == '!')
+            continue;
+        Row r{line, {}};
+        std::stringstream ss(s);
+        std::string cell;
+        while (std::getline(ss, cell, ',')) {
+            auto a = cell.find_first_not_of(" \t\r"), b = cell.find_last_not_of(" \t\r");
+            r.cells.push_back(a == std::string::npos ? "" : cell.substr(a, b - a + 1));
+        }
+        rows.push_back(std::move(r));
+    }
+    return rows;
 }
-Result<Scenario> ImportLegacy(const std::filesystem::path&dir,const LegacyImportOptions&options){Scenario s;std::vector<Diagnostic> warnings;std::string source=dir.string();uint32_t line=0;
- try{
-  if(!std::isfinite(options.scale_m_per_unit)||options.scale_m_per_unit<=0)throw std::invalid_argument("invalid legacy scale");
-  auto base=std::filesystem::weakly_canonical(dir);auto path=std::filesystem::weakly_canonical(base/options.map_file);auto rel=path.lexically_relative(base);if(rel.empty()||*rel.begin()==".."||rel.is_absolute())throw std::invalid_argument("map must stay inside source directory");
-  std::map<int,Item> items;source=(dir/"item.txt").string();for(auto&r:Read(dir/"item.txt")){line=r.line;auto&a=r.cells;if(a.size()!=6)throw std::invalid_argument("item needs 6 fields");if(!items.emplace(Int(a[0]),Item{a[1],Num(a[2]),Num(a[3])}).second)throw std::invalid_argument("duplicate item");}
-  std::map<int,UnitSpec> types;source=(dir/"soldiers.txt").string();for(auto&r:Read(dir/"soldiers.txt")){line=r.line;auto&a=r.cells;if(a.size()<10)throw std::invalid_argument("soldier needs 10 base fields");UnitSpec u;u.name=a[0];u.archer=Int(a[2])!=0;u.archer_skill=Num(a[3]);u.speed=Num(a[5]);u.weapon.damage=Num(a[7]);u.armour=Num(a[8]);Equip(u,a,10,items);if(!types.emplace(Int(a[1]),u).second)throw std::invalid_argument("duplicate soldier type");}
-  std::map<int,RegimentId> reg_ids;uint64_t uid=1;source=path.string();auto maps=Read(path);if(maps.empty())throw std::invalid_argument("empty legacy map; explicitly select map-backup.txt");
-  for(auto&r:maps){line=r.line;auto&a=r.cells;if(a.size()<10||(a.size()-8)%2)throw std::invalid_argument("map has broken type/count pairs");int legacy=Int(a[1]),count=Int(a[6]),columns=Int(a[7]);if(legacy<0||count<=0||columns<=0)throw std::invalid_argument("invalid regiment count/ID");RegimentSpec reg;reg.id={uint64_t(legacy)+1};if(!reg_ids.emplace(legacy,reg.id).second)throw std::invalid_argument("duplicate regiment");reg.team=Int(a[0]);reg.pose={{Num(a[4])*options.scale_m_per_unit,Num(a[2])*options.scale_m_per_unit,Num(a[3])*options.scale_m_per_unit},Num(a[5])};reg.formation={uint32_t(columns),3*options.scale_m_per_unit,0.3f};reg.name="legacy regiment "+std::to_string(legacy);s.regiments.push_back(reg);int made=0;for(size_t k=8;k<a.size();k+=2){int id=Int(a[k]),n=Int(a[k+1]);if(!types.contains(id)||n<0)throw std::invalid_argument("unknown soldier type or negative count");for(int x=0;x<n;++x){UnitSpec u=types.at(id);u.id={uid++};u.regiment=reg.id;u.pose=reg.pose;u.legacy_id=made++;s.units.push_back(u);}}if(made!=count)throw std::invalid_argument("composition does not match regiment count");}
-  source=(dir/"officer.txt").string();uint64_t oid=1;std::set<int> old_ids;
-  for(auto&r:Read(dir/"officer.txt")){line=r.line;auto&a=r.cells;if(a.size()<21)throw std::invalid_argument("officer needs 21 base fields");int legacy_reg=Int(a[20]);if(!reg_ids.contains(legacy_reg))throw std::invalid_argument("unknown officer regiment");auto reg=std::find_if(s.regiments.begin(),s.regiments.end(),[&](auto&v){return v.id==reg_ids.at(legacy_reg);});if(reg->team!=Int(a[3]))throw std::invalid_argument("officer side differs from regiment");UnitSpec u;u.id={uid++};u.regiment=reg->id;u.name=a[7];u.pose={{Num(a[2])*options.scale_m_per_unit,Num(a[0])*options.scale_m_per_unit,Num(a[1])*options.scale_m_per_unit},0};u.archer=Int(a[8])!=0;u.archer_skill=Num(a[9]);u.speed=Num(a[12]);u.weapon.damage=Num(a[14]);u.armour=Num(a[15]);u.legacy_id=Int(a[4]);Equip(u,a,21,items);uint32_t role=1;for(auto item:u.equipment){if(item==6)role=3;if(item==7)role=4;if(item==8)role=1;if(item==9)role=2;}OfficerSpec off;off.id={oid++};off.unit=u.id;off.role=role;off.charisma=Num(a[17]);off.tactic_mind=Num(a[18]);off.lead_skill=Num(a[19]);off.lead_dist=Num(a[5]);off.legacy_id=u.legacy_id;if(!old_ids.insert(u.legacy_id).second)warnings.push_back({source,line,"repeated legacy officer ID retained as metadata; runtime ID assigned by row"});s.officers.push_back(off);s.units.push_back(u);}
-  for(auto&reg:s.regiments){Vec3 sum{};unsigned count=0;for(auto&r:s.regiments)if(r.team==reg.team){sum=sum+r.pose.position;++count;}reg.rally_point=sum*(1.f/count);}
-  warnings.push_back({path.string(),0,"rally points derived from initial team centres; legacy health=1, ranged range=30m, cooldown=20 ticks"});
-  auto result=ValidateScenario(std::move(s));if(!result)return result;result.diagnostics=std::move(warnings);return result;
- }catch(const std::exception&e){return {Status::InvalidInput,{},{{source,line,e.what()}}};}
+float Num(const std::string &s) {
+    size_t n;
+    float v = std::stof(s, &n);
+    if (n != s.size() || !std::isfinite(v))
+        throw std::invalid_argument("invalid number: " + s);
+    return v;
 }
+int Int(const std::string &s) {
+    size_t n;
+    int v = std::stoi(s, &n);
+    if (n != s.size())
+        throw std::invalid_argument("invalid integer: " + s);
+    return v;
 }
+struct Item {
+    std::string name;
+    float armour, damage;
+};
+void Equip(UnitSpec &u, const std::vector<std::string> &a, size_t start,
+           const std::map<int, Item> &items) {
+    for (size_t k = start; k < a.size(); ++k) {
+        int id = Int(a[k]);
+        auto i = items.find(id);
+        if (i == items.end())
+            throw std::invalid_argument("unknown item ID");
+        u.equipment.push_back(uint32_t(id));
+        u.armour += i->second.armour;
+        u.weapon.damage += i->second.damage;
+        if (i->second.name == "bow" || i->second.name == "crossbow")
+            u.archer = true;
+    }
+    if (u.archer)
+        u.weapon.range = 30;
+}
+} // namespace
+Result<Scenario> ImportLegacy(const std::filesystem::path &dir,
+                              const LegacyImportOptions &options) {
+    Scenario s;
+    std::vector<Diagnostic> warnings;
+    std::string source = dir.string();
+    uint32_t line = 0;
+    try {
+        if (!std::isfinite(options.scale_m_per_unit) || options.scale_m_per_unit <= 0)
+            throw std::invalid_argument("invalid legacy scale");
+        auto base = std::filesystem::weakly_canonical(dir);
+        auto path = std::filesystem::weakly_canonical(base / options.map_file);
+        auto rel = path.lexically_relative(base);
+        if (rel.empty() || *rel.begin() == ".." || rel.is_absolute())
+            throw std::invalid_argument("map must stay inside source directory");
+        std::map<int, Item> items;
+        source = (dir / "item.txt").string();
+        for (auto &r : Read(dir / "item.txt")) {
+            line = r.line;
+            auto &a = r.cells;
+            if (a.size() != 6)
+                throw std::invalid_argument("item needs 6 fields");
+            if (!items.emplace(Int(a[0]), Item{a[1], Num(a[2]), Num(a[3])}).second)
+                throw std::invalid_argument("duplicate item");
+        }
+        std::map<int, UnitSpec> types;
+        source = (dir / "soldiers.txt").string();
+        for (auto &r : Read(dir / "soldiers.txt")) {
+            line = r.line;
+            auto &a = r.cells;
+            if (a.size() < 10)
+                throw std::invalid_argument("soldier needs 10 base fields");
+            UnitSpec u;
+            u.name = a[0];
+            u.archer = Int(a[2]) != 0;
+            u.archer_skill = Num(a[3]);
+            u.speed = Num(a[5]);
+            u.weapon.damage = Num(a[7]);
+            u.armour = Num(a[8]);
+            Equip(u, a, 10, items);
+            if (!types.emplace(Int(a[1]), u).second)
+                throw std::invalid_argument("duplicate soldier type");
+        }
+        std::map<int, RegimentId> reg_ids;
+        uint64_t uid = 1;
+        source = path.string();
+        auto maps = Read(path);
+        if (maps.empty())
+            throw std::invalid_argument("empty legacy map; explicitly select map-backup.txt");
+        for (auto &r : maps) {
+            line = r.line;
+            auto &a = r.cells;
+            if (a.size() < 10 || (a.size() - 8) % 2)
+                throw std::invalid_argument("map has broken type/count pairs");
+            int legacy = Int(a[1]), count = Int(a[6]), columns = Int(a[7]);
+            if (legacy < 0 || count <= 0 || columns <= 0)
+                throw std::invalid_argument("invalid regiment count/ID");
+            RegimentSpec reg;
+            reg.id = {uint64_t(legacy) + 1};
+            if (!reg_ids.emplace(legacy, reg.id).second)
+                throw std::invalid_argument("duplicate regiment");
+            reg.team = Int(a[0]);
+            reg.pose = {{Num(a[4]) * options.scale_m_per_unit, Num(a[2]) * options.scale_m_per_unit,
+                         Num(a[3]) * options.scale_m_per_unit},
+                        Num(a[5])};
+            reg.formation = {uint32_t(columns), 3 * options.scale_m_per_unit, 0.3f};
+            reg.name = "legacy regiment " + std::to_string(legacy);
+            s.regiments.push_back(reg);
+            int made = 0;
+            for (size_t k = 8; k < a.size(); k += 2) {
+                int id = Int(a[k]), n = Int(a[k + 1]);
+                if (!types.contains(id) || n < 0)
+                    throw std::invalid_argument("unknown soldier type or negative count");
+                for (int x = 0; x < n; ++x) {
+                    UnitSpec u = types.at(id);
+                    u.id = {uid++};
+                    u.regiment = reg.id;
+                    u.pose = reg.pose;
+                    u.legacy_id = made++;
+                    s.units.push_back(u);
+                }
+            }
+            if (made != count)
+                throw std::invalid_argument("composition does not match regiment count");
+        }
+        source = (dir / "officer.txt").string();
+        uint64_t oid = 1;
+        std::set<int> old_ids;
+        for (auto &r : Read(dir / "officer.txt")) {
+            line = r.line;
+            auto &a = r.cells;
+            if (a.size() < 21)
+                throw std::invalid_argument("officer needs 21 base fields");
+            int legacy_reg = Int(a[20]);
+            if (!reg_ids.contains(legacy_reg))
+                throw std::invalid_argument("unknown officer regiment");
+            auto reg = std::find_if(s.regiments.begin(), s.regiments.end(),
+                                    [&](auto &v) { return v.id == reg_ids.at(legacy_reg); });
+            if (reg->team != Int(a[3]))
+                throw std::invalid_argument("officer side differs from regiment");
+            UnitSpec u;
+            u.id = {uid++};
+            u.regiment = reg->id;
+            u.name = a[7];
+            u.pose = {{Num(a[2]) * options.scale_m_per_unit, Num(a[0]) * options.scale_m_per_unit,
+                       Num(a[1]) * options.scale_m_per_unit},
+                      0};
+            u.archer = Int(a[8]) != 0;
+            u.archer_skill = Num(a[9]);
+            u.speed = Num(a[12]);
+            u.weapon.damage = Num(a[14]);
+            u.armour = Num(a[15]);
+            u.legacy_id = Int(a[4]);
+            Equip(u, a, 21, items);
+            uint32_t role = 1;
+            for (auto item : u.equipment) {
+                if (item == 6)
+                    role = 3;
+                if (item == 7)
+                    role = 4;
+                if (item == 8)
+                    role = 1;
+                if (item == 9)
+                    role = 2;
+            }
+            OfficerSpec off;
+            off.id = {oid++};
+            off.unit = u.id;
+            off.role = role;
+            off.charisma = Num(a[17]);
+            off.tactic_mind = Num(a[18]);
+            off.lead_skill = Num(a[19]);
+            off.lead_dist = Num(a[5]);
+            off.legacy_id = u.legacy_id;
+            if (!old_ids.insert(u.legacy_id).second)
+                warnings.push_back({source, line,
+                                    "repeated legacy officer ID retained as metadata; runtime ID "
+                                    "assigned by row"});
+            s.officers.push_back(off);
+            s.units.push_back(u);
+        }
+        for (auto &reg : s.regiments) {
+            Vec3 sum{};
+            unsigned count = 0;
+            for (auto &r : s.regiments)
+                if (r.team == reg.team) {
+                    sum = sum + r.pose.position;
+                    ++count;
+                }
+            reg.rally_point = sum * (1.f / count);
+        }
+        warnings.push_back({path.string(), 0,
+                            "rally points derived from initial team centres; legacy health=1, "
+                            "ranged range=30m, cooldown=20 ticks"});
+        auto result = ValidateScenario(std::move(s));
+        if (!result)
+            return result;
+        result.diagnostics = std::move(warnings);
+        return result;
+    } catch (const std::exception &e) {
+        return {Status::InvalidInput, {}, {{source, line, e.what()}}};
+    }
+}
+} // namespace battle::io
