@@ -13,7 +13,7 @@ int main(int argc,char**argv){try{
  if(mode=="import-legacy"){auto r=io::ImportLegacy(required("--source"),{required("--map"),1});for(auto&d:r.diagnostics)std::cerr<<d.source<<":"<<d.line<<": "<<d.message<<"\n";if(!r)return 2;auto saved=io::SaveScenario(required("--out"),r.value);if(!saved)return 2;auto stats=GetStats(CreateWorld(r.value,42).value);std::cout<<"Imported "<<stats.regiment_count<<" regiments, "<<stats.living_units<<" units\n";return 0;}
  if(mode!="run")throw std::invalid_argument("unknown mode");
  auto s=io::LoadScenario(required("--scenario"));if(!s){for(auto&d:s.diagnostics)std::cerr<<d.message<<"\n";return 2;}
- auto w=CreateWorld(s.value,args.contains("--seed")?std::stoull(args["--seed"]):42).value;FlatNavigationService nav;Tick ticks=args.contains("--ticks")?std::stoull(args["--ticks"]):100;
+ auto w=CreateWorld(s.value,args.contains("--seed")?std::stoull(args["--seed"]):42).value;FlatNavigationService flat;GridNavigationService grid(s.value.obstacles);const NavigationService&nav=s.value.obstacles.empty()?static_cast<const NavigationService&>(flat):static_cast<const NavigationService&>(grid);Tick ticks=args.contains("--ticks")?std::stoull(args["--ticks"]):100;
  std::filesystem::path out=required("--out");std::filesystem::create_directories(out);std::ofstream events(out/"events.jsonl");
  for(Tick i=0;i<ticks;++i){auto r=Step(w,{}, {},nav);if(!r)return 2;for(auto&e:r.value.events)events<<nlohmann::json(e).dump()<<"\n";}
  std::ofstream snapshot(out/"snapshot.json");snapshot<<nlohmann::json(Capture(w)).dump(2);auto stats=GetStats(w);std::cout<<"tick="<<w.tick<<" living="<<stats.living_units<<" dead="<<stats.dead_units<<" hash="<<StateHash(w)<<"\n";return 0;

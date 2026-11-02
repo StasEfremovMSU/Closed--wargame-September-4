@@ -18,6 +18,7 @@ void AdvanceFormations(World&w,float dt){
  for(size_t index:order){auto&r=w.regiments[index];if(r.units.empty())continue;Pose next=r.pose;if(r.waypoint<r.route.size()){
    const auto target=r.route[r.waypoint];float turn=std::clamp(Angle(target.yaw-r.pose.yaw),-r.turn_rate*dt,r.turn_rate*dt);next.yaw=Angle(r.pose.yaw+turn);float speed=r.speed;for(auto id:r.units)if(auto*u=FindUnit(w,id);u&&u->alive&&u->control!=ControlMode::PlayerControlled)speed=std::min(speed,u->speed);if(std::abs(Angle(target.yaw-next.yaw))<.01f)next.position=Towards(r.pose.position,target.position,speed*dt);
    float fraction=1;for(size_t j=0;j<w.regiments.size();++j)if(j!=index&&!w.regiments[j].units.empty())fraction=std::min(fraction,SweepLimit(r.pose,next,Footprint(r),w.regiments[j].pose,Footprint(w.regiments[j])));
+   for(const auto&box:w.scenario.obstacles){Pose p{{(box.min_x+box.max_x)*.5f,(box.min_y+box.max_y)*.5f,r.pose.position.z},0};FormationFootprint fp{box.max_y-box.min_y,box.max_x-box.min_x};fraction=std::min(fraction,SweepLimit(r.pose,next,Footprint(r),p,fp));}
    next={r.pose.position+(next.position-r.pose.position)*fraction,r.pose.yaw+Angle(next.yaw-r.pose.yaw)*fraction};
    r.pose=next;if(Distance(next.position,target.position)<.001f&&std::abs(Angle(next.yaw-target.yaw))<.001f)++r.waypoint;
   }
