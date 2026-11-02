@@ -28,6 +28,7 @@ void UpdateOfficers(World&w,const NavigationService&nav){
   auto p=ObserveRegiment(w,r);OfficerTraits traits;for(auto&o:w.officers)if(o.id==commander)traits={o.charisma,o.tactic_mind,o.lead_skill,o.lead_dist};
   Order resolved;if(active){resolved=*r.order;if(resolved.target_unit){if(auto*u=FindUnit(w,resolved.target_unit);u&&u->alive)resolved.target_regiment=u->regiment;else{r.order->status=OrderStatus::Failed;active=false;emergency=true;}}}
   Decision d;if(!commander&&!active){d.regiment=r.id;d.point=r.pose.position;d.reason="hold: no commander, awaiting explicit order";}else d=Evaluate(p,traits,active?&resolved:nullptr);
+  if(r.panic){d.regiment=r.id;d.action=OrderType::Withdraw;d.target={};d.point=r.rally_point;d.reason="panic: withdraw";emergency=true;}
   if(d.action==OrderType::Withdraw||d.action==OrderType::Rally)d.point=r.rally_point;
   if(!emergency&&!active&&w.tick<r.decision_until&&d.action!=r.ai_action){r.decision_tick=w.tick+10;continue;}
   if(d.action!=OrderType::Hold){if(!r.route.empty()&&Distance(r.route.back().position,d.point)<.25f)d.keep_route=true;else d.path=nav.FindPath({r.pose,d.point,Footprint(r)});}

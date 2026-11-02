@@ -29,7 +29,8 @@ inline Vec3 Right(float yaw){return {-std::sin(yaw),std::cos(yaw),0};}
 inline constexpr float Pi=3.14159265358979323846f;
 enum class ControlMode:uint8_t{FormationControlled,PlayerControlled,Returning,Dead};
 enum class EventKind:uint8_t{Spawned,AttackLaunched,Hit,Miss,Died,OrderChanged,ControlChanged,CommandRejected,DecisionTrace};
-struct BattleEvent{EventId id{};Tick tick{};EventKind kind{};UnitId source{},target{};RegimentId regiment{};float amount{};std::string reason;};
+struct BattleEvent{EventId id{};Tick tick{};EventKind kind{};UnitId source{},target{};RegimentId regiment{};float amount{};std::string reason;Tick due_tick{};bool hit{},projectile{};EventId cause{};};
+enum class BattleOutcome:uint8_t{Running,Victory,Draw};
 struct SimulationOptions{uint32_t tick_ms{50};uint32_t worker_count{1};};
 struct TickResult{Tick tick{};std::vector<BattleEvent> events;};
 }
