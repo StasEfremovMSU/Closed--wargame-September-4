@@ -29,6 +29,7 @@ template <class T> struct StubResult {
 };
 
 struct CommandNode {
+    bool operator==(const CommandNode &) const = default;
     NodeId id{}, parent{}; // Zero parent denotes an army root.
     Level level{Level::Regiment};
     int32_t team{};
@@ -42,6 +43,7 @@ struct CommandNode {
 
 // Proposed normalized traits [0,1]; no conversion from legacy values exists yet.
 struct OfficerProfile {
+    bool operator==(const OfficerProfile &) const = default;
     OfficerId officer{};
     float tactical_skill{}, initiative{}, discipline{}, aggression{}, caution{}, charisma{};
     float leadership{};
@@ -51,12 +53,14 @@ struct OfficerProfile {
 };
 
 struct SupportAssignment {
+    bool operator==(const SupportAssignment &) const = default;
     OfficerId officer{};
     NodeId command{};
     SupportDuty duty{SupportDuty::Adjutant};
 };
 
 struct CommandHierarchy {
+    bool operator==(const CommandHierarchy &) const = default;
     std::vector<CommandNode> nodes;
     std::vector<OfficerProfile> officers;
     std::vector<SupportAssignment> support;
@@ -64,6 +68,7 @@ struct CommandHierarchy {
 
 // External scaffold state: not owned by World or captured by Snapshot.
 struct BrainSchedule {
+    bool operator==(const BrainSchedule &) const = default;
     NodeId node{};
     Tick next_think_tick{}, interval_ticks{}, commitment_until{};
 };

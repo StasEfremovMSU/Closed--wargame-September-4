@@ -6,10 +6,13 @@
 namespace cmd = battle::command;
 using namespace battle;
 namespace {
-template <class T> bool Show(std::string_view name, const cmd::StubResult<T> &result) {
+template <class T>
+bool Show(std::string_view name, const cmd::StubResult<T> &result, bool pending = true) {
     const bool inactive =
-        result.status == cmd::StubStatus::NotImplemented && !result.value.has_value();
-    std::cout << name << ": " << (inactive ? "NOT_IMPLEMENTED" : "UNEXPECTED_OUTPUT") << " - "
+        pending ? result.status == cmd::StubStatus::NotImplemented && !result.value.has_value()
+                : result.status == cmd::StubStatus::Ready && result.value.has_value();
+    std::cout << name << ": "
+              << (inactive ? (pending ? "NOT_IMPLEMENTED" : "READY") : "UNEXPECTED_OUTPUT") << " - "
               << result.reason << '\n';
     return inactive;
 }
@@ -99,15 +102,15 @@ int main() {
             break;
         }
     }
-    ok = Show("ValidateHierarchy", cmd::ValidateHierarchy(hierarchy, world)) && ok;
-    ok = Show("BuildSituation", cmd::BuildSituation(world, hierarchy, {4}, 0)) && ok;
-    ok = Show("SelectSuccessor", cmd::SelectSuccessor(world, hierarchy.nodes[0])) && ok;
+    ok = Show("ValidateHierarchy", cmd::ValidateHierarchy(hierarchy, world), false) && ok;
+    ok = Show("BuildSituation", cmd::BuildSituation(world, hierarchy, {4}, 0), false) && ok;
+    ok = Show("SelectSuccessor", cmd::SelectSuccessor(world, hierarchy.nodes[0]), false) && ok;
     cmd::CommunicationsState communications;
     ok = Show("AdvanceCommunications", cmd::AdvanceCommunications(communications, 0)) && ok;
     std::array<cmd::BrainSchedule, 4> schedules;
     for (size_t i = 0; i < schedules.size(); ++i)
         schedules[i].node = hierarchy.nodes[i].id;
-    ok = Show("ScheduleBrains", cmd::ScheduleBrains(schedules, 0)) && ok;
+    ok = Show("ScheduleBrains", cmd::ScheduleBrains(schedules, 0), false) && ok;
     cmd::CommandTask task;
     task.id = {1};
     task.issuer = {3};

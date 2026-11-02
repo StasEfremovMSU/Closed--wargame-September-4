@@ -22,6 +22,7 @@ enum class TaskStatus : uint8_t { Draft, Accepted, Active, Completed, Failed, Ca
 enum class DurationOrigin : uint8_t { Created, Delivered };
 
 struct CommandIntent {
+    bool operator==(const CommandIntent &) const = default;
     std::string purpose; // Explanation; no language model or script executes this text.
     Vec3 objective_position{};
     float objective_radius_m{};
@@ -30,12 +31,14 @@ struct CommandIntent {
 };
 
 struct AuthorityLimits {
+    bool operator==(const AuthorityLimits &) const = default;
     InitiativePolicy initiative{InitiativePolicy::AwaitOrders};
     bool may_pursue{}, may_break_formation{}, may_change_target{};
     std::optional<float> pursuit_limit_m, acceptable_loss_fraction;
 };
 
 struct CommandTask {
+    bool operator==(const CommandTask &) const = default;
     TaskId id{}, parent_task{};
     NodeId issuer{}, recipient{};
     OfficerId author{};
@@ -47,6 +50,8 @@ struct CommandTask {
     std::optional<Tick> not_before_tick, expiry_tick, duration_ticks;
     DurationOrigin duration_origin{DurationOrigin::Delivered};
     TaskStatus status{TaskStatus::Draft};
+    std::optional<uint32_t> formation_columns;
+    std::optional<float> formation_spacing_m;
 };
 
 enum class ReportKind : uint8_t {
@@ -58,6 +63,7 @@ enum class ReportKind : uint8_t {
     CommanderLost
 };
 struct SituationReport {
+    bool operator==(const SituationReport &) const = default;
     ReportKind kind{ReportKind::Situation};
     NodeId sender{}, recipient{};
     TaskId about_task{};
@@ -76,6 +82,7 @@ enum class DeliveryStatus : uint8_t {
     RecipientUnavailable
 };
 struct MessageEnvelope {
+    bool operator==(const MessageEnvelope &) const = default;
     MessageId id{};
     NodeId sender{}, recipient{};
     DeliveryChannel channel{DeliveryChannel::Voice};
@@ -86,9 +93,11 @@ struct MessageEnvelope {
     std::variant<CommandTask, SituationReport> payload;
 };
 struct CommunicationsState {
+    bool operator==(const CommunicationsState &) const = default;
     std::vector<MessageEnvelope> messages;
 };
 struct CommunicationsUpdate {
+    bool operator==(const CommunicationsUpdate &) const = default;
     CommunicationsState next;
     std::vector<MessageEnvelope> delivered;
 };

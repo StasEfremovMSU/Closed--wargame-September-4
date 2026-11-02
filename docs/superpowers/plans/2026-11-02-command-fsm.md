@@ -26,9 +26,9 @@
 ## Task 1: Working hierarchy and map services
 **Files:** command/{Hierarchy,Perception,Messages,Services}.h; new command/Setup.h; src/CommandServices.cpp, new src/CommandPerception.cpp; tests/CommandTests.cpp; example temporarily updates old inactive assertions as services become real.
 **Interfaces:** existing ValidateHierarchy/BuildSituation/SelectSuccessor/ScheduleBrains become ready or InvalidInput; FindNode/FindProfile and OwnedRegiments helpers; LocalSituation adds rally_point. CommandSetup{hierarchy,missions}; CommandTask adds optional formation_columns/formation_spacing_m. All persisted records gain default equality.
-- [ ] RED command.validation_rejects_broken_graph and command.observation_respects_range_and_obstacles; command.successor_and_schedule checks live eligible officer, dedup/due tick, malformed schedules. Observe failures against stubs.
-- [ ] GREEN validate graph, profiles, side/bindings; direct centre visibility via segment/rectangle intersection, own subtree summaries, sorted contacts/threat sectors/rally point; stable live succession and tick scheduling. Return typed diagnostics on empty/invalid inputs.
-- [ ] Run all Debug tests, commit, task-done.
+- [x] RED command.validation_rejects_broken_graph and command.observation_respects_range_and_obstacles; command.successor_and_schedule checks live eligible officer, dedup/due tick, malformed schedules. Observe failures against stubs.
+- [x] GREEN validate graph, profiles, side/bindings; direct centre visibility via segment/rectangle intersection, own subtree summaries, sorted contacts/threat sectors/rally point; stable live succession and tick scheduling. Return typed diagnostics on empty/invalid inputs.
+- [x] Run all Debug tests, commit, task-done.
 
 ## Task 2: Regiment FSM and rules evaluator
 **Files:** command/Brains.h, CommandBrains.cpp; new src/CommandRegiment.cpp, src/CommandBrainCommon.{h,cpp}; tests/CommandRegimentTests.cpp; CMake test group and demo.
