@@ -1,0 +1,5878 @@
+{
+  "schema_version": 1,
+  "regiments": [
+    {
+      "id": 1,
+      "team": 0,
+      "name": "Army 0",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "formation": {
+        "columns": 10,
+        "spacing_m": 1.2,
+        "body_radius_m": 0.3
+      },
+      "speed": 2,
+      "rally_point": {
+        "x": -60,
+        "y": 0,
+        "z": 0
+      }
+    },
+    {
+      "id": 2,
+      "team": 1,
+      "name": "Army 1",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "formation": {
+        "columns": 10,
+        "spacing_m": 1.2,
+        "body_radius_m": 0.3
+      },
+      "speed": 2,
+      "rally_point": {
+        "x": 60,
+        "y": 0,
+        "z": 0
+      }
+    }
+  ],
+  "units": [
+    {
+      "id": 1,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 2,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 3,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 4,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 5,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 6,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 7,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 8,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 9,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 10,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 11,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 12,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 13,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 14,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 15,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 16,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 17,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 18,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 19,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 20,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 21,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 22,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 23,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 24,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 25,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 26,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 27,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 28,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 29,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 30,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 31,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 32,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 33,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 34,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 35,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 36,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 37,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 38,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 39,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 40,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 41,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 42,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 43,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 44,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 45,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 46,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 47,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 48,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 49,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 50,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 51,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 52,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 53,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 54,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 55,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 56,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 57,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 58,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 59,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 60,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 61,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 62,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 63,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 64,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 65,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 66,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 67,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 68,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 69,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 70,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 71,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 72,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 73,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 74,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 75,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 76,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 77,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 78,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 79,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 80,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 81,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 82,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 83,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 84,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 85,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 86,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 87,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 88,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 89,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 90,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 91,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 92,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 93,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 94,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 95,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 96,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 97,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 98,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 99,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 100,
+      "regiment": 1,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": -15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 0
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 101,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 102,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 103,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 104,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 105,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 106,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 107,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 108,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 109,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 110,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 111,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 112,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 113,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 114,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 115,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 116,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 117,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 118,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 119,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 120,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 121,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 122,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 123,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 124,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 125,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 126,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 127,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 128,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 129,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 130,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 131,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 132,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 133,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 134,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 135,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 136,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 137,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 138,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 139,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 140,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 141,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 142,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 143,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 144,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 145,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 146,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 147,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 148,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 149,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 150,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 151,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 152,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 153,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 154,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 155,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 156,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 157,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 158,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 159,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 160,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 161,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 162,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 163,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 164,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 165,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 166,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 167,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 168,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 169,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 170,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 171,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 172,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 173,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 174,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 175,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 176,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 177,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 178,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 179,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 180,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 181,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 182,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 183,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 184,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 185,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 186,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 187,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 188,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 189,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 190,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 191,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 192,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 193,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 194,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 195,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 196,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 197,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 198,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 199,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    },
+    {
+      "id": 200,
+      "regiment": 2,
+      "name": "Swordman",
+      "pose": {
+        "position": {
+          "x": 15,
+          "y": 0,
+          "z": 0
+        },
+        "yaw": 3.141592653589793
+      },
+      "health": 4,
+      "speed": 2,
+      "armour": 0,
+      "archer": false,
+      "archer_skill": 1,
+      "equipment": [
+        1
+      ],
+      "weapon": {
+        "damage": 1,
+        "range": 1.6,
+        "cooldown_ticks": 20,
+        "windup_ticks": 2,
+        "projectile_speed_mps": 20,
+        "base_accuracy": 0.8
+      }
+    }
+  ],
+  "officers": [
+    {
+      "id": 1,
+      "unit": 1,
+      "role": 1,
+      "charisma": 0.5,
+      "tactic_mind": 0.5
+    },
+    {
+      "id": 2,
+      "unit": 101,
+      "role": 1,
+      "charisma": 0.5,
+      "tactic_mind": 0.5
+    }
+  ],
+  "obstacles": [],
+  "rules": {
+    "panic_fraction": 0.5,
+    "calm_ticks": 100,
+    "rally_tolerance_m": 2,
+    "rally_safe_radius_m": 20
+  }
+}
