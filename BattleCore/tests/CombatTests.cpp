@@ -2,6 +2,7 @@
 #include "battle/Combat.h"
 #include "battle/Officers.h"
 #include "doctest.h"
+#include <map>
 using namespace battle;
 namespace {
 World CloseDuel() {
@@ -231,4 +232,123 @@ TEST_CASE("combat.indexed_target_matches_full_radius_rule") {
     }
     CHECK(std::none_of(events.begin(), events.end(),
                        [&](auto &e) { return e.target == w.units.back().id; }));
+}
+TEST_CASE("combat.ranged_cohorts_distribute_and_preserve_cadence") {
+    auto source = test::Duel(512);
+    source.rules.ranged_cohorts = 4;
+    for (auto &u : source.units) {
+        u.archer = true;
+        u.health = 1000;
+        u.weapon.range = 2000;
+        u.weapon.base_accuracy = 0;
+        u.weapon.projectile_speed_mps = 1000000;
+    }
+    auto w = CreateWorld(source, 42).value;
+    FlatNavigationService nav;
+    std::map<uint64_t, std::vector<Tick>> fired;
+    std::vector<size_t> counts(24);
+    for (int tick = 0; tick < 24; ++tick) {
+        auto step = Step(w, {}, {}, nav);
+        REQUIRE(step);
+        for (auto &e : step.value.events)
+            if (e.kind == EventKind::AttackLaunched) {
+                fired[e.source.value].push_back(e.tick);
+                ++counts[tick];
+            }
+    }
+    CHECK(fired.size() == 1024);
+    for (int tick = 0; tick < 4; ++tick) {
+        CHECK(counts[tick] > 0);
+        CHECK(counts[tick] < 400);
+        CHECK(counts[tick] == counts[tick + 20]);
+    }
+    for (auto &[id, ticks] : fired) {
+        REQUIRE(ticks.size() == 2);
+        CHECK(ticks[1] - ticks[0] == 20);
+        CHECK(ticks[0] == RangedPhase({id}, FindUnit(w, {id})->regiment, 4));
+    }
+    source.rules.ranged_cohorts = 1;
+    auto simultaneous = CreateWorld(source, 42).value;
+    REQUIRE(Step(simultaneous, {}, {}, nav));
+    CHECK(std::count_if(simultaneous.events.begin(), simultaneous.events.end(),
+                        [](auto &e) { return e.kind == EventKind::AttackLaunched; }) == 1024);
+    auto custom = test::Duel();
+    custom.rules.ranged_cohorts = 4;
+    custom.units[0].archer = true;
+    custom.units[0].weapon.range = 30;
+    custom.units[0].weapon.base_accuracy = 0;
+    custom.units[0].weapon.cooldown_ticks = 5;
+    auto c = CreateWorld(custom, 42).value;
+    std::vector<Tick> ticks;
+    for (int i = 0; i < 20; ++i) {
+        REQUIRE(Step(c, {}, {}, nav));
+        for (auto &e : c.events)
+            if (e.kind == EventKind::AttackLaunched && e.source == UnitId{1})
+                ticks.push_back(e.tick);
+    }
+    REQUIRE(ticks.size() >= 3);
+    for (size_t i = 1; i < ticks.size(); ++i)
+        CHECK(ticks[i] - ticks[i - 1] == 5);
+}
+TEST_CASE("combat.player_ignores_ai_phase_and_control_switch") {
+    auto source = test::Duel();
+    source.rules.ranged_cohorts = 4;
+    UnitId player{100};
+    while (RangedPhase(player, {1}, 4) == 0)
+        ++player.value;
+    source.units[0].id = player;
+    source.units[0].archer = true;
+    source.units[0].weapon.range = 1000000000;
+    source.units[0].weapon.base_accuracy = 1;
+    source.units[0].health = 10;
+    source.units[1].health = 10;
+    auto w = CreateWorld(source, 42).value;
+    FlatNavigationService nav;
+    Command acquire;
+    acquire.kind = CommandKind::AcquireControl;
+    acquire.unit = player;
+    Command attack;
+    attack.kind = CommandKind::AttackControlledUnit;
+    attack.unit = player;
+    attack.target = {2};
+    std::vector<CommandEnvelope> commands{{0, 1, acquire}, {0, 2, attack}};
+    REQUIRE(Step(w, commands, {}, nav));
+    REQUIRE(w.attacks.size() == 1);
+    CHECK(w.attacks[0].source == player);
+    CHECK(w.attacks[0].hit);
+    auto arrow = w.attacks[0].id;
+    Command release;
+    release.kind = CommandKind::ReleaseControl;
+    release.unit = player;
+    CommandEnvelope input{w.tick, 3, release};
+    REQUIRE(Step(w, std::span{&input, 1}, {}, nav));
+    CHECK_FALSE(w.controlled);
+    CHECK(FindUnit(w, player)->health == 10);
+    CHECK(w.attacks.size() == 1);
+    w.regiments[0].panic = true;
+    FindUnit(w, player)->ready_tick = 0;
+    std::vector<BattleEvent> blocked;
+    BuildCombatEvents(w, blocked);
+    CHECK(blocked.empty());
+    BattleEvent kill;
+    kill.id = {w.next_event_id};
+    kill.kind = EventKind::AttackLaunched;
+    kill.source = {2};
+    kill.target = player;
+    kill.due_tick = w.tick + 1;
+    kill.hit = true;
+    kill.projectile = true;
+    kill.amount = 100;
+    CommitCombatEvents(w, std::span{&kill, 1});
+    REQUIRE_FALSE(FindUnit(w, player)->alive);
+    bool resolved = false;
+    while (w.tick < 21) {
+        REQUIRE(Step(w, {}, {}, nav));
+        for (auto &e : w.events)
+            if (e.cause == arrow && e.kind == EventKind::Hit)
+                resolved = true;
+    }
+    CHECK(resolved);
+    CHECK(FindUnit(w, {2})->health == 9);
+    CHECK(w.attacks.empty());
 }

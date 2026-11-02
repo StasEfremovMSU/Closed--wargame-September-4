@@ -41,6 +41,8 @@ Result<Scenario> ValidateScenario(Scenario s) {
             !std::isfinite(o.max_y) || o.min_x >= o.max_x || o.min_y >= o.max_y)
             return bad("invalid obstacle");
     const auto &r = s.rules;
+    if (r.ranged_cohorts == 0 || r.ranged_cohorts > 64)
+        return bad("ranged_cohorts must be 1..64");
     if (!std::isfinite(r.panic_fraction) || r.panic_fraction < 0 || r.panic_fraction > 1 ||
         r.calm_ticks == 0 || !std::isfinite(r.rally_tolerance_m) || r.rally_tolerance_m < 0 ||
         !std::isfinite(r.rally_safe_radius_m) || r.rally_safe_radius_m < 0)

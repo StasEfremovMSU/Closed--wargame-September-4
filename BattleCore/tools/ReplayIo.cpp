@@ -72,6 +72,9 @@ Result<Snapshot> LoadSnapshot(const std::filesystem::path &p) {
     try {
         auto j = Read(p);
         Keys(j, {"schema_version", "state"});
+        if (j.at("schema_version") != 2)
+            throw std::invalid_argument(
+                "unsupported snapshot version; this build requires version 2");
         const auto &w = j.at("state");
         Keys(w, {"tick", "seed", "next_event_id", "next_order_id", "last_launch_id", "scenario",
                  "units", "regiments", "officers", "attacks", "pending_orders", "commands",
@@ -118,7 +121,7 @@ Result<bool> WriteReplay(const std::filesystem::path &p, const Scenario &s, uint
     auto valid = ValidateScenario(s);
     if (!valid)
         return {valid.status, false, valid.diagnostics};
-    Json j{{"schema_version", 1},
+    Json j{{"schema_version", 2},
            {"scenario", s},
            {"seed", seed},
            {"commands", std::vector<CommandEnvelope>(commands.begin(), commands.end())}};
@@ -128,7 +131,7 @@ Result<ReplayRecord> LoadReplay(const std::filesystem::path &p) {
     try {
         auto j = Read(p);
         Keys(j, {"schema_version", "scenario", "seed", "commands"});
-        if (j.at("schema_version") != 1)
+        if (j.at("schema_version") != 2)
             throw std::invalid_argument("unsupported replay version");
         ReplayRecord r;
         r.scenario = j.at("scenario").get<Scenario>();

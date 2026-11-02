@@ -4,13 +4,13 @@
 #include <set>
 namespace battle {
 Snapshot Capture(const World &w) {
-    return {1, w};
+    return {2, w};
 }
 Result<World> Restore(const Snapshot &s) {
     auto bad = [](std::string message) {
         return Result<World>{Status::InvalidInput, {}, {{"snapshot", 0, std::move(message)}}};
     };
-    if (s.schema_version != 1)
+    if (s.schema_version != 2)
         return bad("unsupported snapshot version");
     auto valid = ValidateScenario(s.state.scenario);
     if (!valid)
@@ -321,6 +321,7 @@ uint64_t StateHash(const World &w) {
     const auto &rules = w.scenario.rules;
     h.f(rules.panic_fraction);
     h.n(rules.calm_ticks);
+    h.n(rules.ranged_cohorts);
     h.f(rules.rally_tolerance_m);
     h.f(rules.rally_safe_radius_m);
     h.n(w.scenario.obstacles.size());

@@ -4,7 +4,7 @@
 namespace battle::io {
 struct BenchmarkResult {
     std::string mode;
-    uint32_t units{}, workers{}, ticks{}, warmup{};
+    uint32_t units{}, workers{}, ticks{}, warmup{}, ranged_cohorts{};
     uint64_t seed{42}, hash{}, neighbor_checks{}, events{}, working_set_bytes{},
         peak_working_set_bytes{};
     double p50_ms{}, p95_ms{}, p99_ms{}, max_ms{};
@@ -14,5 +14,5 @@ struct BenchmarkResult {
 };
 Scenario MakeBenchmarkScenario(const std::string &mode, uint32_t units);
 BenchmarkResult RunBenchmark(const std::string &mode, uint32_t units, uint32_t ticks,
-                             uint32_t warmup, uint32_t workers);
+                             uint32_t warmup, uint32_t workers, uint32_t ranged_cohorts = 0);
 } // namespace battle::io

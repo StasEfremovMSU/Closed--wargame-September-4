@@ -48,8 +48,8 @@ int main(int argc, char **argv) {
             return args.at(key);
         };
         std::map<std::string, uint64_t> counters;
-        for (auto key :
-             {"--ticks", "--seed", "--capture-every", "--warmup", "--workers", "--repetitions"})
+        for (auto key : {"--ticks", "--seed", "--capture-every", "--warmup", "--workers",
+                         "--repetitions", "--ranged-cohorts"})
             if (args.contains(key))
                 counters[key] = Counter(args.at(key));
         if (args.contains("--resume") && args.contains("--replay-out"))
@@ -73,13 +73,16 @@ int main(int argc, char **argv) {
                            : fallback;
             };
             unsigned ticks = integer("--ticks", 1200), warmup = integer("--warmup", 200),
-                     workers = integer("--workers", 1), reps = integer("--repetitions", 3);
+                     workers = integer("--workers", 1), reps = integer("--repetitions", 3),
+                     ranged = integer("--ranged-cohorts", Rules{}.ranged_cohorts);
             std::vector<std::string> modes;
             std::istringstream ms(args.contains("--modes")
                                       ? args["--modes"]
                                       : "march,reform,bottleneck,volley,melee");
             for (std::string item; std::getline(ms, item, ',');)
                 modes.push_back(item);
+            if (ranged == 0 || ranged > 64)
+                throw std::invalid_argument("ranged-cohorts must be 1..64");
             if (!ticks || !workers || !reps)
                 throw std::invalid_argument("ticks, workers and repetitions must be positive");
             for (const auto &name : modes)
@@ -106,12 +109,13 @@ int main(int argc, char **argv) {
             for (unsigned size : unit_counts)
                 for (auto &mode : modes)
                     for (unsigned rep = 0; rep < reps; ++rep) {
-                        auto r = io::RunBenchmark(mode, size, ticks, warmup, workers);
+                        auto r = io::RunBenchmark(mode, size, ticks, warmup, workers, ranged);
                         nlohmann::json j = {
                             {"mode", r.mode},
                             {"units", r.units},
                             {"workers_requested", r.workers},
                             {"workers_effective", 1},
+                            {"ranged_cohorts", r.ranged_cohorts},
                             {"ticks", r.ticks},
                             {"warmup", r.warmup},
                             {"rep", rep},

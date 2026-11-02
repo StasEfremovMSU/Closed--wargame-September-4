@@ -73,3 +73,16 @@ TEST_CASE("world.packet_validation") {
     CHECK(result.value.events[0].kind == EventKind::CommandRejected);
     CHECK(w.tick == 1);
 }
+TEST_CASE("world.ranged_cohort_validation_and_hash") {
+    Scenario s;
+    CHECK(s.rules.ranged_cohorts == 4);
+    s.rules.ranged_cohorts = 0;
+    CHECK_FALSE(CreateWorld(s, 42));
+    s.rules.ranged_cohorts = 65;
+    CHECK_FALSE(CreateWorld(s, 42));
+    s.rules.ranged_cohorts = 64;
+    REQUIRE(CreateWorld(s, 42));
+    auto a = CreateWorld(s, 42).value;
+    s.rules.ranged_cohorts = 1;
+    CHECK(StateHash(a) != StateHash(CreateWorld(s, 42).value));
+}

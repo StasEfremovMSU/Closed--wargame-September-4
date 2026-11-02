@@ -26,7 +26,8 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(OfficerSpec, id, unit, role, cha
                                                 lead_skill, lead_dist, legacy_id)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Obstacle, min_x, min_y, max_x, max_y)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Rules, panic_fraction, calm_ticks,
-                                                rally_tolerance_m, rally_safe_radius_m)
+                                                rally_tolerance_m, rally_safe_radius_m,
+                                                ranged_cohorts)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Scenario, schema_version, units, regiments,
                                                 officers, obstacles, rules)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Order, id, issuer, recipient, type, priority, point,

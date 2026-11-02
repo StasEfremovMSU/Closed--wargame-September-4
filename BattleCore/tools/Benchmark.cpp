@@ -58,10 +58,13 @@ Scenario MakeBenchmarkScenario(const std::string &mode, uint32_t count) {
     return s;
 }
 BenchmarkResult RunBenchmark(const std::string &mode, uint32_t units, uint32_t ticks,
-                             uint32_t warmup, uint32_t workers) {
+                             uint32_t warmup, uint32_t workers, uint32_t ranged_cohorts) {
     if (!ticks || !workers)
         throw std::invalid_argument("ticks and workers must be positive");
-    auto made = CreateWorld(MakeBenchmarkScenario(mode, units), 42);
+    auto source = MakeBenchmarkScenario(mode, units);
+    if (ranged_cohorts)
+        source.rules.ranged_cohorts = ranged_cohorts;
+    auto made = CreateWorld(source, 42);
     if (!made)
         throw std::runtime_error("invalid benchmark scenario");
     auto w = std::move(made.value);
@@ -87,6 +90,7 @@ BenchmarkResult RunBenchmark(const std::string &mode, uint32_t units, uint32_t t
     result.workers = workers;
     result.ticks = ticks;
     result.warmup = warmup;
+    result.ranged_cohorts = w.scenario.rules.ranged_cohorts;
     result.step_ms.reserve(ticks);
     result.phases.reserve(ticks);
     uint64_t start_checks = 0;

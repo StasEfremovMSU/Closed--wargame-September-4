@@ -22,6 +22,15 @@ void Emit(World &w, EventKind kind, UnitId source, UnitId target, RegimentId reg
     ++w.combat_events;
 }
 } // namespace
+uint32_t RangedPhase(UnitId unit, RegimentId regiment, uint32_t cohorts) {
+    if (!cohorts)
+        return 0;
+    uint64_t x = unit.value ^ (regiment.value * 0x9e3779b97f4a7c15ull);
+    x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9ull;
+    x = (x ^ (x >> 27)) * 0x94d049bb133111ebull;
+    x ^= x >> 31;
+    return uint32_t(x % cohorts);
+}
 float HitProbability(float base, float skill, float distance, float range) {
     return range > 0 ? std::clamp(base * skill * (1 - distance / range), 0.f, 1.f) : 0;
 }
@@ -50,8 +59,17 @@ void BuildCombatEvents(const World &w, std::vector<BattleEvent> &out, uint64_t *
         if (!u.alive || u.ready_tick > w.tick)
             continue;
         auto *r = FindRegiment(w, u.regiment);
-        if (r && !r->panic)
-            shooters.push_back({i, r->team});
+        if (!r || r->panic)
+            continue;
+        if (u.archer && u.control != ControlMode::PlayerControlled) {
+            // Exact cooldown completion preserves cadence even for non-divisible periods.
+            // Idle retries/first acquisition use a stable phase, never a global volley barrier.
+            bool due = u.ready_tick != 0 && u.ready_tick == w.tick;
+            if (!due && w.tick % w.scenario.rules.ranged_cohorts !=
+                            RangedPhase(u.id, u.regiment, w.scenario.rules.ranged_cohorts))
+                continue;
+        }
+        shooters.push_back({i, r->team});
     }
     if (shooters.empty())
         return;

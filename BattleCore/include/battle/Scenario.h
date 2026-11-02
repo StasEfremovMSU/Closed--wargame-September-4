@@ -50,6 +50,7 @@ struct Rules {
     float panic_fraction{0.5f};
     Tick calm_ticks{100};
     float rally_tolerance_m{2}, rally_safe_radius_m{20};
+    uint32_t ranged_cohorts{4};
 };
 struct Scenario {
     uint32_t schema_version{1};

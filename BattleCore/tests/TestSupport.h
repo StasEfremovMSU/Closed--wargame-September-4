@@ -27,6 +27,8 @@ inline void Write(const std::filesystem::path &p, const std::string &s) {
 inline battle::Scenario Duel(unsigned count = 1) {
     using namespace battle;
     Scenario s;
+    s.rules.ranged_cohorts =
+        1; // Focused physics fixtures isolate scheduling; cohort tests opt into4.
     for (unsigned side = 0; side < 2; ++side) {
         RegimentSpec r;
         r.id = {side + 1};

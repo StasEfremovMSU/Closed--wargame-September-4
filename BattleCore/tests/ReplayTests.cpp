@@ -177,3 +177,75 @@ TEST_CASE("replay.immutable_definitions_match_source") {
     s.state.regiments[0].initial_count = 100;
     CHECK_FALSE(Restore(s));
 }
+TEST_CASE("replay.ranged_mid_cycle_resume") {
+    auto source = test::Duel(20);
+    source.rules.ranged_cohorts = 4;
+    for (auto &u : source.units) {
+        u.archer = true;
+        u.health = 20;
+        u.weapon.range = 100;
+        u.weapon.projectile_speed_mps = 5;
+    }
+    auto a = CreateWorld(source, 123).value;
+    FlatNavigationService nav;
+    Command acquire;
+    acquire.kind = CommandKind::AcquireControl;
+    acquire.unit = {1};
+    Command external;
+    external.kind = CommandKind::ExternalPoseSample;
+    external.unit = {1};
+    external.pose = {{-12, 1, 0}, 0};
+    external.sample_tick = 9;
+    Command release;
+    release.kind = CommandKind::ReleaseControl;
+    release.unit = {1};
+    Command hold;
+    hold.kind = CommandKind::IssueOrder;
+    hold.order.recipient = {1};
+    hold.order.type = OrderType::Hold;
+    hold.order.delivery_tick = 12;
+    std::vector<CommandEnvelope> commands{
+        {7, 1, acquire}, {9, 2, external}, {13, 3, release}, {0, 4, hold}};
+    REQUIRE(Step(a, commands, {}, nav));
+    REQUIRE(Step(a, {}, {}, nav));
+    REQUIRE_FALSE(a.attacks.empty());
+    REQUIRE_FALSE(a.pending_orders.empty());
+    REQUIRE_FALSE(a.commands.empty());
+    test::TempDir dir;
+    REQUIRE(io::SaveSnapshot(dir.path / "cohorts.json", Capture(a)));
+    auto snapshot = io::LoadSnapshot(dir.path / "cohorts.json");
+    REQUIRE(snapshot);
+    auto restored = Restore(snapshot.value);
+    REQUIRE(restored);
+    auto b = restored.value;
+    for (int tick = 0; tick < 100; ++tick) {
+        REQUIRE(Step(a, {}, {}, nav));
+        REQUIRE(Step(b, {}, {}, nav));
+    }
+    CHECK(StateHash(a) == StateHash(b));
+    REQUIRE(io::WriteReplay(dir.path / "replay.json", source, 123, commands));
+    auto replay = io::LoadReplay(dir.path / "replay.json");
+    REQUIRE(replay);
+    auto c = CreateWorld(replay.value.scenario, replay.value.seed).value;
+    for (int tick = 0; tick < 102; ++tick)
+        REQUIRE(Step(c,
+                     tick == 0 ? std::span<const CommandEnvelope>(replay.value.commands)
+                               : std::span<const CommandEnvelope>{},
+                     {}, nav));
+    CHECK(StateHash(a) == StateHash(c));
+    auto v1 = Capture(a);
+    v1.schema_version = 1;
+    CHECK_FALSE(Restore(v1));
+    nlohmann::json j = v1;
+    test::Write(dir.path / "v1-save.json", j.dump());
+    auto old = io::LoadSnapshot(dir.path / "v1-save.json");
+    CHECK_FALSE(old);
+    REQUIRE_FALSE(old.diagnostics.empty());
+    CHECK(old.diagnostics[0].message.find("unsupported snapshot version") != std::string::npos);
+    std::ifstream f(dir.path / "replay.json");
+    nlohmann::json r;
+    f >> r;
+    r["schema_version"] = 1;
+    test::Write(dir.path / "v1-replay.json", r.dump());
+    CHECK_FALSE(io::LoadReplay(dir.path / "v1-replay.json"));
+}
