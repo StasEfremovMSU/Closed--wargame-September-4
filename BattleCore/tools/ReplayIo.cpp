@@ -13,6 +13,23 @@ void Keys(const Json &j, std::initializer_list<const char *> keys) {
         if (!j.contains(key))
             throw std::invalid_argument(std::string("missing snapshot field: ") + key);
 }
+// Scenario authoring permits defaults; continuation snapshots must be complete.
+void CompleteFields(const Json &actual, const Json &persisted, const std::string &path) {
+    if (persisted.is_object()) {
+        if (!actual.is_object())
+            throw std::invalid_argument("expected snapshot object: " + path);
+        for (auto it = persisted.begin(); it != persisted.end(); ++it) {
+            if (!actual.contains(it.key()))
+                throw std::invalid_argument("missing snapshot field: " + path + "/" + it.key());
+            CompleteFields(actual.at(it.key()), it.value(), path + "/" + it.key());
+        }
+    } else if (persisted.is_array()) {
+        if (!actual.is_array() || actual.size() != persisted.size())
+            throw std::invalid_argument("invalid snapshot array: " + path);
+        for (size_t i = 0; i < persisted.size(); ++i)
+            CompleteFields(actual[i], persisted[i], path + "/" + std::to_string(i));
+    }
+}
 Result<bool> Write(const std::filesystem::path &p, const Json &j) {
     std::filesystem::path temp = p;
     temp += ".tmp-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
@@ -86,6 +103,7 @@ Result<Snapshot> LoadSnapshot(const std::filesystem::path &p) {
                      "ai_action",
                      "ai_target"});
         Snapshot s = j.get<Snapshot>();
+        CompleteFields(j, Json(s), "snapshot");
         auto r = Restore(s);
         if (!r)
             return {r.status, {}, r.diagnostics};

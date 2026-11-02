@@ -1,6 +1,7 @@
 #include "TestSupport.h"
 #include "battle/Combat.h"
 #include "battle/Control.h"
+#include "battle/Formation.h"
 #include "battle/Snapshot.h"
 #include "doctest.h"
 using namespace battle;
@@ -101,4 +102,24 @@ TEST_CASE("control.hundred_switches") {
     }
     CHECK(GetStats(w).living_units == 4);
     CHECK(w.controlled.value == 2);
+}
+TEST_CASE("control.returning_and_reforming_respect_static_walls") {
+    auto s = test::Duel();
+    s.obstacles = {{-5, -3, -4, 3}};
+    auto w = CreateWorld(s, 42).value;
+    REQUIRE(AcquireControl(w, {1}) == Status::Ok);
+    REQUIRE(SetExternalPose(w, {1}, {{0, 0, 0}, 0}, w.tick) == Status::Ok);
+    REQUIRE(ReleaseControl(w, {1}) == Status::Ok);
+    for (int t = 0; t < 120; ++t) {
+        AdvanceFormations(w, .05f);
+        CHECK(w.units[0].pose.position.x >= -3.7001f);
+    }
+    CHECK(w.units[0].control == ControlMode::Returning);
+    CHECK(w.units[0].pose.position.x < 0);
+    w.units[0].control = ControlMode::FormationControlled;
+    w.units[0].pose.position = {0, 0, 0};
+    for (int t = 0; t < 120; ++t) {
+        AdvanceFormations(w, .05f);
+        CHECK(w.units[0].pose.position.x >= -3.7001f);
+    }
 }

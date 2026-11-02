@@ -5,13 +5,23 @@
 #include "ScenarioJson.h"
 #include "SvgExport.h"
 #include "battle/Simulation.h"
+#include <charconv>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <map>
 #include <sstream>
 #include <thread>
 using namespace battle;
 namespace {
+uint64_t Counter(const std::string &token, uint64_t max = std::numeric_limits<uint64_t>::max()) {
+    uint64_t value{};
+    auto end = token.data() + token.size();
+    auto result = std::from_chars(token.data(), end, value);
+    if (token.empty() || result.ec != std::errc{} || result.ptr != end || value > max)
+        throw std::invalid_argument("invalid unsigned decimal counter: " + token);
+    return value;
+}
 template <class T> bool Report(const Result<T> &r) {
     for (auto &d : r.diagnostics)
         std::cerr << d.source << ":" << d.line << ": " << d.message << "\n";
@@ -37,6 +47,14 @@ int main(int argc, char **argv) {
                 throw std::invalid_argument("missing " + key);
             return args.at(key);
         };
+        std::map<std::string, uint64_t> counters;
+        for (auto key :
+             {"--ticks", "--seed", "--capture-every", "--warmup", "--workers", "--repetitions"})
+            if (args.contains(key))
+                counters[key] = Counter(args.at(key));
+        if (args.contains("--resume") && args.contains("--replay-out"))
+            throw std::invalid_argument("--resume with --replay-out is unsupported; continue using "
+                                        "snapshots or replay the original command log");
         if (mode == "import-legacy") {
             auto r = io::ImportLegacy(required("--source"), {required("--map"), 1});
             if (!Report(r))
@@ -49,14 +67,10 @@ int main(int argc, char **argv) {
             return 0;
         }
         if (mode == "bench") {
-            std::filesystem::path dir = required("--out");
-            std::filesystem::create_directories(dir);
-            std::ofstream summary(dir / "summary.jsonl"), raw(dir / "ticks.csv");
-            if (!summary || !raw)
-                throw std::runtime_error("cannot write benchmark");
-            raw << "mode,units,workers,rep,tick,step_ms\n";
             auto integer = [&](const std::string &key, unsigned fallback) {
-                return args.contains(key) ? unsigned(std::stoul(args[key])) : fallback;
+                return args.contains(key)
+                           ? unsigned(Counter(args.at(key), std::numeric_limits<unsigned>::max()))
+                           : fallback;
             };
             unsigned ticks = integer("--ticks", 1200), warmup = integer("--warmup", 200),
                      workers = integer("--workers", 1), reps = integer("--repetitions", 3);
@@ -66,12 +80,32 @@ int main(int argc, char **argv) {
                                       : "march,reform,bottleneck,volley,melee");
             for (std::string item; std::getline(ms, item, ',');)
                 modes.push_back(item);
-            std::istringstream sizes(required("--units"));
-            for (std::string size; std::getline(sizes, size, ',');)
+            if (!ticks || !workers || !reps)
+                throw std::invalid_argument("ticks, workers and repetitions must be positive");
+            for (const auto &name : modes)
+                if (name != "march" && name != "reform" && name != "bottleneck" &&
+                    name != "volley" && name != "melee")
+                    throw std::invalid_argument("invalid benchmark mode");
+            std::istringstream parse_sizes(required("--units"));
+            std::vector<unsigned> unit_counts;
+            for (std::string token; std::getline(parse_sizes, token, ',');) {
+                auto count = Counter(token, 100000);
+                if (count < 2)
+                    throw std::invalid_argument("benchmark units must be 2..100000");
+                unit_counts.push_back(unsigned(count));
+            }
+            if (unit_counts.empty() || modes.empty())
+                throw std::invalid_argument("empty benchmark sizes/modes");
+            std::filesystem::path dir = required("--out");
+            std::filesystem::create_directories(dir);
+            std::ofstream summary(dir / "summary.jsonl"), raw(dir / "ticks.csv");
+            if (!summary || !raw)
+                throw std::runtime_error("cannot write benchmark");
+            raw << "mode,units,workers,rep,tick,step_ms\n";
+            for (unsigned size : unit_counts)
                 for (auto &mode : modes)
                     for (unsigned rep = 0; rep < reps; ++rep) {
-                        auto r = io::RunBenchmark(mode, unsigned(std::stoul(size)), ticks, warmup,
-                                                  workers);
+                        auto r = io::RunBenchmark(mode, size, ticks, warmup, workers);
                         nlohmann::json j = {
                             {"mode", r.mode},
                             {"units", r.units},
@@ -150,8 +184,7 @@ int main(int argc, char **argv) {
             auto s = io::LoadScenario(required("--scenario"));
             if (!Report(s))
                 return 2;
-            auto made =
-                CreateWorld(s.value, args.contains("--seed") ? std::stoull(args["--seed"]) : 42);
+            auto made = CreateWorld(s.value, args.contains("--seed") ? counters.at("--seed") : 42);
             if (!Report(made))
                 return 2;
             w = std::move(made.value);
@@ -172,13 +205,13 @@ int main(int argc, char **argv) {
         const NavigationService &nav = w.scenario.obstacles.empty()
                                            ? static_cast<const NavigationService &>(flat)
                                            : static_cast<const NavigationService &>(grid);
-        Tick ticks = args.contains("--ticks") ? std::stoull(args["--ticks"]) : 100;
+        Tick ticks = args.contains("--ticks") ? counters.at("--ticks") : 100;
         std::filesystem::path out = required("--out");
         std::filesystem::create_directories(out);
         std::ofstream events(out / "events.jsonl");
         if (!events)
             throw std::runtime_error("cannot write events");
-        Tick capture = args.contains("--capture-every") ? std::stoull(args["--capture-every"]) : 0;
+        Tick capture = args.contains("--capture-every") ? counters.at("--capture-every") : 0;
         for (Tick i = 0; i < ticks; ++i) {
             if (capture && w.tick % capture == 0 &&
                 !Report(io::SaveSnapshot(out / "frames" / (std::to_string(w.tick) + ".json"),

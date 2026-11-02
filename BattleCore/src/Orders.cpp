@@ -23,7 +23,8 @@ Status SubmitOrder(World &w, const Order &input) {
         }
         if (!target) {
             o.status = OrderStatus::Failed;
-            r->order = o;
+            if (!r->order || r->order->status != OrderStatus::Active)
+                r->order = o;
             return Status::NotFound;
         }
     }

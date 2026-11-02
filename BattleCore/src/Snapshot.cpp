@@ -22,6 +22,24 @@ Result<World> Restore(const Snapshot &s) {
         w.regiments.size() != w.scenario.regiments.size() ||
         w.officers.size() != w.scenario.officers.size())
         return bad("snapshot roster differs from scenario");
+    auto canonical = [](auto &a, auto &b) { return a.id < b.id; };
+    std::sort(w.scenario.regiments.begin(), w.scenario.regiments.end(), canonical);
+    std::sort(w.scenario.officers.begin(), w.scenario.officers.end(), canonical);
+    std::sort(w.officers.begin(), w.officers.end(), canonical);
+    if (w.officers != w.scenario.officers)
+        return bad("officer definitions differ from scenario");
+    std::map<uint64_t, uint64_t> original_counts;
+    for (const auto &unit : w.scenario.units)
+        ++original_counts[unit.regiment.value];
+    for (size_t i = 0; i < w.regiments.size(); ++i) {
+        const auto &initial = w.scenario.regiments[i];
+        RegimentSpec definition = w.regiments[i];
+        definition.pose = initial.pose;
+        definition.formation = initial.formation;
+        if (definition != initial ||
+            w.regiments[i].initial_count != original_counts[initial.id.value])
+            return bad("regiment definitions differ from scenario");
+    }
     Scenario runtime = w.scenario;
     runtime.units.clear();
     runtime.regiments.clear();
@@ -37,6 +55,11 @@ Result<World> Restore(const Snapshot &s) {
             ((u.control == ControlMode::Dead) == u.alive) || !Finite(u.slot) ||
             !Finite(u.desired_velocity))
             return bad("invalid runtime unit");
+        UnitSpec definition = u;
+        definition.pose = initial->pose;
+        definition.health = initial->health;
+        if (definition != *initial)
+            return bad("unit definitions differ from scenario");
         UnitSpec spec = u;
         if (!u.alive)
             spec.health = 1;

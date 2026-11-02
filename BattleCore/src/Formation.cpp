@@ -164,7 +164,27 @@ void AdvanceFormations(World &w, float dt) {
             if (u->slot_index >= r.slots.size())
                 continue;
             u->slot = r.slots[u->slot_index];
-            u->pose.position = Towards(u->pose.position, u->slot.position, u->speed * dt);
+            Vec3 destination = Towards(u->pose.position, u->slot.position, u->speed * dt);
+            float fraction = 1;
+            const float radius = r.formation.body_radius_m;
+            for (const auto &box : w.scenario.obstacles) {
+                // Most unit segments are far from obstacles; reject by bounds first.
+                if (std::max(u->pose.position.x, destination.x) + radius <= box.min_x ||
+                    std::min(u->pose.position.x, destination.x) - radius >= box.max_x ||
+                    std::max(u->pose.position.y, destination.y) + radius <= box.min_y ||
+                    std::min(u->pose.position.y, destination.y) - radius >= box.max_y)
+                    continue;
+                Pose obstacle{{(box.min_x + box.max_x) * .5f, (box.min_y + box.max_y) * .5f,
+                               u->pose.position.z},
+                              0};
+                fraction =
+                    std::min(fraction, SweepLimit({u->pose.position, 0}, {destination, 0},
+                                                  {2 * radius, 2 * radius}, obstacle,
+                                                  {box.max_y - box.min_y, box.max_x - box.min_x}));
+            }
+            u->pose.position = fraction == 1
+                                   ? destination
+                                   : u->pose.position + (destination - u->pose.position) * fraction;
             u->pose.yaw = u->slot.yaw;
             if (u->control == ControlMode::Returning &&
                 Distance(u->pose.position, u->slot.position) < .01f)

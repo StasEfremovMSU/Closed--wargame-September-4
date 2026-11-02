@@ -47,5 +47,7 @@ SVG files open in any browser. Output is a diagnostic top view; animation, camer
 
 [Benchmark protocol](docs/benchmark-protocol.md) explains fixtures, samples and limits. The current implementation is serial, including requests for 2/4 workers; tests verify equivalent results, without claiming a parallel speedup.
 
-[Measured results](docs/benchmark-results.md): all 120 baseline/optimized runs and matching state hashes. The measured 5k/10k fixtures meet the desired CPU p95 budget; rendering remains unmeasured.
+[Measured results](docs/benchmark-results.md): all 120 baseline/optimized runs and matching state hashes. The measured 5k/10k fixtures meet the CPU p95 target, but synchronized 10k volleys reach 225 ms at p99. Smooth real-time play and rendering remain unverified.
 
+
+A resumed snapshot cannot currently be exported as a new scenario-based replay; `--resume` together with `--replay-out` is rejected. Continue with snapshots or replay the original command log. Returning soldiers stop at static walls; individual detour routing is a later extension.

@@ -85,3 +85,32 @@ TEST_CASE("officers.reevaluation_and_single_mover") {
     REQUIRE(Step(w, {}, {}, nav));
     CHECK(w.regiments[0].ai_action == OrderType::Hold);
 }
+TEST_CASE("officers.rejected_attack_preserves_active_order") {
+    auto w = CreateWorld(test::Duel(), 42).value;
+    FlatNavigationService nav;
+    Order move;
+    move.recipient = {1};
+    move.type = OrderType::MoveTo;
+    move.priority = 10;
+    move.point = {-5, 0, 0};
+    REQUIRE(SubmitOrder(w, move) == Status::Ok);
+    REQUIRE(Step(w, {}, {}, nav));
+    auto id = w.regiments[0].order->id;
+    auto route = w.regiments[0].route;
+    auto position = w.regiments[0].pose.position;
+    Command bad;
+    bad.kind = CommandKind::IssueOrder;
+    bad.order.recipient = {1};
+    bad.order.type = OrderType::Attack;
+    bad.order.target_unit = {99999};
+    bad.order.priority = 0;
+    CommandEnvelope input{w.tick, 1, bad};
+    REQUIRE(Step(w, std::span{&input, 1}, {}, nav));
+    REQUIRE(w.regiments[0].order);
+    CHECK(w.regiments[0].order->id == id);
+    CHECK(w.regiments[0].order->status == OrderStatus::Active);
+    CHECK(w.regiments[0].route == route);
+    CHECK(w.regiments[0].pose.position.x > position.x);
+    CHECK(std::any_of(w.events.begin(), w.events.end(),
+                      [](auto &e) { return e.kind == EventKind::CommandRejected; }));
+}

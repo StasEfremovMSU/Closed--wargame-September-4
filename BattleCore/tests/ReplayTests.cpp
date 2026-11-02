@@ -114,3 +114,66 @@ TEST_CASE("replay.canonical_input_and_source_hash") {
     b.scenario.units[0].health = 10;
     CHECK(StateHash(a) != StateHash(b));
 }
+TEST_CASE("replay.rejects_missing_nested_continuation_fields") {
+    auto source = test::Duel();
+    source.units[0].archer = true;
+    source.units[0].weapon.range = 30;
+    source.units[0].weapon.projectile_speed_mps = .5f;
+    auto w = CreateWorld(source, 42).value;
+    FlatNavigationService nav;
+    REQUIRE(Step(w, {}, {}, nav));
+    REQUIRE_FALSE(w.attacks.empty());
+    Order order;
+    order.recipient = {1};
+    order.delivery_tick = 50;
+    REQUIRE(SubmitOrder(w, order) == Status::Ok);
+    test::TempDir dir;
+    nlohmann::json original = Capture(w);
+    std::vector<std::string> keys;
+    for (auto it = original["state"]["attacks"][0].begin();
+         it != original["state"]["attacks"][0].end(); ++it)
+        keys.push_back(it.key());
+    for (const auto &key : keys) {
+        CAPTURE(key);
+        auto damaged = original;
+        damaged["state"]["attacks"][0].erase(key);
+        test::Write(dir.path / "attack.json", damaged.dump());
+        CHECK_FALSE(io::LoadSnapshot(dir.path / "attack.json"));
+    }
+    for (auto path :
+         {"/state/pending_orders/0/delivery_tick", "/state/units/0/weapon/cooldown_ticks",
+          "/state/scenario/units/0/weapon/damage"}) {
+        auto damaged = original;
+        nlohmann::json::json_pointer ptr(path);
+        auto parent = ptr.parent_pointer();
+        damaged[parent].erase(ptr.back());
+        test::Write(dir.path / "nested.json", damaged.dump());
+        CHECK_FALSE(io::LoadSnapshot(dir.path / "nested.json"));
+    }
+}
+TEST_CASE("replay.immutable_definitions_match_source") {
+    auto source = test::Duel(2);
+    source.officers = {{{1}, {1}, 2}};
+    auto world = CreateWorld(source, 42).value;
+    auto s = Capture(world);
+    s.state.regiments[0].team = 9;
+    CHECK_FALSE(Restore(s));
+    s = Capture(world);
+    s.state.regiments[0].id = {99};
+    for (auto &u : s.state.units)
+        if (u.regiment == RegimentId{1})
+            u.regiment = {99};
+    CHECK_FALSE(Restore(s));
+    s = Capture(world);
+    s.state.officers[0].unit = {2};
+    CHECK_FALSE(Restore(s));
+    s = Capture(world);
+    s.state.officers[0].role = 1;
+    CHECK_FALSE(Restore(s));
+    s = Capture(world);
+    s.state.units[0].weapon.damage = 99;
+    CHECK_FALSE(Restore(s));
+    s = Capture(world);
+    s.state.regiments[0].initial_count = 100;
+    CHECK_FALSE(Restore(s));
+}
