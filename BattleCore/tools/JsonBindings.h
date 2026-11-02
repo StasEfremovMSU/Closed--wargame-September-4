@@ -3,7 +3,7 @@
 #include "json.hpp"
 namespace battle {
 template<class T>void to_json(nlohmann::json&j,const Id<T>&v){j=v.value;}
-template<class T>void from_json(const nlohmann::json&j,Id<T>&v){if(!j.is_number_unsigned()&&!j.is_number_integer())throw std::invalid_argument("ID must be an integer");if(j.is_number_integer()&&j.get<int64_t>()<0)throw std::invalid_argument("negative ID");v.value=j.get<uint64_t>();}
+template<class T>void from_json(const nlohmann::json&j,Id<T>&v){if(!j.is_number_unsigned()&&!j.is_number_integer())throw std::invalid_argument("ID must be an integer");if(j.type()==nlohmann::json::value_t::number_integer&&j.get<int64_t>()<0)throw std::invalid_argument("negative ID");v.value=j.get<uint64_t>();}
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Vec3,x,y,z)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Pose,position,yaw)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FormationSpec,columns,spacing_m,body_radius_m)

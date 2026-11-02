@@ -14,11 +14,12 @@ Result<Scenario> ValidateScenario(Scenario s){
     return {Status::Ok,std::move(s),{}};
 }
 Result<World> CreateWorld(const Scenario&s,uint64_t seed){
-    auto valid=ValidateScenario(s);if(!valid)return {valid.status,{},valid.diagnostics};World w;w.scenario=s;w.seed=seed;
-    for(const auto&r:s.regiments){RegimentState x;static_cast<RegimentSpec&>(x)=r;w.regiments.push_back(x);}
-    for(const auto&u:s.units){UnitState x;static_cast<UnitSpec&>(x)=u;x.slot=u.pose;w.units.push_back(x);}
+    auto valid=ValidateScenario(s);if(!valid)return {valid.status,{},valid.diagnostics};World w;w.scenario=std::move(valid.value);w.seed=seed;
+    auto canonical=[](auto&a,auto&b){return a.id<b.id;};std::sort(w.scenario.units.begin(),w.scenario.units.end(),canonical);std::sort(w.scenario.regiments.begin(),w.scenario.regiments.end(),canonical);std::sort(w.scenario.officers.begin(),w.scenario.officers.end(),canonical);
+    for(const auto&r:w.scenario.regiments){RegimentState x;static_cast<RegimentSpec&>(x)=r;w.regiments.push_back(x);}
+    for(const auto&u:w.scenario.units){UnitState x;static_cast<UnitSpec&>(x)=u;x.slot=u.pose;w.units.push_back(x);}
     std::sort(w.units.begin(),w.units.end(),[](auto&a,auto&b){return a.id<b.id;});
-    std::sort(w.regiments.begin(),w.regiments.end(),[](auto&a,auto&b){return a.id<b.id;});w.officers=s.officers;
+    std::sort(w.regiments.begin(),w.regiments.end(),[](auto&a,auto&b){return a.id<b.id;});w.officers=w.scenario.officers;
     for(const auto&u:w.units)FindRegiment(w,u.regiment)->units.push_back(u.id);
     for(auto&r:w.regiments)r.initial_count=r.units.size();
     InitializeFormations(w);
