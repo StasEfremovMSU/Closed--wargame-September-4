@@ -53,8 +53,8 @@
 
 **Produces:** battle_command_demo executable and CTest battle.command-demo; no GUI, no neural runtime.
 
-- [ ] RED: register demo target/test before adding the source; configure fails with the missing example source.
-- [ ] GREEN: example constructs one Army/Part/Group/Regiment chain with four distinct officers anchored in existing Unit bodies, calls every placeholder, exits nonzero if any claims success or emits a payload. Print each level and pending services.
-- [ ] Write Russian reference: responsibilities/inputs/outputs at all levels, officer cycle and traits, task/report/delivery contracts, succession, scheduling, ownership and future invariants, full file map and example commands. Clearly mark every unimplemented mechanic and current legacy boundary.
-- [ ] Build Debug/Release and full CTest including example; run example manually and inspect its output. Check formatting/diff.
+- [x] RED: register demo target/test before adding the source; configure fails with the missing example source.
+- [x] GREEN: example constructs one Army/Part/Group/Regiment chain with four distinct officers anchored in existing Unit bodies, calls every placeholder, exits nonzero if any claims success or emits a payload. Print each level and pending services.
+- [x] Write Russian reference: responsibilities/inputs/outputs at all levels, officer cycle and traits, task/report/delivery contracts, succession, scheduling, ownership and future invariants, full file map and example commands. Clearly mark every unimplemented mechanic and current legacy boundary.
+- [x] Build Debug/Release and full CTest including example; run example manually and inspect its output. Check formatting/diff.
 - [ ] Commit, complete ledger and perform one fresh final review of the current task range. Address Important/Critical with RED/GREEN and full suites. Keep local branch.

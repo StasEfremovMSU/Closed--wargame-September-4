@@ -22,6 +22,12 @@ MinGW standalone executables link their C++ runtime statically. The core is buil
 
 Implementation plan: `../docs/superpowers/plans/2026-11-02-battle-core-migration.md`.
 
+## Command hierarchy scaffold
+
+[Detailed Russian reference](docs/command-hierarchy.md) describes Army, Part, Group and Regiment brains, officer profiles, tasks, reports, communications, perception and evaluator boundaries. The new `battle::command` API is deliberately inactive: every computation returns `NotImplemented` with no payload. Existing regiment AI and save/replay formats remain unchanged.
+
+Run `./out/build/debug/battle_command_demo.exe` (or the Release equivalent) to inspect the compiled four-level example. No Unreal or neural runtime is required.
+
 ## Run and inspect
 
 From `BattleCore/` (PowerShell):
