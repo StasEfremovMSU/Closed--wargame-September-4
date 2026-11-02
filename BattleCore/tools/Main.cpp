@@ -1,6 +1,7 @@
 #include "LegacyImport.h"
 #include "ScenarioJson.h"
 #include "ReplayIo.h"
+#include "SvgExport.h"
 #include "JsonBindings.h"
 #include "battle/Simulation.h"
 #include <fstream>
@@ -13,6 +14,7 @@ int main(int argc,char**argv){try{
  std::string mode=argv[1];std::map<std::string,std::string> args;for(int i=2;i<argc;i+=2){if(i+1>=argc)throw std::invalid_argument("option requires value");args[argv[i]]=argv[i+1];}
  auto required=[&](std::string key){if(!args.contains(key))throw std::invalid_argument("missing "+key);return args.at(key);};
  if(mode=="import-legacy"){auto r=io::ImportLegacy(required("--source"),{required("--map"),1});if(!Report(r))return 2;if(!Report(io::SaveScenario(required("--out"),r.value)))return 2;auto stats=GetStats(CreateWorld(r.value,42).value);std::cout<<"Imported "<<stats.regiment_count<<" regiments, "<<stats.living_units<<" units\n";return 0;}
+ if(mode=="render"){auto loaded=io::LoadSnapshot(required("--snapshot"));if(!Report(loaded))return 2;const auto&scene=loaded.value.state.scenario;if(args.contains("--scenario")){auto provided=io::LoadScenario(args["--scenario"]);if(!Report(provided))return 2;auto canonical=CreateWorld(provided.value,loaded.value.state.seed);if(!canonical||nlohmann::json(canonical.value.scenario)!=nlohmann::json(scene))throw std::invalid_argument("scenario does not match snapshot");}std::filesystem::path file=required("--out");if(file.has_parent_path())std::filesystem::create_directories(file.parent_path());std::ofstream f(file);if(!f)throw std::runtime_error("cannot write SVG");f<<io::ExportSvg(loaded.value,scene);std::cout<<file.string()<<"\n";return f?0:2;}
  if(mode!="run"&&mode!="replay")throw std::invalid_argument("unknown mode");World w;std::vector<CommandEnvelope> commands;
  if(mode=="replay"){auto r=io::LoadReplay(required("--replay"));if(!Report(r))return 2;auto made=CreateWorld(r.value.scenario,r.value.seed);if(!Report(made))return 2;w=std::move(made.value);commands=std::move(r.value.commands);}
  else if(args.contains("--resume")){auto loaded=io::LoadSnapshot(args["--resume"]);if(!Report(loaded))return 2;auto restored=Restore(loaded.value);if(!Report(restored))return 2;w=std::move(restored.value);}
@@ -21,7 +23,8 @@ int main(int argc,char**argv){try{
  if(args.contains("--replay-out")&&!Report(io::WriteReplay(args["--replay-out"],w.scenario,w.seed,commands)))return 2;
  FlatNavigationService flat;GridNavigationService grid(w.scenario.obstacles);const NavigationService&nav=w.scenario.obstacles.empty()?static_cast<const NavigationService&>(flat):static_cast<const NavigationService&>(grid);Tick ticks=args.contains("--ticks")?std::stoull(args["--ticks"]):100;
  std::filesystem::path out=required("--out");std::filesystem::create_directories(out);std::ofstream events(out/"events.jsonl");if(!events)throw std::runtime_error("cannot write events");
- for(Tick i=0;i<ticks;++i){auto r=Step(w,i==0?std::span<const CommandEnvelope>(commands):std::span<const CommandEnvelope>{}, {},nav);if(!Report(r))return 2;for(auto&e:r.value.events)events<<nlohmann::json(e).dump()<<"\n";}
+ Tick capture=args.contains("--capture-every")?std::stoull(args["--capture-every"]):0;
+ for(Tick i=0;i<ticks;++i){if(capture&&w.tick%capture==0&&!Report(io::SaveSnapshot(out/"frames"/(std::to_string(w.tick)+".json"),Capture(w))))return 2;auto r=Step(w,i==0?std::span<const CommandEnvelope>(commands):std::span<const CommandEnvelope>{}, {},nav);if(!Report(r))return 2;for(auto&e:r.value.events)events<<nlohmann::json(e).dump()<<"\n";}
  auto destination=args.contains("--snapshot-out")?std::filesystem::path(args["--snapshot-out"]):out/"snapshot.json";if(!Report(io::SaveSnapshot(destination,Capture(w))))return 2;
  auto stats=GetStats(w);std::cout<<"tick="<<w.tick<<" living="<<stats.living_units<<" dead="<<stats.dead_units<<" hash="<<StateHash(w)<<" outcome="<<unsigned(w.outcome)<<"\n";return 0;
  }catch(const std::exception&e){std::cerr<<e.what()<<"\n";return 2;}}
