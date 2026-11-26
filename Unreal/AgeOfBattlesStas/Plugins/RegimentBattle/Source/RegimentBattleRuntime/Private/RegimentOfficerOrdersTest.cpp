@@ -55,6 +55,49 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentOfficerOrderPresentationTest, "Regimen
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentManeuverOrderTest, "RegimentBattle.ManeuverOrder",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentPendingOfficerPreviewTest, "RegimentBattle.PendingOfficerPreview",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+
+bool FRegimentPendingOfficerPreviewTest::RunTest(const FString&)
+{
+    auto World = MakeOfficerOrderWorld();
+    using battle::CommandKind;
+    const battle::UnitId First{10};
+    const battle::UnitId Second{20};
+    battle::Command Command;
+    Command.kind = CommandKind::AcquireControl;
+    Command.unit = First;
+    std::vector<battle::CommandEnvelope> Pending{{World.tick, 1, Command}};
+    TestTrue(TEXT("A queued selection is visible before any simulation step"),
+        RegimentOfficerOrders::PendingOfficer(World, Pending) == First && !World.controlled);
+
+    Command.unit = Second;
+    Pending.push_back({World.tick, 2, Command});
+    TestTrue(TEXT("The newer choice replaces the previous portrait"),
+        RegimentOfficerOrders::PendingOfficer(World, Pending) == Second);
+    auto* Candidate = battle::FindUnit(World, Second);
+    if (!TestNotNull(TEXT("The second officer exists"), Candidate))
+        return false;
+    Candidate->alive = false;
+    TestFalse(TEXT("A fallen officer cannot leave a pending portrait"),
+        bool(RegimentOfficerOrders::PendingOfficer(World, Pending)));
+    Candidate->alive = true;
+    Pending.pop_back();
+
+    const battle::FlatNavigationService Navigation;
+    if (!TestTrue(TEXT("The queued possession is applied on resume"), bool(battle::Step(World, Pending, {}, Navigation))))
+        return false;
+    TestTrue(TEXT("The actual officer replaces the preview once acquired"),
+        World.controlled == First && !RegimentOfficerOrders::PendingOfficer(World, Pending));
+    Pending.clear();
+    Command.kind = CommandKind::ReleaseControl;
+    Command.unit = First;
+    Pending.push_back({World.tick, 3, Command});
+    TestFalse(TEXT("Leaving an officer never presents a pending portrait"),
+        bool(RegimentOfficerOrders::PendingOfficer(World, Pending)));
+    return !HasAnyErrors();
+}
+
 bool FRegimentManeuverOrderTest::RunTest(const FString&)
 {
     using namespace RegimentOfficerOrders;

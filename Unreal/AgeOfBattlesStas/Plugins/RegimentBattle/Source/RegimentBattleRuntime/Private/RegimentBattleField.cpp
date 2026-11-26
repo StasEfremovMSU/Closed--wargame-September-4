@@ -2822,12 +2822,20 @@ TConstArrayView<FRegimentFieldCard> ARegimentBattleField::GetRegimentCards() con
 
 bool ARegimentBattleField::IsCardOfficerQueued(uint64 Id) const
 {
-    if (!Session) return false;
-    for (const auto& Entry : Session->PendingCommands)
-        if (Entry.command.kind == battle::CommandKind::AcquireControl)
-            if (const auto* Unit = battle::FindUnit(Session->Simulation, Entry.command.unit))
-                return Unit->regiment.value == Id;
-    return false;
+    if (!Session)
+        return false;
+    const auto Officer = RegimentOfficerOrders::PendingOfficer(Session->Simulation, Session->PendingCommands);
+    const auto* Unit = Officer ? battle::FindUnit(Session->Simulation, Officer) : nullptr;
+    return Unit && Unit->regiment.value == Id;
+}
+
+const FRegimentDecisionHudEntry* ARegimentBattleField::GetPendingOfficerPreview() const
+{
+    if (!Session)
+        return nullptr;
+    const auto Officer = RegimentOfficerOrders::PendingOfficer(Session->Simulation, Session->PendingCommands);
+    return Officer ? Session->DecisionEntries.FindByPredicate([Officer](const auto& Entry)
+        { return Entry.Commander == Officer.value; }) : nullptr;
 }
 
 void ARegimentBattleField::EnterRegimentCardOfficer(uint64 Id)

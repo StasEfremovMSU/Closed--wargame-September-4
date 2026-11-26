@@ -42,9 +42,10 @@ bool FRegimentCommanderProfilesTest::RunTest(const FString& Parameters)
     bool bFoundSwift = false, bFoundSturdy = false, bFoundInspiring = false, bFoundDecisive = false;
     for (const auto& Node : Scenario.command_setup->hierarchy.nodes)
     {
-        const auto Card = Describe(World.value, Node.commander);
+        const auto Card = Describe(World.value, Node.commander, Preset.Era.Id);
         TestFalse(TEXT("Every commander has a name"), Card.Name.IsEmpty());
         TestFalse(TEXT("Every commander has a rank icon"), Card.RoleIcon.IsEmpty());
+        TestNotNull(TEXT("Every selectable commander already has a portrait"), Card.Portrait);
         TestFalse(TEXT("Every commander has visible effects"), Card.Effects.IsEmpty());
         TestFalse(TEXT("Every commander has a displayed tactical rating"), Card.TacticalSkill.IsEmpty());
         const auto Officer = std::ranges::find(Scenario.officers, Node.commander, &battle::OfficerSpec::id);

@@ -197,6 +197,7 @@ public:
     void ToggleSkirmishers(uint64 NodeId);
     void RallyRegiment(uint64 NodeId);
     const FRegimentOfficerHudState& GetOfficerControlState() const { return OfficerHudState; }
+    const FRegimentDecisionHudEntry* GetPendingOfficerPreview() const;
     bool OfficerCommandsOpen() const { return OfficerInput.bCommandsOpen; }
     void ToggleOfficerCommands();
     void ToggleOfficerView();

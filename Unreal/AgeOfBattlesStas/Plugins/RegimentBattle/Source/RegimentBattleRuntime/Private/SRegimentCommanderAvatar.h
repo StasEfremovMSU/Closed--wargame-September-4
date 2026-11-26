@@ -17,5 +17,6 @@ public:
     void Construct(const FArguments& Args);
 
 private:
-    FSlateBrush PortraitBrush;
+    FSlateBrush PortraitBrushes[2];
+    uint8 ActiveBrush = 0;
 };

@@ -399,6 +399,24 @@ FRegimentOrderPresentation DescribeOrder(const battle::World& World, const battl
     return Result;
 }
 
+battle::UnitId PendingOfficer(const battle::World& World, std::span<const battle::CommandEnvelope> Pending)
+{
+    if (World.outcome != battle::BattleOutcome::Running)
+        return {};
+    for (auto It = Pending.rbegin(); It != Pending.rend(); ++It)
+    {
+        const auto& Command = It->command;
+        if (Command.kind == battle::CommandKind::ReleaseControl)
+            return {};
+        if (Command.kind == battle::CommandKind::AcquireControl)
+        {
+            const auto* Candidate = battle::FindUnit(World, Command.unit);
+            return Candidate && Candidate->alive && Candidate->id != World.controlled ? Candidate->id : battle::UnitId{};
+        }
+    }
+    return {};
+}
+
 battle::UnitId FindOfficer(const battle::World& World, uint64 NodeId)
 {
     if (World.command_state)

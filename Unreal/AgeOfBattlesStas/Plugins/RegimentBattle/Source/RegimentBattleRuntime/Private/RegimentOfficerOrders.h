@@ -54,6 +54,7 @@ FText DescribeCourier(const battle::World&, battle::RegimentId, std::span<const 
 FRegimentOrderPresentation DescribeOrder(const battle::World& World, const battle::RegimentState& Regiment,
     std::span<const battle::CommandEnvelope> Pending, bool bPaused, const FPlayerOrderJournal* Journal = nullptr);
 battle::UnitId FindOfficer(const battle::World& World, uint64 NodeId);
+battle::UnitId PendingOfficer(const battle::World&, std::span<const battle::CommandEnvelope>);
 std::vector<battle::RegimentId> HoldRecipients(const battle::World&, battle::RegimentId Selected, bool bWing);
 std::vector<battle::RegimentId> Regiments(const battle::World& World, battle::UnitId Officer);
 FText QueueOrder(const battle::World& World, const battle::NavigationService& Navigation,

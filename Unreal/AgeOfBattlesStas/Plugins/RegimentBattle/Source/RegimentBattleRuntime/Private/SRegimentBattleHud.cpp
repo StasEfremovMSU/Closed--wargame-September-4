@@ -448,6 +448,12 @@ const FRegimentOfficerHudState& OfficerState(TWeakObjectPtr<ARegimentBattleField
     return Battle ? Battle->GetOfficerControlState() : Empty;
 }
 
+const FRegimentDecisionHudEntry* PendingOfficer(TWeakObjectPtr<ARegimentBattleField> Field)
+{
+    const auto* Battle = Field.Get();
+    return Battle ? Battle->GetPendingOfficerPreview() : nullptr;
+}
+
 TSharedRef<SWidget> MakePossessionEntry(TWeakObjectPtr<ARegimentBattleField> Field)
 {
     return SNew(SVerticalBox)
@@ -480,7 +486,8 @@ TSharedRef<SWidget> MakePossessionEntry(TWeakObjectPtr<ARegimentBattleField> Fie
             .Padding(FMargin(12, 8))
             .Visibility_Lambda([Field]
             {
-                return OfficerState(Field).Notice.IsEmpty() ? EVisibility::Collapsed : EVisibility::HitTestInvisible;
+                return OfficerState(Field).Notice.IsEmpty() || PendingOfficer(Field)
+                    ? EVisibility::Collapsed : EVisibility::HitTestInvisible;
             })
             [
                 SNew(STextBlock)
@@ -953,12 +960,65 @@ FText PersonalControlHints(bool bFirstPerson)
         Walk, OfficerKeyHint(Action::Run), OfficerKeyHint(Action::Jump));
 }
 
+TSharedRef<SWidget> MakePendingOfficerHud(TWeakObjectPtr<ARegimentBattleField> Field)
+{
+    return SNew(SBox).WidthOverride(308.f)
+        .Visibility_Lambda([Field]
+        {
+            return PendingOfficer(Field) ? EVisibility::HitTestInvisible : EVisibility::Collapsed;
+        })
+        [
+            SNew(SBorder).BorderImage(&OfficerPanel).Padding(FMargin(12, 9))
+            [
+                SNew(SHorizontalBox)
+                + SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0, 0, 8, 0)
+                [
+                    SNew(SRegimentCommanderAvatar).Size(46.f)
+                    .Portrait_Lambda([Field]
+                    {
+                        const auto* Entry = PendingOfficer(Field);
+                        return Entry ? Entry->Portrait : TWeakObjectPtr<UTexture2D>{};
+                    })
+                    .Rank_Lambda([Field]
+                    {
+                        const auto* Entry = PendingOfficer(Field);
+                        return Entry ? FText::FromString(Entry->RankIcon) : FText::GetEmpty();
+                    })
+                ]
+                + SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)
+                [
+                    SNew(SVerticalBox)
+                    + SVerticalBox::Slot().AutoHeight()
+                    [
+                        SNew(STextBlock).Text_Lambda([Field]
+                        {
+                            const auto* Entry = PendingOfficer(Field);
+                            return Entry ? FText::Format(LOCTEXT("PendingOfficerIdentity", "{0} · {1}"),
+                                Entry->Duty, Entry->CommanderName) : FText::GetEmpty();
+                        })
+                        .ColorAndOpacity(Blue).Font(FCoreStyle::GetDefaultFontStyle("Bold", 15)).AutoWrapText(true)
+                    ]
+                    + SVerticalBox::Slot().AutoHeight().Padding(0, 3, 0, 0)
+                    [
+                        SNew(STextBlock).Text_Lambda([Field]
+                        {
+                            return Field.IsValid() && Field->IsBattlePaused()
+                                ? LOCTEXT("PendingPaused", "Управление после продолжения боя")
+                                : LOCTEXT("PendingAcquisition", "Передача управления…");
+                        })
+                        .ColorAndOpacity(Brass).Font(FCoreStyle::GetDefaultFontStyle("Regular", 13)).AutoWrapText(true)
+                    ]
+                ]
+            ]
+        ];
+}
+
 TSharedRef<SWidget> MakeCompactOfficerHud(TWeakObjectPtr<ARegimentBattleField> Field)
 {
     return SNew(SBox).WidthOverride(308.f)
         .Visibility_Lambda([Field]
         {
-            return Field.IsValid() && OfficerState(Field).bActive
+            return Field.IsValid() && OfficerState(Field).bActive && !PendingOfficer(Field)
                 ? EVisibility::HitTestInvisible : EVisibility::Collapsed;
         })
         [
@@ -1747,7 +1807,7 @@ void SRegimentBattleHud::Construct(const FArguments& InArgs)
             SNew(SHorizontalBox)
             .Visibility_Lambda([Field]
             {
-                return Field.IsValid() && !OfficerState(Field).bActive
+                return Field.IsValid() && !OfficerState(Field).bActive && !PendingOfficer(Field)
                     ? EVisibility::SelfHitTestInvisible : EVisibility::Collapsed;
             })
             + SHorizontalBox::Slot().FillWidth(1.f).HAlign(HAlign_Left)
@@ -1772,7 +1832,9 @@ void SRegimentBattleHud::Construct(const FArguments& InArgs)
             .Visibility(EVisibility::SelfHitTestInvisible)
             + SHorizontalBox::Slot().FillWidth(1.f).HAlign(HAlign_Left).VAlign(VAlign_Bottom).Padding(0, 0, 8, 0)
             [
-                MakeCompactOfficerHud(Field)
+                SNew(SOverlay)
+                + SOverlay::Slot()[MakeCompactOfficerHud(Field)]
+                + SOverlay::Slot()[MakePendingOfficerHud(Field)]
             ]
             + SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Bottom)
             [

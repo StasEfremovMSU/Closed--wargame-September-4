@@ -39,9 +39,13 @@ void SRegimentCommanderAvatar::Construct(const FArguments& Args)
                     })
                     .Image_Lambda([this, Portrait]
                     {
-                        if (auto* Texture = Portrait.Get().Get(); PortraitBrush.GetResourceObject() != Texture)
-                            PortraitBrush.SetResourceObject(Texture);
-                        return &PortraitBrush;
+                        if (auto* Texture = Portrait.Get().Get(); PortraitBrushes[ActiveBrush].GetResourceObject() != Texture)
+                        {
+                            // Return a different brush when the texture changes so Slate invalidates the image.
+                            ActiveBrush = 1 - ActiveBrush;
+                            PortraitBrushes[ActiveBrush].SetResourceObject(Texture);
+                        }
+                        return &PortraitBrushes[ActiveBrush];
                     })
                 ]
             ]

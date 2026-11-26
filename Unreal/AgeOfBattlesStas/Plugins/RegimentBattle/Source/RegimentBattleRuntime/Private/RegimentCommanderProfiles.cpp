@@ -2,6 +2,7 @@
 
 #include "Engine/Texture2D.h"
 #include "Internationalization/Internationalization.h"
+#include "Misc/Crc.h"
 #include "RegimentMissionPreset.h"
 #include "UObject/StrongObjectPtr.h"
 
@@ -115,7 +116,7 @@ FString SeededName(const FNamePool* Pool, uint64 Seed)
     return Family.IsEmpty() ? Given : Given + TEXT(" ") + Family;
 }
 
-enum class EHeadwear : uint8 { Hair, Diadem, Helmet, Turban, Crown, Bicorne, Kabuto };
+enum class EHeadwear : uint8 { Hair, Diadem, Helmet, Turban, Crown, Bicorne, Kabuto, Shako, Tricorne };
 struct FHistoricalCommander
 {
     const TCHAR* Name;
@@ -306,7 +307,20 @@ FColor Rgb(uint32 Hex)
     return FColor(uint8(Hex >> 16), uint8(Hex >> 8), uint8(Hex));
 }
 
-const FHistoricalCommander* ArmyPortrait(FStringView EraId, bool bOpposingTeam)
+int32 PortraitEra(FStringView EraId)
+{
+    if (EraId == TEXT("ancient"))
+        return 0;
+    if (EraId == TEXT("sengoku"))
+        return 2;
+    if (EraId == TEXT("napoleonic"))
+        return 3;
+    if (EraId == TEXT("great_northern_war"))
+        return 4;
+    return 1;
+}
+
+const FHistoricalCommander& ArmyPortrait(int32 Era, bool bOpposingTeam)
 {
     // A bounded set of generic portraits, in pairs for the two armies.
     static const FHistoricalCommander Armies[][2] = {
@@ -319,27 +333,18 @@ const FHistoricalCommander* ArmyPortrait(FStringView EraId, bool bOpposingTeam)
         {{nullptr, EHeadwear::Bicorne, 0x34485F, 0x324963, 0x594236, 0xD8AC85, false},
          {nullptr, EHeadwear::Bicorne, 0x584941, 0x844241, 0x706457, 0xE2B99A, false}},
     };
-    const int32 Style = EraId == TEXT("sengoku") ? 2
-        : EraId == TEXT("great_northern_war") || EraId == TEXT("napoleonic") ? 3
-        : EraId == TEXT("ancient") ? 0 : 1;
-    return &Armies[Style][bOpposingTeam ? 1 : 0];
+    return Armies[FMath::Min(Era, 3)][bOpposingTeam ? 1 : 0];
 }
 
-UTexture2D* PortraitTexture(const FHistoricalCommander* Commander)
+UTexture2D* CreatePortrait(const FHistoricalCommander& Commander)
 {
-    if (!Commander)
-        return nullptr;
-    static TMap<const FHistoricalCommander*, TStrongObjectPtr<UTexture2D>> Cache;
-    if (const auto* Cached = Cache.Find(Commander))
-        return Cached->Get();
-
     constexpr int32 Size = 64;
     TArray<FColor> Pixels;
     Pixels.SetNumUninitialized(Size * Size);
     const FColor Ink = Rgb(0x252128), Gold = Rgb(0xD0AA60), LightGold = Rgb(0xEDCD8D);
-    const FColor Skin = Rgb(Commander->Skin), Hair = Rgb(Commander->Hair), Uniform = Rgb(Commander->Uniform);
+    const FColor Skin = Rgb(Commander.Skin), Hair = Rgb(Commander.Hair), Uniform = Rgb(Commander.Uniform);
     const FColor SkinShadow(Skin.R * 3 / 4, Skin.G * 3 / 4, Skin.B * 3 / 4);
-    const FColor Ground = Rgb(Commander->Background);
+    const FColor Ground = Rgb(Commander.Background);
     const auto Oval = [](float X, float Y, float Cx, float Cy, float Rx, float Ry)
     {
         const float Dx = (X - Cx) / Rx;
@@ -365,7 +370,7 @@ UTexture2D* PortraitTexture(const FHistoricalCommander* Commander)
                 Color = Hair;
             if (Oval(X, Y, 32, 33, 10, 13) || Oval(X, Y, 22, 33, 2, 4) || Oval(X, Y, 42, 33, 2, 4))
                 Color = X <= 34 ? Skin : SkinShadow;
-            if (Commander->bBeard && Y >= 38 && Oval(X, Y, 32, 39, 10, 8))
+            if (Commander.bBeard && Y >= 38 && Oval(X, Y, 32, 39, 10, 8))
                 Color = Hair;
             if ((Y == 30 || Y == 32) && ((X >= 25 && X <= 28) || (X >= 35 && X <= 38)))
                 Color = Ink;
@@ -373,7 +378,7 @@ UTexture2D* PortraitTexture(const FHistoricalCommander* Commander)
                 Color = SkinShadow;
             if (Y == 40 && X >= 30 && X <= 34)
                 Color = Rgb(0x754F42);
-            switch (Commander->Hat)
+            switch (Commander.Hat)
             {
             case EHeadwear::Hair:
                 if (Oval(X, Y, 32, 20, 12, 6) || (X < 27 && Oval(X, Y, 24, 24, 3, 7)))
@@ -410,6 +415,20 @@ UTexture2D* PortraitTexture(const FHistoricalCommander* Commander)
                 if (Oval(X, Y, 43, 18, 3, 3))
                     Color = Gold;
                 break;
+            case EHeadwear::Shako:
+                if (Y >= 10 && Y <= 26 && FMath::Abs(X - 32) <= 11 + (26 - Y) / 6)
+                    Color = Y == 11 || Y == 24 ? Gold : Ink;
+                if (Oval(X, Y, 32, 20, 3, 3))
+                    Color = LightGold;
+                if (Oval(X, Y, 27, 10, 2, 5))
+                    Color = Uniform;
+                break;
+            case EHeadwear::Tricorne:
+                if (Y >= 12 + FMath::Abs(X - 32) / 3 && Y <= 26 && FMath::Abs(X - 32) <= 19)
+                    Color = Y == 25 ? Gold : Ink;
+                if (Oval(X, Y, 39, 22, 3, 3))
+                    Color = LightGold;
+                break;
             case EHeadwear::Kabuto:
                 if (Y <= 25 && Oval(X, Y, 32, 22, 13, 12))
                     Color = Y < 20 ? Ink : Uniform;
@@ -432,9 +451,48 @@ UTexture2D* PortraitTexture(const FHistoricalCommander* Commander)
         Texture->Filter = TF_Nearest;
         Texture->NeverStream = true;
         Texture->UpdateResource();
-        Cache.Add(Commander, TStrongObjectPtr<UTexture2D>(Texture));
     }
     return Texture;
+}
+
+UTexture2D* FixedPortrait(const FHistoricalCommander& Commander)
+{
+    static TMap<const FHistoricalCommander*, TStrongObjectPtr<UTexture2D>> Cache;
+    auto& Texture = Cache.FindOrAdd(&Commander);
+    if (!Texture)
+        Texture.Reset(CreatePortrait(Commander));
+    return Texture.Get();
+}
+
+UTexture2D* OfficerPortrait(FStringView EraId, bool bOpposingTeam, Level Rank, uint64 Seed)
+{
+    const int32 Era = PortraitEra(EraId);
+    const auto& Army = ArmyPortrait(Era, bOpposingTeam);
+    if (Rank == Level::Army)
+        return FixedPortrait(Army);
+
+    constexpr uint32 Skin[] = {0xE2B89A, 0xD5A27E, 0xB77F5D, 0xA86D4E, 0x916249, 0x774D39};
+    constexpr uint32 Hair[] = {0x342827, 0x5C4231, 0x77604A, 0x3C3734};
+    constexpr int32 VariantCount = 12;
+    // Bound the number of small textures across all generated battles.
+    static TStrongObjectPtr<UTexture2D> Cache[5][2][2][VariantCount];
+    const int32 Variant = int32(Seed % VariantCount);
+    auto& Texture = Cache[Era][bOpposingTeam ? 1 : 0][Rank == Level::Regiment ? 0 : 1][Variant];
+    if (!Texture)
+    {
+        auto Outfit = Army;
+        Outfit.Skin = Skin[Variant % UE_ARRAY_COUNT(Skin)];
+        Outfit.Hair = Hair[(Variant / 2) % UE_ARRAY_COUNT(Hair)];
+        Outfit.bBeard = Era < 3 && Variant % 3 != 0;
+        if (Era == 3 && Rank == Level::Regiment)
+            Outfit.Hat = EHeadwear::Shako;
+        else if (Era == 4)
+            Outfit.Hat = EHeadwear::Tricorne;
+        else if (Era == 0)
+            Outfit.Hat = Variant % 3 == 1 ? EHeadwear::Hair : EHeadwear::Helmet;
+        Texture.Reset(CreatePortrait(Outfit));
+    }
+    return Texture.Get();
 }
 }
 
@@ -518,10 +576,11 @@ FCommanderCard Describe(const battle::World& World, battle::OfficerId OfficerId,
         Profile = battle::command::FindProfile(*Hierarchy, OfficerId);
     }
     Card.RoleIcon = Rank == Level::Army ? TEXT("★") : Rank == Level::Regiment ? TEXT("◆") : TEXT("▲");
-    const auto* Appearance = ByName(Card.Name);
-    if (!Appearance && Rank == Level::Army)
-        Appearance = ArmyPortrait(EraId, Unit->independent_team != 0);
-    Card.Portrait = PortraitTexture(Appearance);
+    if (const auto* Appearance = ByName(Card.Name))
+        Card.Portrait = FixedPortrait(*Appearance);
+    else
+        Card.Portrait = OfficerPortrait(EraId, battle::UnitTeam(World, *Unit) != 0, Rank,
+            Mix(OfficerId.value ^ uint64(FCrc::StrCrc32(*Card.Name))));
     if (!Profile)
         return Card;
     const FNumberFormattingOptions OneDecimal = FNumberFormattingOptions().SetMaximumFractionalDigits(1);
