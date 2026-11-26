@@ -163,13 +163,123 @@ bool FRegimentHistoricalFigureTest::RunTest(const FString&)
         NumidianProxy.Count(F::Horse) == 1 && NumidianProxy.Bounds.Max.Z > 200.0);
     battle::UnitSpec LegacyRoman;
     TestTrue(TEXT("A legacy Roman infantry unit receives a legionary figure"),
-        RegimentHistoricalStyle(S::None, TEXT("rome"), LegacyRoman, true, false) == S::Legionary);
+        RegimentHistoricalStyle(S::None, TEXT("rome"), LegacyRoman, TEXT("ancient")) == S::Legionary);
     LegacyRoman.archer = true;
     LegacyRoman.ranged_weapon = W::Sling;
     TestTrue(TEXT("An actual slinger within a Roman regiment carries the loose-order figure"),
-        RegimentHistoricalStyle(S::Legionary, TEXT("rome"), LegacyRoman, true, false) == S::LooseSling);
+        RegimentHistoricalStyle(S::Legionary, TEXT("rome"), LegacyRoman, TEXT("ancient")) == S::LooseSling);
     TestTrue(TEXT("The stored French Young Guard profile resolves to the Young Guard figure"),
         RegimentHistoricalProfile(TEXT("young_guard")) == S::YoungGuard);
+    return !HasAnyErrors();
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentFigureRefreshTest, "RegimentBattle.Presentation.FigureRefresh",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+
+bool FRegimentFigureRefreshTest::RunTest(const FString&)
+{
+    using S = ERegimentHistoricalFigure;
+    battle::UnitSpec Soldier;
+    for (const auto* Faction : {TEXT("egypt"), TEXT("porus"), TEXT("carthage"), TEXT("gauls"),
+            TEXT("scythians"), TEXT("parthians"), TEXT("sarmatians"), TEXT("diadochi")})
+    {
+        const auto Style = RegimentHistoricalStyle(S::None, Faction, Soldier, TEXT("ancient"));
+        TestTrue(FString::Printf(TEXT("%s infantry keep a dressed silhouette in both LODs"), Faction),
+            Style != S::None && BuildRegimentHistoricalDress(Style).Bounds.IsValid &&
+            BuildRegimentHistoricalProxy(Style).Bounds.IsValid);
+    }
+    TestTrue(TEXT("The length of an auxiliary spear differs from a hoplite spear"),
+        FMath::Abs(RegimentHistoricalSpearLength(S::Auxiliary) - RegimentHistoricalSpearLength(S::Hoplite)) >= 25.0);
+
+    TMap<S, bool> CheckedFigures;
+    using T = battle::UnitTroop;
+    using R = ERegimentEraRole;
+    const auto CheckOutfit = [&](const FRegimentEraDefinition& Era, const FRegimentEraFaction& Faction,
+        R Role, const FRegimentEraTroop& Troop)
+    {
+        Soldier.troop = Role == R::Mounted ? T::Mounted : Role == R::Spearmen ? T::Spearman : T::Infantry;
+        Soldier.archer = Role == R::Archers;
+        Soldier.ranged_weapon = Troop.RangedWeapon;
+        Soldier.cavalry = Troop.Cavalry;
+        const auto Style = RegimentHistoricalStyle(S::None, Faction.Id, Soldier, Era.Id);
+        if (!TestTrue(FString::Printf(TEXT("%s/%s has a historical figure"), *Era.Id, *Troop.Name), Style != S::None))
+            return;
+        if (!CheckedFigures.Contains(Style))
+        {
+            const auto Near = BuildRegimentHistoricalDress(Style);
+            const auto Far = BuildRegimentHistoricalProxy(Style);
+            TestTrue(TEXT("Each selected outfit has bounded geometry and a simplified proxy"),
+                Near.Bounds.IsValid && Far.Bounds.IsValid && Far.bSimplified && Near.Parts.Num() > 3);
+            CheckedFigures.Add(Style, Far.Count(ERegimentAncientFeature::Horse) == 1);
+        }
+        TestEqual(TEXT("Exactly one horse belongs to each mounted outfit"), CheckedFigures.FindChecked(Style),
+            Role == R::Mounted);
+    };
+    for (const auto& Era : RegimentEraCatalog::All())
+    {
+        if (Era.Id == TEXT("sengoku") || Era.Id == TEXT("fantasy"))
+            continue;
+        for (const auto& Faction : Era.Factions)
+        {
+            for (const auto Role : {R::Swords, R::Spearmen, R::Archers, R::Mounted})
+                CheckOutfit(Era, Faction, Role, Faction.Troops[int32(Role)]);
+            for (const auto& Variant : Faction.MountVariants)
+                if (Variant)
+                    CheckOutfit(Era, Faction, R::Mounted, *Variant);
+        }
+    }
+
+    Soldier.troop = T::Mounted;
+    Soldier.cavalry = battle::CavalryClass::Heavy;
+    TestEqual(TEXT("Polish heavy cavalry wear cuirassier equipment"),
+        RegimentHistoricalStyle(S::None, TEXT("poland"), Soldier, TEXT("napoleonic")), S::NapoleonicCuirassier);
+    Soldier.cavalry = battle::CavalryClass::Light;
+    TestEqual(TEXT("Polish light cavalry keep the lancer outfit"),
+        RegimentHistoricalStyle(S::None, TEXT("poland"), Soldier, TEXT("napoleonic")), S::NapoleonicLancer);
+
+    using H = ERegimentAncientShield;
+    TestTrue(TEXT("Anglo-Saxon and Rus infantry keep their configured shield shapes"),
+        RegimentHistoricalShield(S::WesternMail, ERegimentEraShield::Round) == H::RoundMedieval &&
+        RegimentHistoricalShield(S::EasternMail, ERegimentEraShield::Kite) == H::Kite);
+    TSet<H> GreekShields;
+    TSet<double> SpearLengths;
+    const double Dory = RegimentHistoricalSpearLength(S::Hoplite);
+    const double Sarissa = RegimentHistoricalSpearLength(S::Sarissa);
+    for (uint64 Id = 1; Id <= 128; ++Id)
+    {
+        const double Length = RegimentAncientSpearLength(Dory, Id);
+        SpearLengths.Add(Length);
+        TestTrue(TEXT("All shaft variations stay within their troop silhouette"),
+            Length >= Dory * .92 - .01 && Length <= Dory * 1.08 + .01 &&
+            RegimentAncientSpearLength(Sarissa, Id) >= Sarissa * .96 - .01);
+        TestEqual(TEXT("The same soldier keeps the same spear"), RegimentAncientSpearLength(Dory, Id), Length);
+        GreekShields.Add(RegimentPaintedShieldStyle(H::Aspis, TEXT("greece"), Id));
+        const auto Spartan = RegimentPaintedShieldStyle(H::Aspis, TEXT("sparta"), Id);
+        TestTrue(TEXT("Spartan shields mostly share a lambda and keep plain backup faces"),
+            Spartan == H::Aspis || Spartan == H::AspisLambda);
+        TestEqual(TEXT("Other shield shapes keep their original identity"),
+            RegimentPaintedShieldStyle(H::Scutum, TEXT("rome"), Id), H::Scutum);
+    }
+    TestEqual(TEXT("Four aspis paint patterns are available"), GreekShields.Num(), 4);
+    TestEqual(TEXT("Five stable shaft lengths are available"), SpearLengths.Num(), 5);
+    auto* Material = LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
+    int32 HorseSlot = INDEX_NONE;
+    int32 CoatOfArmsSlot = INDEX_NONE;
+    const auto* Cavalry = MakeRegimentAncientMesh(*GetTransientPackage(),
+        BuildRegimentHistoricalProxy(S::NapoleonicCuirassier), Material, CoatOfArmsSlot, &HorseSlot);
+    TestTrue(TEXT("The distant horse coat can be tinted independently of heraldry"),
+        Cavalry && Cavalry->GetStaticMaterials().IsValidIndex(HorseSlot) && HorseSlot != CoatOfArmsSlot);
+    for (const auto Style : GreekShields)
+    {
+        const auto Shield = BuildRegimentAncientShield(Style);
+        TestTrue(TEXT("Each pattern keeps a round base and the same equipment size"),
+            FMath::IsNearlyEqual(Shield.Bounds.GetSize().Y, Shield.Bounds.GetSize().Z) &&
+            Shield.Bounds.GetSize().Y >= 65.0);
+        int32 PaintSlot = INDEX_NONE;
+        const auto* Mesh = MakeRegimentAncientMesh(*GetTransientPackage(), Shield, Material, PaintSlot);
+        TestTrue(TEXT("Each painted shield bakes with a faction color slot"),
+            Mesh && Mesh->GetStaticMaterials().IsValidIndex(PaintSlot));
+    }
     return !HasAnyErrors();
 }
 

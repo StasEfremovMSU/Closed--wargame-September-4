@@ -686,7 +686,7 @@ void AddTrainingTarget(FInstanceBatch& Batch, const FTransform& Transform)
 
 void AddProxyFigure(FInstanceBatch& Batch, const FTransform& Transform, const battle::UnitState& Unit,
     ECommandFigure Command, ERegimentHistoricalFigure Dress, bool bBakedBody, bool bHandProp, bool bMusket,
-    double PikeLength, double FigureScale,
+    double PikeLength, double FigureScale, bool bRefreshedPolearm,
     const FRegimentEraTroop* MountedProfile, const FLinearColor& TeamColor,
     const FRegimentFigureAppearance& Appearance)
 {
@@ -741,22 +741,26 @@ void AddProxyFigure(FInstanceBatch& Batch, const FTransform& Transform, const ba
     }
     else if (Command == ECommandFigure::None && RegimentShowsPolearm(Unit, bMusket, MountedProfile))
     {
-        if (bMounted)
+        if (!bRefreshedPolearm)
         {
-            const double Length = bBakedBody ? PikeLength : 214.0;
-            Part({28, 33, 106 + Height}, {9, 9, Length}, Timber, Wood, 25.0);
+            if (bMounted)
+            {
+                const double Length = bBakedBody ? PikeLength : 214.0;
+                Part({28, 33, 106 + Height}, {9, 9, Length}, Timber, Wood, 25.0);
+            }
+            else
+                Part({20, 32, 123 + (PikeLength - 242) * .35}, {12, 12, PikeLength - 15}, Timber, Wood, 15.0);
+            return;
         }
-        else if (Dress == ERegimentHistoricalFigure::Sarissa)
-        {
-            const FVector Axis = FRotator(13.0, 0, 0).Vector();
-            const FVector Center = FVector(22, 32, 94) + Axis * (PikeLength * .23);
-            Part(Center, {PikeLength, 8, 8}, Timber, Wood, 13.0);
-            Part(Center + Axis * (PikeLength * .5), {22, 10, 10}, Steel, Metal, 13.0);
-        }
-        else
-            Part({20, 32, 123 + (PikeLength - 242) * .35}, {12, 12, PikeLength - 15}, Timber, Wood, 15.0);
+        const bool bLeveled = bMounted || PikeLength >= 370.0;
+        const double Pitch = bMounted ? 25.0 : bLeveled ? 13.0 : 75.0;
+        const FVector Axis = FRotator(Pitch, 0, 0).Vector();
+        const FVector Grip(22, 32, 94.0 + Height);
+        Part(Grip + Axis * (PikeLength * .24), {PikeLength, 7, 7}, Timber, Wood, Pitch);
+        Part(Grip + Axis * (PikeLength * .74 + 9), {19, 11, 11}, Steel, Metal, Pitch);
     }
-    else if (Unit.archer && !(Unit.dagger_drawn && Dress >= ERegimentHistoricalFigure::SengokuArcher))
+    else if (Unit.archer && !(Unit.dagger_drawn &&
+        (Dress == ERegimentHistoricalFigure::SengokuArcher || Dress == ERegimentHistoricalFigure::SengokuArquebusier)))
         Part({25, 28, 94 + Height}, {14, 19, 83}, Timber, Wood, -29.0);
     else if (!bMounted || Command == ECommandFigure::None)
         Part({31, 26, 68 + Height}, {61, 14, 17}, Steel, Metal, 29.0);
@@ -778,21 +782,27 @@ struct FAncientMeshBatch
 {
     TStrongObjectPtr<UStaticMesh> Mesh;
     int32 PaintSlot = INDEX_NONE;
+    int32 CoatSlot = INDEX_NONE;
     FInstanceBatch Batches[2];
     TWeakObjectPtr<UInstancedStaticMeshComponent> Components[2];
 
-    void Create(AActor& Owner, const FRegimentAncientFigure& Figure, UMaterialInterface* BaseMaterial)
+    void Create(AActor& Owner, const FRegimentAncientFigure& Figure, UMaterialInterface* BaseMaterial,
+        bool bTintHorse = false)
     {
-        Mesh.Reset(MakeRegimentAncientMesh(Owner, Figure, BaseMaterial, PaintSlot));
+        Mesh.Reset(MakeRegimentAncientMesh(Owner, Figure, BaseMaterial, PaintSlot, bTintHorse ? &CoatSlot : nullptr));
     }
 
     void Reset()
     {
         for (auto& Batch : Batches)
+        {
             Batch.Transforms.Reset();
+            Batch.PartData.Reset();
+        }
     }
 
-    void Present(AActor& Owner, USceneComponent& Parent, UMaterialInterface* Blue, UMaterialInterface* Orange)
+    void Present(AActor& Owner, USceneComponent& Parent, UMaterialInterface* Blue, UMaterialInterface* Orange,
+        UMaterialInterface* CoatMaterial = nullptr)
     {
         if (!Mesh)
             return;
@@ -806,6 +816,11 @@ struct FAncientMeshBatch
                 Component->SetCastShadow(false);
                 if (auto* Paint = Side == 0 ? Blue : Orange; PaintSlot != INDEX_NONE && Paint)
                     Component->SetMaterial(PaintSlot, Paint);
+                if (CoatSlot != INDEX_NONE && CoatMaterial)
+                {
+                    Component->SetNumCustomDataFloats(RegimentFigurePartDataCount);
+                    Component->SetMaterial(CoatSlot, CoatMaterial);
+                }
                 Component->RegisterComponent();
                 Component->SetComponentTickEnabled(false);
                 Components[Side] = Component;
@@ -1094,14 +1109,16 @@ struct FRegimentBattleSession
         return OfficerUnits.FindRef(Unit.value);
     }
 
-    TOptional<ERegimentAncientShield> ShieldStyle(int32 Side, ERegimentHistoricalFigure Dress, bool bMounted) const
+    TOptional<ERegimentAncientShield> ShieldStyle(int32 Side, ERegimentHistoricalFigure Dress,
+        bool bMounted, uint64 Id) const
     {
-        if (Dress != ERegimentHistoricalFigure::None)
-            return RegimentHistoricalShield(Dress);
         const auto* Faction = Factions[Side];
-        if (bAncient && Faction && !bMounted)
-            return RegimentAncientShieldStyle(Faction->Id);
-        return {};
+        auto Style = Faction ? RegimentHistoricalShield(Dress, Faction->Shield) : RegimentHistoricalShield(Dress);
+        if (!Style && bAncient && Faction && !bMounted && Dress == ERegimentHistoricalFigure::None)
+            Style = RegimentAncientShieldStyle(Faction->Id);
+        if (Style && bAncient && Faction)
+            return RegimentPaintedShieldStyle(*Style, Faction->Id, Id);
+        return Style;
     }
 
     double PikeLength(int32 Side, bool bMounted, ERegimentHistoricalFigure Dress) const
@@ -2039,12 +2056,14 @@ bool ARegimentBattleField::StartBattle()
     }
     auto* BaseMaterial = TimberMaterial ? TimberMaterial->GetMaterial() : nullptr;
     ERegimentHistoricalFigure HistoricalProfiles[MissionRosterCapacity] = {};
+    FStringView EraId;
     bool bNapoleonic = false;
     if (bCampaign)
     {
         const auto& Selection = Mission->GetPreset().Era;
         if (const auto* Era = RegimentEraCatalog::Find(Selection.Id))
         {
+            EraId = Era->Id;
             Session->bAncient = Era->Id == TEXT("ancient");
             bNapoleonic = Era->Id == TEXT("napoleonic");
             Session->Factions[0] = RegimentEraCatalog::FindFaction(*Era, Selection.BlueFaction);
@@ -2105,12 +2124,13 @@ bool ARegimentBattleField::StartBattle()
                 ? HistoricalProfiles[Unit.regiment.value - 1] : ERegimentHistoricalFigure::None;
             const bool bSengoku = Faction->Visual == ERegimentEraVisual::Sengoku;
             Dress = bSengoku ? RegimentSengokuStyle(Unit)
-                : RegimentHistoricalStyle(Profile, Faction->Id, Unit, Session->bAncient, bNapoleonic);
+                : RegimentHistoricalStyle(Profile, Faction->Id, Unit, EraId);
             const bool bMounted = Unit.troop == battle::UnitTroop::Mounted;
             if (Dress != ERegimentHistoricalFigure::None && !Session->HistoricalDress.Contains(Dress))
             {
                 Session->HistoricalDress.Add(Dress).Create(*this, BuildRegimentHistoricalDress(Dress), BaseMaterial);
-                Session->HistoricalProxies.Add(Dress).Create(*this, BuildRegimentHistoricalProxy(Dress), BaseMaterial);
+                Session->HistoricalProxies.Add(Dress).Create(*this, BuildRegimentHistoricalProxy(Dress), BaseMaterial,
+                    bMounted && Dress >= ERegimentHistoricalFigure::Egyptian);
                 if (bMounted)
                     Session->HistoricalTack.Add(Dress).Create(*this, BuildRegimentHistoricalTack(Dress), BaseMaterial);
                 if (bSengoku)
@@ -2122,7 +2142,7 @@ bool ARegimentBattleField::StartBattle()
             }
             if (!Unit.archer)
             {
-                const auto Shield = Session->ShieldStyle(Side, Dress, bMounted);
+                const auto Shield = Session->ShieldStyle(Side, Dress, bMounted, Unit.id.value);
                 if (Shield && !Session->AncientShields.Contains(*Shield))
                     Session->AncientShields.Add(*Shield).Create(*this, BuildRegimentAncientShield(*Shield), BaseMaterial);
             }
@@ -4413,24 +4433,34 @@ bool ARegimentBattleField::PresentFrame()
                 Tack->Batches[Side].Transforms.Emplace(Facing, Ground, FVector(EraScale));
         };
         const bool bMusket = CommandFigure == ECommandFigure::None && RegimentShowsBayonetMusket(Unit, EraFaction);
-        const auto ShieldStyle = Session->ShieldStyle(Side, Dress, bMounted);
-        const bool bUsesShield = (!bMounted || ShieldStyle.IsSet()) && !Unit.archer && !bMusket &&
+        const auto ShieldStyle = Session->ShieldStyle(Side, Dress, bMounted, Unit.id.value);
+        const bool bFallbackShield = !bMounted &&
+            (Dress == ERegimentHistoricalFigure::None || Visual == ERegimentEraVisual::Sengoku);
+        const bool bUsesShield = (ShieldStyle.IsSet() || bFallbackShield) && !Unit.archer && !bMusket &&
             CommandFigure == ECommandFigure::None;
         auto* PaintedShield = bUsesShield && ShieldStyle ? Session->AncientShields.Find(*ShieldStyle) : nullptr;
         const FVector ShieldAt = bMounted ? FVector(17, -30, 106 + RegimentHistoricalRiderHeight) : FVector(26, -24, 104);
-        const double PikeLength = Dress == ERegimentHistoricalFigure::SengokuAshigaru
+        const double BasePikeLength = Dress == ERegimentHistoricalFigure::SengokuAshigaru
             ? FMath::Clamp(Unit.weapon.range * 100.0, 245.0, 320.0)
             : Session->PikeLength(Side, bMounted, Dress);
+        const double PikeLength = Session->bAncient ? RegimentAncientSpearLength(BasePikeLength, Unit.id.value)
+            : BasePikeLength;
         const auto AddProxy = [&]
         {
             auto* HistoricalProxy = Session->HistoricalProxies.Find(Dress);
             const bool bBakedBody = HistoricalProxy && HistoricalProxy->Mesh;
             if (bBakedBody)
-                HistoricalProxy->Batches[Side].Transforms.Emplace(Rotation, Location, FVector(EraScale));
+            {
+                auto& Batch = HistoricalProxy->Batches[Side];
+                Batch.Transforms.Emplace(Rotation, Location, FVector(EraScale));
+                if (HistoricalProxy->CoatSlot != INDEX_NONE && FigurePartMaterial.IsValid())
+                    Batch.AddPartData(View.Appearance.Coat.Body, ERegimentFigureSurface::Leather);
+            }
             const bool bShowHandProp = bHandProp && (!bPilum || Unit.ammunition_remaining > 0);
             const bool bShowSengokuWeapon = bSengokuWeapon && !Unit.dagger_drawn;
             AddProxyFigure(Session->ProxyBatches[Side], Transform, Unit, CommandFigure, Dress,
-                bBakedBody, bShowHandProp || bShowSengokuWeapon, bMusket, PikeLength, EraScale, MountedProfile,
+                bBakedBody, bShowHandProp || bShowSengokuWeapon, bMusket, PikeLength, EraScale,
+                Session->bAncient || Dress >= ERegimentHistoricalFigure::Egyptian, MountedProfile,
                 ProxyColors[Side], View.Appearance);
             AddHeadgear(Rotation, ((bMounted ? 105.0 : 0.0) + 156.0 * ProxyFigureStature(CommandFigure)) * EraScale);
             if (PaintedShield && PaintedShield->Mesh)
@@ -4888,7 +4918,8 @@ bool ARegimentBattleField::PresentFrame()
     for (auto& Entry : Session->HistoricalDress)
         Entry.Value.Present(*this, *GetRootComponent(), FactionMaterials[0], FactionMaterials[1]);
     for (auto& Entry : Session->HistoricalProxies)
-        Entry.Value.Present(*this, *GetRootComponent(), FactionMaterials[0], FactionMaterials[1]);
+        Entry.Value.Present(*this, *GetRootComponent(), FactionMaterials[0], FactionMaterials[1],
+            FigurePartMaterial.Get());
     for (auto& Entry : Session->HistoricalTack)
         Entry.Value.Present(*this, *GetRootComponent(), FactionMaterials[0], FactionMaterials[1]);
     for (auto& Entry : Session->LooseWeapons)

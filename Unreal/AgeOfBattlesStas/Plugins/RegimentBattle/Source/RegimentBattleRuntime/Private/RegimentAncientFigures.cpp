@@ -1,5 +1,6 @@
 #include "RegimentAncientFigures.h"
 #include "RegimentEraCatalog.h"
+#include "RegimentFigureAppearance.h"
 
 #include "Algo/Count.h"
 #include "Engine/StaticMesh.h"
@@ -398,6 +399,25 @@ double RegimentAncientPikeLength(FStringView Faction)
     return Faction == TEXT("macedon") || Faction == TEXT("diadochi") ? 383.0 : 242.0;
 }
 
+ERegimentAncientShield RegimentPaintedShieldStyle(ERegimentAncientShield Shield, FStringView Faction, uint64 Id)
+{
+    using H = ERegimentAncientShield;
+    if (Shield != H::Aspis)
+        return Shield;
+    const uint32 Variant = (RegimentFigureHash(Id) >> 12) & 3;
+    if (Faction == TEXT("sparta"))
+        return Variant == 0 ? H::Aspis : H::AspisLambda;
+    constexpr H Designs[] = {H::Aspis, H::AspisLambda, H::AspisRosette, H::AspisSun};
+    return Designs[Variant];
+}
+
+double RegimentAncientSpearLength(double BaseLength, uint64 Id)
+{
+    const int32 Variation = int32((RegimentFigureHash(Id) >> 20) % 5) - 2;
+    const double Step = BaseLength >= 400.0 ? .02 : .04;
+    return BaseLength * (1.0 + Step * Variation);
+}
+
 FRegimentAncientFigure BuildRegimentAncientShield(ERegimentAncientShield Shield)
 {
     FRegimentAncientFigure Model;
@@ -451,12 +471,70 @@ FRegimentAncientFigure BuildRegimentAncientShield(ERegimentAncientShield Shield)
             Part(Model, P::Ellipsoid, M::Bronze, {11, Y, 12}, {5, 7, 7});
         }
         break;
-    default:
-        Part(Model, P::Disc, M::Bronze, {0, 0, 0}, {65, 65, 9}, Facing);
-        Part(Model, P::Ellipsoid, M::Paint, {5, 0, 0}, {57, 57, 13}, Facing);
-        Part(Model, P::Ellipsoid, M::Bronze, {11, 0, 0}, {12, 17, 17});
+    case ERegimentAncientShield::Egyptian:
+        Part(Model, P::BeveledBlock, M::Paint, {0, 0, -9}, {8, 44, 64});
+        Part(Model, P::Disc, M::Paint, {0, 0, 20}, {34, 44, 8}, Facing);
+        for (double Y : {-19., 19.})
+            Bar(Model, M::Leather, {5, Y, -39}, {5, Y, 20}, 5);
+        Part(Model, P::Disc, M::Bronze, {7, 0, 6}, {16, 16, 8}, Facing);
         break;
-    }
+    case ERegimentAncientShield::RoundMedieval:
+        Part(Model, P::Disc, M::Wood, {0, 0, 0}, {62, 62, 10}, Facing);
+        Part(Model, P::Disc, M::Paint, {4, 0, 0}, {55, 55, 8}, Facing);
+        Part(Model, P::Ellipsoid, M::Iron, {11, 0, 0}, {13, 18, 18});
+        break;
+    case ERegimentAncientShield::Kite:
+        Part(Model, P::Taper, M::Wood, {0, 0, -9}, {10, 54, 65}, FRotator(0, 0, 180));
+        Part(Model, P::Disc, M::Wood, {0, 0, 24}, {26, 55, 10}, Facing);
+        Part(Model, P::Taper, M::Paint, {5, 0, -8}, {5, 47, 58}, FRotator(0, 0, 180));
+        Part(Model, P::Disc, M::Paint, {5, 0, 22}, {23, 47, 4}, Facing);
+        Part(Model, P::Ellipsoid, M::Iron, {10, 0, 13}, {9, 13, 13});
+        break;
+    case ERegimentAncientShield::Pavise:
+        Part(Model, P::BeveledBlock, M::Wood, {0, 0, -4}, {11, 54, 89});
+        Part(Model, P::BeveledBlock, M::Paint, {5, 0, -4}, {8, 48, 83});
+        Part(Model, P::BeveledBlock, M::Leather, {10, 0, -2}, {6, 9, 77});
+        Part(Model, P::BeveledBlock, M::Linen, {10, 0, 19}, {4, 34, 7});
+        break;
+    case ERegimentAncientShield::Aspis:
+    case ERegimentAncientShield::AspisLambda:
+    case ERegimentAncientShield::AspisRosette:
+    case ERegimentAncientShield::AspisSun:
+    {
+        using H = ERegimentAncientShield;
+        Part(Model, P::Disc, M::Bronze, {0, 0, 0}, {67, 67, 9}, Facing);
+        Part(Model, P::Disc, M::Paint, {4, 0, 0}, {59, 59, 8}, Facing);
+        if (Shield == H::Aspis)
+            Part(Model, P::Ellipsoid, M::Bronze, {9, 0, 0}, {10, 14, 14});
+        else if (Shield == H::AspisLambda)
+        {
+            Bar(Model, M::Linen, {10, -15, -16}, {10, 0, 18}, 6);
+            Bar(Model, M::Linen, {10, 0, 18}, {10, 15, -16}, 6);
+        }
+        else if (Shield == H::AspisRosette)
+        {
+            Part(Model, P::Disc, M::Dark, {7, 0, 0}, {44, 44, 5}, Facing);
+            for (int32 Petal = 0; Petal < 6; ++Petal)
+            {
+                const double Angle = Petal * PI / 3.0;
+                const FVector Axis(0, FMath::Cos(Angle), FMath::Sin(Angle));
+                Bar(Model, M::Linen, FVector(11, 0, 0) + Axis * 5, FVector(11, 0, 0) + Axis * 16, 6, P::Disc);
+            }
+            Part(Model, P::Disc, M::Ochre, {12, 0, 0}, {10, 10, 4}, Facing);
+        }
+        else
+        {
+            Part(Model, P::Disc, M::Ochre, {7, 0, 0}, {43, 43, 5}, Facing);
+            for (int32 Ray = 0; Ray < 8; ++Ray)
+            {
+                const double Angle = Ray * PI / 4.0;
+                const FVector Axis(0, FMath::Cos(Angle), FMath::Sin(Angle));
+                Bar(Model, M::Dark, FVector(11, 0, 0) + Axis * 9, FVector(11, 0, 0) + Axis * 18, 3.5);
+            }
+            Part(Model, P::Disc, M::Dark, {12, 0, 0}, {12, 12, 4}, Facing);
+        }
+        break;
+    }    }
     return Model;
 }
 
@@ -482,54 +560,104 @@ ERegimentHistoricalFigure RegimentHistoricalProfile(FStringView Profile)
 }
 
 ERegimentHistoricalFigure RegimentHistoricalStyle(ERegimentHistoricalFigure Profile, FStringView Faction,
-    const battle::UnitSpec& Unit, bool bAncient, bool bNapoleonic)
+    const battle::UnitSpec& Unit, FStringView Era)
 {
     using S = ERegimentHistoricalFigure;
     using T = battle::UnitTroop;
     using W = battle::RangedWeapon;
-    if (Unit.troop == T::Mounted)
+    const bool bMounted = Unit.troop == T::Mounted;
+    const bool bHeavy = Unit.cavalry == battle::CavalryClass::Heavy;
+    const bool bAncient = Era == TEXT("ancient");
+    const bool bNapoleonic = Era == TEXT("napoleonic");
+    if (bAncient && bMounted)
     {
-        if (bAncient && Faction == TEXT("rome"))
-            return S::RomanCavalry;
-        if (bAncient && Faction == TEXT("carthage") && Unit.cavalry == battle::CavalryClass::Light)
-            return S::Numidian;
-        if (bAncient && (Faction == TEXT("macedon") || Faction == TEXT("diadochi")) &&
-            Unit.cavalry == battle::CavalryClass::Heavy)
-            return S::Companion;
-        return S::None;
+        if (Faction == TEXT("rome")) return S::RomanCavalry;
+        if (Faction == TEXT("carthage") && Unit.cavalry == battle::CavalryClass::Light) return S::Numidian;
+        if ((Faction == TEXT("macedon") || Faction == TEXT("diadochi")) && bHeavy) return S::Companion;
+        if (Faction == TEXT("parthians") || Faction == TEXT("sarmatians") || Faction == TEXT("scythians"))
+            return bHeavy ? S::Cataphract : S::SteppeRider;
+        return bHeavy ? S::AncientHeavyHorse : S::AncientLightHorse;
     }
     if (bAncient && Unit.archer)
     {
-        if (Unit.ranged_weapon == W::Sling)
-            return S::LooseSling;
-        if (Unit.ranged_weapon == W::Javelin)
-            return S::LooseJavelin;
-        if (Faction == TEXT("persia") && Unit.ranged_weapon == W::Bow)
-            return S::PersianArcher;
-        return Profile == S::LooseBow ? S::LooseBow : S::None;
+        if (Unit.ranged_weapon == W::Sling) return S::LooseSling;
+        if (Unit.ranged_weapon == W::Javelin) return S::LooseJavelin;
+        if (Faction == TEXT("persia") && Unit.ranged_weapon == W::Bow) return S::PersianArcher;
+        if (Unit.ranged_weapon == W::Bow)
+        {
+            if (Profile == S::LooseBow) return S::LooseBow;
+            if (Faction == TEXT("egypt")) return S::Egyptian;
+            if (Faction == TEXT("porus")) return S::Indian;
+            if (Faction == TEXT("scythians") || Faction == TEXT("sarmatians")) return S::Steppe;
+            if (Faction == TEXT("parthians")) return S::Iranian;
+            return S::LooseBow;
+        }
     }
-    if (Profile != S::None && (bAncient || bNapoleonic))
+    if (!bMounted && Profile != S::None && (bAncient || bNapoleonic))
         return Profile;
     if (bAncient)
     {
-        if (Faction == TEXT("rome"))
-            return Unit.troop == T::Spearman ? S::Auxiliary : S::Legionary;
-        if (Faction == TEXT("sparta") || Faction == TEXT("athens") || Faction == TEXT("greeks"))
-            return S::Hoplite;
+        if (Faction == TEXT("rome")) return Unit.troop == T::Spearman ? S::Auxiliary : S::Legionary;
+        if (Faction == TEXT("sparta") || Faction == TEXT("greece") || Faction == TEXT("athens") ||
+            Faction == TEXT("greeks")) return S::Hoplite;
         if ((Faction == TEXT("macedon") || Faction == TEXT("diadochi")) && Unit.troop == T::Spearman)
             return S::Sarissa;
-        if (Faction == TEXT("persia"))
-            return S::Sparabara;
+        if (Faction == TEXT("persia")) return S::Sparabara;
     }
     if (bNapoleonic)
     {
-        if (Faction == TEXT("france"))
-            return S::Fusilier;
-        if (Faction == TEXT("russia"))
-            return S::RussianLine;
-        if (Faction == TEXT("britain"))
-            return S::BritishLine;
+        if (bMounted)
+        {
+            if (bHeavy) return S::NapoleonicCuirassier;
+            return Faction == TEXT("poland") ? S::NapoleonicLancer : S::NapoleonicHussar;
+        }
+        if (Faction == TEXT("france")) return S::Fusilier;
+        if (Faction == TEXT("russia")) return S::RussianLine;
+        if (Faction == TEXT("britain")) return S::BritishLine;
+        if (Faction == TEXT("poland")) return S::NapoleonicPolish;
+        if (Faction == TEXT("austria")) return S::NapoleonicAustrian;
+        if (Faction == TEXT("spain") || Faction == TEXT("portugal")) return S::NapoleonicIberian;
+        return S::NapoleonicCentral;
     }
+    if (bAncient)
+    {
+        if (Faction == TEXT("egypt")) return S::Egyptian;
+        if (Faction == TEXT("porus")) return S::Indian;
+        if (Faction == TEXT("carthage")) return S::Punic;
+        if (Faction == TEXT("gauls")) return S::Gallic;
+        if (Faction == TEXT("scythians") || Faction == TEXT("sarmatians")) return S::Steppe;
+        if (Faction == TEXT("parthians")) return S::Iranian;
+        if (Faction == TEXT("macedon") || Faction == TEXT("diadochi")) return S::Hellenistic;
+    }
+    if (Era == TEXT("high_medieval"))
+    {
+        const bool bSteppe = Faction == TEXT("mongols") || Faction == TEXT("golden_horde");
+        const bool bEastern = Faction == TEXT("saracens") || Faction == TEXT("byzantium") || Faction == TEXT("rus");
+        if (bMounted) return bSteppe || bEastern ? S::MedievalSteppeHorse : S::MedievalKnight;
+        if (bSteppe) return S::SteppeMedieval;
+        return bEastern ? S::EasternMail : S::WesternMail;
+    }
+    if (Era == TEXT("late_medieval"))
+    {
+        if (Faction == TEXT("ottomans"))
+            return bMounted ? S::MedievalSteppeHorse : S::EasternMail;
+        if (bMounted) return S::LateKnight;
+        if (Faction == TEXT("swiss") && Unit.troop == T::Spearman) return S::SwissPike;
+        if (Faction == TEXT("hussites")) return S::PaviseInfantry;
+        return Unit.archer ? S::MedievalBowman : S::GothicPlate;
+    }
+    if (Era == TEXT("renaissance"))
+    {
+        if (bMounted && Faction == TEXT("commonwealth") && Unit.cavalry == battle::CavalryClass::Heavy)
+            return S::WingedHussar;
+        if (bMounted) return S::EarlyModernHorse;
+        if (Faction == TEXT("russian_tsardom") || Faction == TEXT("commonwealth") ||
+            Faction == TEXT("cossacks") || Faction == TEXT("ottomans"))
+            return S::EasternEarlyModern;
+        return Unit.archer ? S::PikeAndShotMissile : S::PikeAndShot;
+    }
+    if (Era == TEXT("great_northern_war"))
+        return bMounted ? S::NorthernHorse : S::NorthernInfantry;
     return S::None;
 }
 
@@ -556,7 +684,31 @@ TOptional<ERegimentAncientShield> RegimentHistoricalShield(ERegimentHistoricalFi
     case S::Sarissa: return H::Macedonian;
     case S::Hoplite: return H::Aspis;
     case S::Sparabara: return H::Wicker;
+    case S::Egyptian: return H::Egyptian;
+    case S::Punic: return H::Carthaginian;
+    case S::Gallic: case S::Indian: return H::Oval;
+    case S::Hellenistic: return H::Macedonian;
+    case S::Steppe: case S::Iranian: case S::SteppeRider: case S::AncientLightHorse:
+    case S::AncientHeavyHorse: return H::CavalryOval;
+    case S::PaviseInfantry: return H::Pavise;
     default: return {};
+    }
+}
+
+TOptional<ERegimentAncientShield> RegimentHistoricalShield(ERegimentHistoricalFigure Style,
+    ERegimentEraShield FactionShield)
+{
+    using S = ERegimentHistoricalFigure;
+    using H = ERegimentAncientShield;
+    switch (Style)
+    {
+    case S::WesternMail: case S::EasternMail: case S::SteppeMedieval:
+    case S::MedievalKnight: case S::MedievalSteppeHorse: case S::GothicPlate:
+        if (FactionShield == ERegimentEraShield::Kite) return H::Kite;
+        if (FactionShield == ERegimentEraShield::Rectangular) return H::Pavise;
+        return H::RoundMedieval;
+    default:
+        return RegimentHistoricalShield(Style);
     }
 }
 
@@ -567,7 +719,18 @@ double RegimentHistoricalSpearLength(ERegimentHistoricalFigure Style)
     {
     case S::Sarissa: return 480.0;
     case S::Companion: return 280.0;
-    case S::RomanCavalry: return 213.0;
+    case S::RomanCavalry: return 225.0;
+    case S::Auxiliary: return 220.0;
+    case S::Hoplite: return 268.0;
+    case S::Sparabara: case S::Egyptian: return 191.0;
+    case S::Indian: case S::Punic: return 254.0;
+    case S::Hellenistic: return 265.0;
+    case S::SteppeRider: case S::AncientLightHorse: return 208.0;
+    case S::AncientHeavyHorse: return 287.0;
+    case S::Cataphract: return 344.0;
+    case S::SwissPike: return 408.0;
+    case S::PikeAndShot: return 310.0;
+    case S::WingedHussar: return 420.0;
     case S::SengokuAshigaru: return 282.0;
     case S::SengokuCavalry: return 255.0;
     default: return 242.0;
@@ -577,6 +740,207 @@ double RegimentHistoricalSpearLength(ERegimentHistoricalFigure Style)
 namespace
 {
 using HistoricalFigure = ERegimentHistoricalFigure;
+
+bool IsRefreshedFigure(HistoricalFigure Style)
+{
+    return Style >= HistoricalFigure::Egyptian;
+}
+
+bool IsHistoricalRider(HistoricalFigure Style)
+{
+    using S = HistoricalFigure;
+    switch (Style)
+    {
+    case S::RomanCavalry: case S::Numidian: case S::Companion: case S::SengokuCavalry:
+    case S::AncientLightHorse: case S::AncientHeavyHorse: case S::SteppeRider: case S::Cataphract:
+    case S::MedievalKnight: case S::MedievalSteppeHorse: case S::LateKnight:
+    case S::WingedHussar: case S::EarlyModernHorse: case S::NorthernHorse:
+    case S::NapoleonicHussar: case S::NapoleonicCuirassier: case S::NapoleonicLancer:
+        return true;
+    default:
+        return false;
+    }
+}
+
+enum class EFieldHelmet : uint8
+{
+    Headcloth, WrappedCap, Crest, Conical, Fur, GreatHelm, Sallet, Felt, Morion, Lobster,
+    CockedHat, Shako, Czapka, CrestedHelmet, Busby
+};
+enum class EFieldCoat : uint8 { Linen, Tunic, Coat, Mail, Lamellar, Plate, Braided };
+
+struct FFieldOutfit
+{
+    EFieldHelmet Helmet;
+    EFieldCoat Coat;
+    M Trim;
+};
+
+FFieldOutfit FieldOutfit(HistoricalFigure Style)
+{
+    using S = HistoricalFigure;
+    using H = EFieldHelmet;
+    using C = EFieldCoat;
+    switch (Style)
+    {
+    case S::Egyptian: return {H::Headcloth, C::Linen, M::Ochre};
+    case S::Indian: return {H::WrappedCap, C::Linen, M::Scarlet};
+    case S::Punic: return {H::Crest, C::Lamellar, M::Bronze};
+    case S::Gallic: return {H::Conical, C::Tunic, M::Green};
+    case S::Hellenistic: return {H::Crest, C::Linen, M::Bronze};
+    case S::Steppe: case S::SteppeRider: return {H::Fur, C::Tunic, M::Leather};
+    case S::Iranian: return {H::WrappedCap, C::Lamellar, M::Ochre};
+    case S::AncientLightHorse: return {H::Conical, C::Tunic, M::Ochre};
+    case S::AncientHeavyHorse: return {H::Crest, C::Lamellar, M::Bronze};
+    case S::Cataphract: return {H::Conical, C::Lamellar, M::Iron};
+    case S::WesternMail: return {H::Conical, C::Mail, M::Linen};
+    case S::EasternMail: return {H::Conical, C::Lamellar, M::Bronze};
+    case S::SteppeMedieval: case S::MedievalSteppeHorse: return {H::Fur, C::Lamellar, M::Leather};
+    case S::MedievalKnight: return {H::GreatHelm, C::Mail, M::Iron};
+    case S::GothicPlate: case S::LateKnight: return {H::Sallet, C::Plate, M::Iron};
+    case S::MedievalBowman: case S::PaviseInfantry: return {H::Felt, C::Tunic, M::Linen};
+    case S::SwissPike: return {H::Sallet, C::Tunic, M::Scarlet};
+    case S::PikeAndShot: return {H::Morion, C::Plate, M::Linen};
+    case S::PikeAndShotMissile: return {H::Felt, C::Coat, M::Leather};
+    case S::EasternEarlyModern: return {H::Fur, C::Coat, M::Ochre};
+    case S::WingedHussar: case S::EarlyModernHorse: return {H::Lobster, C::Plate, M::Bronze};
+    case S::NorthernInfantry: return {H::CockedHat, C::Coat, M::Ivory};
+    case S::NorthernHorse: return {H::CockedHat, C::Coat, M::Ochre};
+    case S::NapoleonicPolish: return {H::Czapka, C::Coat, M::Scarlet};
+    case S::NapoleonicAustrian: return {H::CrestedHelmet, C::Coat, M::Linen};
+    case S::NapoleonicIberian: return {H::Shako, C::Coat, M::Linen};
+    case S::NapoleonicHussar: return {H::Busby, C::Braided, M::Ochre};
+    case S::NapoleonicCuirassier: return {H::CrestedHelmet, C::Plate, M::Bronze};
+    case S::NapoleonicLancer: return {H::Czapka, C::Braided, M::Scarlet};
+    default: return {H::Shako, C::Coat, M::Ochre};
+    }
+}
+
+FRegimentAncientFigure RefreshedDress(HistoricalFigure Style, bool bSimplified)
+{
+    using H = EFieldHelmet;
+    using C = EFieldCoat;
+    using S = HistoricalFigure;
+    const auto Outfit = FieldOutfit(Style);
+    FRegimentAncientFigure Model;
+    Model.bSimplified = bSimplified;
+    const auto Add = [&](P Shape, M Surface, FVector At, FVector Size, FRotator Rotation = FRotator::ZeroRotator)
+    {
+        Part(Model, Shape, Surface, At, Size, Rotation);
+    };
+
+    const auto Helmet = Outfit.Helmet;
+    if (Helmet == H::Headcloth || Helmet == H::WrappedCap || Helmet == H::Fur)
+    {
+        const bool bFur = Helmet == H::Fur;
+        Add(P::Ellipsoid, bFur ? M::Leather : M::Linen, {-2, 0, 161}, {38, 41, 28});
+        Add(P::Disc, Outfit.Trim, {-1, 0, 156}, {39, 42, 8}, FRotator(-7, 0, 0));
+        if (Helmet == H::Headcloth)
+            for (double Y : {-16., 16.})
+                Add(P::BeveledBlock, M::Linen, {-8, Y, 145}, {21, 8, 26}, FRotator(-12, 0, Y));
+        else
+            Add(P::Ellipsoid, bFur ? M::Paint : Outfit.Trim, {-5, 0, 174}, {26, 27, bFur ? 25. : 15.});
+    }
+    else if (Helmet == H::Crest || Helmet == H::CrestedHelmet || Helmet == H::Morion)
+    {
+        const M Shell = Helmet == H::Crest ? M::Bronze : M::Iron;
+        Add(P::Ellipsoid, Shell, {-3, 0, 162}, {38, 36, 30});
+        Add(P::Disc, Shell, {0, 0, 154}, Helmet == H::Morion ? FVector(59, 43, 6) : FVector(43, 37, 5),
+            FRotator(-8, 0, 0));
+        Add(P::Ellipsoid, Helmet == H::Morion ? M::Iron : M::Dark, {-5, 0, 178}, {46, 9, 22},
+            FRotator(-13, 0, 0));
+        if (Style == S::NapoleonicCuirassier)
+            Add(P::BeveledBlock, M::Dark, {-23, 0, 154}, {13, 13, 47}, FRotator(-17, 0, 0));
+    }
+    else if (Helmet == H::GreatHelm || Helmet == H::Sallet || Helmet == H::Lobster || Helmet == H::Conical)
+    {
+        if (Helmet == H::GreatHelm)
+            Add(P::Frustum, M::Iron, {3, 0, 155}, {39, 39, 43});
+        else if (Helmet == H::Conical)
+            Add(P::Taper, M::Iron, {-1, 0, 172}, {39, 38, 32});
+        else
+            Add(P::Ellipsoid, M::Iron, {-2, 0, 159}, {45, 37, 32}, FRotator(-9, 0, 0));
+        if (Helmet == H::GreatHelm || Helmet == H::Sallet)
+            Add(P::BeveledBlock, M::Dark, {23, 0, 157}, {5, 27, 4}, FRotator(3, 0, 0));
+        else
+            Add(P::BeveledBlock, M::Iron, {16, 0, 153}, {7, 5, 22});
+        if (Helmet != H::GreatHelm)
+            Add(P::BeveledBlock, M::Iron, {-16, 0, 147}, {22, 37, 14}, FRotator(-19, 0, 0));
+    }
+    else if (Helmet == H::Felt || Helmet == H::CockedHat)
+    {
+        Add(P::Disc, M::Dark, {-1, 0, 156}, {56, 53, 5}, FRotator(-6, 0, 0));
+        Add(P::Frustum, M::Dark, {-2, 0, 165}, {35, 37, 21});
+        if (Helmet == H::CockedHat)
+            for (double Angle : {0., 120., 240.})
+            {
+                const FRotator Turn(0, Angle, 0);
+                Add(P::BeveledBlock, M::Dark, Turn.RotateVector({18, 0, 163}), {12, 38, 16}, Turn);
+                if (!bSimplified)
+                    Add(P::BeveledBlock, Outfit.Trim, Turn.RotateVector({21, 0, 171}), {3, 32, 3}, Turn);
+            }
+    }
+    else
+    {
+        Add(P::Frustum, M::Dark, {-1, 0, 171}, {35, 37, 33});
+        Add(P::Disc, M::Dark, {13, 0, 154}, {31, 38, 5});
+        if (Helmet == H::Czapka)
+            Add(P::BeveledBlock, M::Paint, {-3, 0, 189}, {37, 37, 8}, FRotator(0, 45, 0));
+        else if (Helmet == H::Busby)
+            Add(P::Ellipsoid, M::Paint, {-4, 9, 180}, {19, 18, 34}, FRotator(0, 0, 17));
+        else
+            Add(P::Disc, Outfit.Trim, {0, 0, 185}, {36, 37, 5});
+        Add(P::BeveledBlock, Outfit.Trim, {17, 0, 170}, {5, 12, 12});
+    }
+
+    const auto Coat = Outfit.Coat;
+    const bool bPlate = Coat == C::Plate;
+    const bool bMail = Coat == C::Mail;
+    const bool bLamellar = Coat == C::Lamellar;
+    const bool bLong = Coat == C::Coat || Coat == C::Braided;
+    const bool bMounted = IsHistoricalRider(Style);
+    const M Cloth = Coat == C::Linen ? M::Linen : M::Paint;
+    Add(P::BeveledBlock, bMail ? M::GreyWool : Cloth, {0, 0, 105}, {38, 49, 49});
+    if (bPlate || bLamellar)
+        Add(P::BeveledBlock, bPlate ? M::Iron : Outfit.Trim, {11, 0, 109}, {24, 49, 42}, FRotator(-7, 0, 0));
+    if (bLamellar)
+        for (double Z : {93., 108., 123.})
+            Add(P::BeveledBlock, M::Dark, {23, 0, Z}, {6, 43, 3});
+    if (bMail && !bSimplified)
+        for (double Y : {-16., 16.})
+            Add(P::BeveledBlock, M::GreyWool, {-9, Y, 142}, {28, 16, 28});
+    if (bLong || bMail || bPlate)
+        for (double Y : {-13., 13.})
+            Add(P::BeveledBlock, bLong || bMail ? M::Paint : M::Leather,
+                {-3, Y, bMounted ? 76. : 71.}, {35, 23, bMounted ? 21. : 29.}, FRotator(11, 0, Y * .3));
+    Add(P::BeveledBlock, M::Leather, {0, 0, 84}, {40, 51, 7});
+    Add(P::BeveledBlock, Outfit.Trim, {7, 0, 128}, {33, 32, 7});
+    if (bPlate || bMail)
+        for (double Y : {-23., 23.})
+            Add(P::BeveledBlock, bPlate ? M::Iron : M::GreyWool, {0, Y, 120}, {31, 12, 12},
+                FRotator(0, 0, Y * .7));
+
+    if (Coat == C::Braided)
+        for (double Z : {93., 104., 115., 124.})
+            Add(P::BeveledBlock, Outfit.Trim, {21, 0, Z}, {4, 31, 3});
+    else
+    {
+        const M Strap = bLong ? M::Linen : M::Leather;
+        Bar(Model, Strap, {22, -16, 124}, {22, 18, 87}, 5);
+        if (!bSimplified)
+            Add(P::BeveledBlock, M::Leather, {-12, 24, 85}, {22, 12, 18});
+    }
+
+    if (Style == S::WingedHussar)
+        for (double Y : {-24., 24.})
+        {
+            Bar(Model, M::Leather, {-23, Y, 88}, {-39, Y, 176}, 7);
+            for (double Z : {120., 141., 162., 183.})
+                Add(P::BeveledBlock, M::Linen, {-35 - (Z - 120) * .19, Y, Z}, {24, 7, 24},
+                    FRotator(-32, 0, 0));
+        }
+    return Model;
+}
 
 bool IsSengokuFigure(HistoricalFigure Style)
 {
@@ -654,6 +1018,8 @@ FRegimentAncientFigure BuildRegimentHistoricalDress(ERegimentHistoricalFigure St
     using S = ERegimentHistoricalFigure;
     if (IsSengokuFigure(Style))
         return SengokuDress(Style, false);
+    if (IsRefreshedFigure(Style))
+        return RefreshedDress(Style, false);
     FRegimentAncientFigure Model;
     const auto Add = [&](P Shape, M Surface, FVector At, FVector Size, FRotator Rotation = FRotator::ZeroRotator,
         F Feature = F::None)
@@ -848,6 +1214,27 @@ FRegimentAncientFigure BuildRegimentHistoricalTack(ERegimentHistoricalFigure Sty
             Part(Model, P::BeveledBlock, M::Iron, {11, Side * 29, 72}, {24, 10, 5}, FRotator(7, 0, 0));
         }
     }
+    if (IsRefreshedFigure(Style) && IsHistoricalRider(Style))
+    {
+        const bool bPeriodStirrups = Style >= S::WesternMail;
+        Part(Model, P::BeveledBlock, M::Paint, {-12, 0, 106}, {80, 55, 16});
+        Part(Model, P::BeveledBlock, M::Leather, {-4, 0, 115}, {53, 39, 12});
+        for (double Side : {-1., 1.})
+        {
+            Bar(Model, M::Leather, {56, Side * 12, 127}, {4, Side * 21, 123}, 3.5);
+            Part(Model, P::BeveledBlock, M::Leather, {-18, Side * 21, 102}, {39, 12, 24});
+            if (bPeriodStirrups)
+            {
+                Bar(Model, M::Leather, {4, Side * 24, 108}, {9, Side * 27, 78}, 4);
+                Part(Model, P::BeveledBlock, M::Iron, {11, Side * 27, 77}, {14, 9, 5});
+            }
+            if (Style == S::Cataphract)
+                for (double Z : {84., 96., 108.})
+                    Part(Model, P::BeveledBlock, M::Iron, {-9, Side * 25, Z}, {92, 9, 12});
+        }
+        if (Style == S::Cataphract)
+            Part(Model, P::BeveledBlock, M::Iron, {67, 0, 137}, {24, 22, 38}, FRotator(-23, 0, 0));
+    }
     return Model;
 }
 
@@ -855,12 +1242,13 @@ FRegimentAncientFigure BuildRegimentHistoricalProxy(ERegimentHistoricalFigure St
 {
     using S = ERegimentHistoricalFigure;
     const bool bSengoku = IsSengokuFigure(Style);
-    auto Model = bSengoku ? SengokuDress(Style, true) : BuildRegimentHistoricalDress(Style);
+    const bool bRefreshed = IsRefreshedFigure(Style);
+    auto Model = bSengoku ? SengokuDress(Style, true) :
+        bRefreshed ? RefreshedDress(Style, true) : BuildRegimentHistoricalDress(Style);
     if (Model.Parts.IsEmpty())
         return Model;
     Model.bSimplified = true;
-    const bool bMounted = Style == S::RomanCavalry || Style == S::Numidian || Style == S::Companion ||
-        Style == S::SengokuCavalry;
+    const bool bMounted = IsHistoricalRider(Style);
     const double RideHeight = bMounted ? RegimentHistoricalRiderHeight : 0.0;
     if (bMounted)
     {
@@ -878,9 +1266,9 @@ FRegimentAncientFigure BuildRegimentHistoricalProxy(ERegimentHistoricalFigure St
         Model.Parts.Append(MoveTemp(Mount.Parts));
     }
     const bool bKilt = Style == S::Highlander;
-    const M Coat = bSengoku ? M::Paint : Style >= S::BritishLine ? M::Scarlet : Style >= S::RussianLine ? M::Green :
+    const M Coat = bSengoku || bRefreshed ? M::Paint : Style >= S::BritishLine ? M::Scarlet : Style >= S::RussianLine ? M::Green :
         Style >= S::Fusilier ? M::Navy : Style == S::Numidian ? M::Linen : M::Paint;
-    const M Trousers = bSengoku ? M::Dark : bKilt ? M::Skin : Style >= S::Fusilier ? M::Linen : M::Paint;
+    const M Trousers = bSengoku || bRefreshed ? M::Dark : bKilt ? M::Skin : Style >= S::Fusilier ? M::Linen : M::Paint;
     Part(Model, P::BeveledBlock, Coat, {0, 0, 89 + RideHeight}, {32, 43, 64});
     Part(Model, P::BeveledBlock, M::Skin, {2, 0, 144 + RideHeight}, {27, 26, 27});
     for (double Side : {-1., 1.})
@@ -1067,9 +1455,11 @@ FRegimentAncientFigure BuildRegimentEraHeadgear(ERegimentEraVisual Style)
 }
 
 UStaticMesh* MakeRegimentAncientMesh(UObject& Owner, const FRegimentAncientFigure& Figure,
-    UMaterialInterface* MaterialParent, int32& PaintSlot)
+    UMaterialInterface* MaterialParent, int32& PaintSlot, int32* HideSlot)
 {
     PaintSlot = INDEX_NONE;
+    if (HideSlot)
+        *HideSlot = INDEX_NONE;
     if (Figure.Parts.IsEmpty())
         return nullptr;
     auto* Mesh = NewObject<UStaticMesh>(&Owner, NAME_None, RF_Transient);
@@ -1106,6 +1496,8 @@ UStaticMesh* MakeRegimentAncientMesh(UObject& Owner, const FRegimentAncientFigur
             const int32 Index = Mesh->GetStaticMaterials().Emplace(Material, Name);
             if (Part.Material == M::Paint)
                 PaintSlot = Index;
+            if (HideSlot && Part.Material == M::Hide)
+                *HideSlot = Index;
             Groups.Add(Part.Material, Group);
         }
         if (!Geometry.Contains(Part.Primitive))
