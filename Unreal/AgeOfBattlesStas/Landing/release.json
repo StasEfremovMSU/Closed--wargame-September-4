@@ -3,14 +3,14 @@
   "product": "Age of Battles",
   "channel": "alpha",
   "available": true,
-  "version": "2026.11.26.6",
+  "version": "2026.11.26.7",
   "publishedAt": "2026-11-26",
   "platforms": {
     "windows-x64": {
-      "fileName": "AgeOfBattles-Windows-x64-Setup-HistoricalTroops-2026-11-26.exe",
-      "url": "https://wargamesrealms.ru/ageofbattles/AgeOfBattles-Windows-x64-Setup-HistoricalTroops-2026-11-26.exe",
-      "size": 355858275,
-      "sha256": "c96d78974f4bf40254bf5228cd91f00a8558d2670961ee12343bceda3af93d1a"
+      "fileName": "AgeOfBattles-Windows-x64-Setup-2026.11.26.7.exe",
+      "url": "https://wargamesrealms.ru/ageofbattles/AgeOfBattles-Windows-x64-Setup-2026.11.26.7.exe",
+      "size": 355969785,
+      "sha256": "0cb1078b932c36f3ec0e8e71a43a7ba9f5918713f83eb67bb8f458a39d887024"
     }
   }
 }

@@ -17,6 +17,7 @@ enum class EMissionHudStage : uint8
 {
     Modules,
     Campaigns,
+    Tutorials,
     Setup,
     March,
     EnemyFound,
@@ -33,6 +34,8 @@ public:
     void Construct(const FArguments& InArgs);
     void ShowModuleMenu();
     void ShowCampaignMenu();
+    void ShowTutorialMenu();
+    void SetTutorialNotice(FText Notice) { TutorialNotice = MoveTemp(Notice); }
     void SetCampaignNotice(FText Notice) { CampaignNotice = MoveTemp(Notice); }
     void SetModuleContext(const FString& Id, const FMissionPreset& Preset);
     void SetPreset(const FMissionPreset& Preset);
@@ -44,10 +47,12 @@ public:
 
     TFunction<void(const FMissionPreset&)> OnStart;
     TFunction<void(int32, int32)> OnStartCampaign;
+    TFunction<void(ERegimentTutorial)> OnStartTutorial;
     TFunction<bool()> OnCampaignSavePending;
     TFunction<bool(int32, int32)> OnCampaignUnlocked;
     TFunction<bool(int32, int32)> OnCampaignComplete;
     TFunction<void(const FString&)> OnSelectModule;
+    TFunction<void()> OnShowStatistics;
     TFunction<void()> OnQuit;
     TFunction<void(const FMissionPreset&)> OnReturnToModules;
     TFunction<void(battle::MarchTerrain, battle::MarchField)> OnTerrainChanged;
@@ -63,6 +68,7 @@ private:
 
     TSharedRef<SWidget> MakeModulePanel();
     TSharedRef<SWidget> MakeCampaignPanel();
+    TSharedRef<SWidget> MakeTutorialPanel();
     FText CampaignStageStatus(int32 Campaign, int32 Stage) const;
     FText GetCampaignNotice() const;
     TSharedRef<SWidget> MakeSetupPanel();
@@ -135,6 +141,7 @@ private:
     FText PresetStatus;
     FText MarchNotice;
     FText CampaignNotice;
+    FText TutorialNotice;
     bool bPresetError = false;
     FString ModuleId;
     TMap<FString, FText> PendingCopyNames;

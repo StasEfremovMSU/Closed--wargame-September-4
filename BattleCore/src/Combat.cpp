@@ -434,6 +434,12 @@ class TacticalArchery {
         return hits;
     }
 
+    RangedAim PickManualGun(const UnitState &gun, const UnitState &target, int32_t team) {
+        if (InContact(gun) || Distance(gun.pose.position, target.pose.position) > gun.weapon.range)
+            return {};
+        return AimAt(gun, target, team);
+    }
+
     RangedAim Pick(const UnitState &shooter, const RegimentState *regiment, int32_t team,
                    uint64_t *checks) {
         if (InContact(shooter) && (!IsSiegeEngine(shooter.platform) || world_.scenario.rules.local_melee ||
@@ -671,6 +677,11 @@ void BuildCombatEvents(const World &w, std::vector<BattleEvent> &out, uint64_t *
 }
 void BuildCombatEvents(const World &w, std::vector<BattleEvent> &out, uint64_t *checks,
                        const LocalMelee *contact, std::span<const UnitId> moving_siege) {
+    BuildCombatEvents(w, out, checks, contact, moving_siege, nullptr);
+}
+void BuildCombatEvents(const World &w, std::vector<BattleEvent> &out, uint64_t *checks,
+                       const LocalMelee *contact, std::span<const UnitId> moving_siege,
+                       const Command *field_gun_shot) {
     out.clear();
     std::optional<int32_t> first_team;
     bool enemies = false;
@@ -693,8 +704,17 @@ void BuildCombatEvents(const World &w, std::vector<BattleEvent> &out, uint64_t *
         const RegimentState *regiment;
         int32_t team;
         bool projectile;
+        bool manual = false;
     };
+    const auto *officer = FindUnit(w, w.controlled);
+    const RegimentId battery = officer && officer->platform == BattlePlatform::None &&
+                                        CanCommandRegiment(w, officer->id, officer->regiment)
+                                    ? officer->regiment : RegimentId{};
+    const auto *manual_target = battery && field_gun_shot && field_gun_shot->unit == w.controlled
+                                    ? FindUnit(w, field_gun_shot->target) : nullptr;
     std::vector<Shooter> shooters;
+    std::optional<Shooter> manual_shooter;
+    float closest_gun = FieldGunOfficerReachM;
     for (size_t i = 0; i < w.units.size(); ++i) {
         const auto &u = w.units[i];
         const bool alternate_ready = u.ranged_attack && u.ammunition_remaining &&
@@ -716,10 +736,26 @@ void BuildCombatEvents(const World &w, std::vector<BattleEvent> &out, uint64_t *
         if (ready > w.tick ||
             (projectile && ((u.ammunition && !u.ammunition_remaining) || !CanFireFromRank(w, u, r))))
             continue;
+        if (battery && u.regiment == battery && u.platform == BattlePlatform::FieldGun) {
+            if (manual_target && projectile) {
+                const float officer_distance = Distance(officer->pose.position, u.pose.position);
+                const auto target_delta = Ground(manual_target->pose.position) - Ground(u.pose.position);
+                const float target_distance = Length(target_delta);
+                if (officer_distance <= closest_gun && target_distance <= u.weapon.range &&
+                    Dot(Forward(u.pose.yaw), target_delta) >= target_distance * SiegeArcCosine &&
+                    (!manual_shooter || officer_distance < closest_gun)) {
+                    closest_gun = officer_distance;
+                    manual_shooter = Shooter{i, r, r->team, true, true};
+                }
+            }
+            continue;
+        }
         if (projectile && !alternate_ready && !RangedReadyThisTick(w, u, ready))
             continue;
         shooters.push_back({i, r, r ? r->team : u.independent_team, projectile});
     }
+    if (manual_shooter)
+        shooters.push_back(*manual_shooter);
     if (shooters.empty())
         return;
     const auto projectile_cover = ProjectileCover(w);
@@ -767,7 +803,8 @@ void BuildCombatEvents(const World &w, std::vector<BattleEvent> &out, uint64_t *
         RangedAim aim;
         const auto pick_target = [&](bool projectile, float weapon_range) -> const UnitState * {
             if (archery && projectile && (tactics || siege)) {
-                aim = archery->Pick(u, regiment, shooter.team, checks);
+                aim = shooter.manual ? archery->PickManualGun(u, *manual_target, shooter.team) :
+                                       archery->Pick(u, regiment, shooter.team, checks);
                 return aim.target;
             }
             if (u.control == ControlMode::PlayerControlled) {

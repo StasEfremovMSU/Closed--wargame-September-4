@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "Containers/Map.h"
+#include "RegimentBattleReport.h"
 #include "RegimentMissionPreset.h"
 #include "RegimentHistoricalCampaign.h"
 #include "RegimentMissionScenario.h"
@@ -10,6 +11,7 @@
 class APlayerController;
 class ULocalPlayer;
 class SRegimentMissionHud;
+class SWidget;
 
 struct FRegimentMissionRuntime
 {
@@ -28,6 +30,9 @@ struct FRegimentMissionRuntime
     void ReturnToSetup();
     void RemoveHud();
     void RecordCampaignOutcome(battle::BattleOutcome Outcome, int32 Winner);
+    void BeginBattleReport(const battle::World* World);
+    void ObserveBattleReport(const battle::World& World);
+    bool IsBattleReportOpen() const { return bDebriefOpen && StatisticsOverlay.IsValid(); }
     const FMissionPreset& GetPreset() const { return Preset; }
 
     AActor& Owner;
@@ -40,7 +45,12 @@ private:
     void ReturnToModules(const FMissionPreset& Draft);
     void StartMission(FMissionPreset Setup);
     void StartCampaignStage(int32 Campaign, int32 Stage);
+    void StartTutorial(ERegimentTutorial Lesson);
     void FlushCampaignProgress();
+    void FlushPlayerStatistics();
+    void ShowPlayerStatistics();
+    void OpenStatisticsOverlay(TSharedRef<SWidget> Widget, bool bDebrief);
+    void CloseStatisticsOverlay();
     void AttachHud(APlayerController*);
     void HandleMapInput(APlayerController&);
     void PresentMarch();
@@ -52,9 +62,16 @@ private:
     TMap<FString, FMissionPreset> ModuleDrafts;
     bool bChoosingModule = true;
     bool bShowCampaigns = false;
+    bool bShowTutorials = false;
     bool bCampaignSavePending = false;
     RegimentHistoricalCampaign::FProgress CampaignProgress;
     TOptional<RegimentHistoricalCampaign::FRun> CampaignRun;
+    FRegimentPlayerStats PlayerStatistics;
+    TOptional<FRegimentBattleReportAccumulator> BattleReport;
+    TSharedPtr<SWidget> StatisticsOverlay;
+    TWeakObjectPtr<ULocalPlayer> StatisticsPlayer;
+    bool bDebriefOpen = false;
+    bool bStatisticsSavePending = false;
     std::optional<battle::MarchMission> March;
     std::optional<std::vector<battle::MarchRegiment>> DirectOpening;
     FVector Contact = FVector::ZeroVector;

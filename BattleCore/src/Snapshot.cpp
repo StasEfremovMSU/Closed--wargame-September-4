@@ -178,7 +178,7 @@ Result<World> Restore(const Snapshot &s) {
         if (!e.sequence || !queued.insert(e.sequence).second ||
             !std::binary_search(w.accepted_sequences.begin(), w.accepted_sequences.end(),
                                 e.sequence) ||
-            e.tick < w.tick || uint8_t(e.command.kind) > uint8_t(CommandKind::ParryControlledUnit) ||
+            e.tick < w.tick || uint8_t(e.command.kind) > uint8_t(CommandKind::FireFieldGun) ||
             !Finite(e.command.pose) || !Finite(e.command.velocity) ||
             !ValidOrderShape(e.command.order))
             return bad("invalid queued command");

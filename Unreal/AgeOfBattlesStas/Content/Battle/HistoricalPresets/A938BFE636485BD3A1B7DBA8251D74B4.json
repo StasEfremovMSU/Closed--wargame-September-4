@@ -1,5 +1,5 @@
 {
-  "schema_version": 4,
+  "schema_version": 6,
   "name": "Нёрдлинген, 1634 · Высота Альбух",
   "terrain": "Borodino",
   "era": {
@@ -19,7 +19,7 @@
     "required_regiments": 1,
     "crossing_team": 0
   },
-  "briefing": "6 сентября 1634 года у Нёрдлингена шведские полки Густава Горна штурмовали Альбух, который обороняли испанские части имперско-испанской армии. Захватить укреплённую высоту шведам не удалось.\n\nВы командуете шведами. Возьмите и удержите гребень. Две пехотные линии могут сменять друг друга на подступах, пока конница прикрывает открытый фланг.\n\nКарта изображает только сектор Альбуха. Невысокий гребень и его преграды передают характер позиции, а формы укреплений и численность сторон условны. Игровой участок 560 × 360 м, 5 000 фигур.",
+  "briefing": "6 сентября 1634 года у Нёрдлингена шведские полки Густава Горна штурмовали Альбух, который обороняли испанские части имперско-испанской армии. Захватить укреплённую высоту шведам не удалось.\n\nВы командуете шведами. Возьмите и удержите гребень. Две пехотные линии могут сменять друг друга на подступах, пока конница прикрывает открытый фланг.\n\nКарта изображает только сектор Альбуха. Невысокий гребень и его преграды передают характер позиции, а формы укреплений и численность сторон условны. Игровой участок 790 × 510 м, 5 000 фигур.\n\nВ игровом порядке боя 12 подразделений у первой стороны и 12 у второй. Батальоны начинают несколькими линиями. Фланги поля оставлены для манёвра.",
   "sources": [
     "https://www.lfu.bayern.de/natur/historische_kulturlandschaft/kulturlandschaft_ries/doc/stadt_noerdlingen.pdf",
     "https://kath-akademie-bayern.de/mediathek-eintrag/die-schlacht-bei-noerdlingen-1634-ein-schlachtenszenario-des-dreissigjaehrigen-krieges/"
@@ -31,10 +31,10 @@
       "group": 2,
       "start_x": -52,
       "start_y": 1,
-      "formation_files": 24,
-      "swords": 11,
-      "archers": 20,
-      "spearmen": 23,
+      "formation_files": 12,
+      "swords": 6,
+      "archers": 10,
+      "spearmen": 12,
       "mounted": 0
     },
     {
@@ -43,10 +43,10 @@
       "group": 1,
       "start_x": -67,
       "start_y": -67,
-      "formation_files": 21,
-      "swords": 13,
-      "archers": 19,
-      "spearmen": 22,
+      "formation_files": 11,
+      "swords": 7,
+      "archers": 10,
+      "spearmen": 11,
       "mounted": 0
     },
     {
@@ -55,10 +55,10 @@
       "group": 3,
       "start_x": -69,
       "start_y": 64,
-      "formation_files": 23,
-      "swords": 10,
-      "archers": 20,
-      "spearmen": 23,
+      "formation_files": 12,
+      "swords": 5,
+      "archers": 10,
+      "spearmen": 12,
       "mounted": 0
     },
     {
@@ -67,10 +67,10 @@
       "group": 2,
       "start_x": -100,
       "start_y": -3,
-      "formation_files": 21,
-      "swords": 12,
-      "archers": 19,
-      "spearmen": 24,
+      "formation_files": 11,
+      "swords": 6,
+      "archers": 10,
+      "spearmen": 12,
       "mounted": 0
     },
     {
@@ -79,11 +79,11 @@
       "group": 1,
       "start_x": -112,
       "start_y": -81,
-      "formation_files": 17,
+      "formation_files": 9,
       "swords": 0,
       "archers": 0,
       "spearmen": 0,
-      "mounted": 35
+      "mounted": 18
     },
     {
       "type": "Cavalry",
@@ -91,11 +91,11 @@
       "group": 3,
       "start_x": -117,
       "start_y": 103,
-      "formation_files": 17,
+      "formation_files": 9,
       "swords": 0,
       "archers": 0,
       "spearmen": 0,
-      "mounted": 34
+      "mounted": 17
     },
     {
       "type": "Infantry",
@@ -103,10 +103,10 @@
       "group": 2,
       "start_x": 41,
       "start_y": 3,
-      "formation_files": 25,
-      "swords": 12,
-      "archers": 20,
-      "spearmen": 26,
+      "formation_files": 13,
+      "swords": 6,
+      "archers": 10,
+      "spearmen": 13,
       "mounted": 0
     },
     {
@@ -115,10 +115,10 @@
       "group": 1,
       "start_x": 54,
       "start_y": -65,
-      "formation_files": 23,
-      "swords": 11,
-      "archers": 20,
-      "spearmen": 25,
+      "formation_files": 12,
+      "swords": 6,
+      "archers": 10,
+      "spearmen": 13,
       "mounted": 0
     },
     {
@@ -127,10 +127,10 @@
       "group": 3,
       "start_x": 52,
       "start_y": 69,
-      "formation_files": 23,
-      "swords": 13,
-      "archers": 19,
-      "spearmen": 25,
+      "formation_files": 12,
+      "swords": 7,
+      "archers": 10,
+      "spearmen": 13,
       "mounted": 0
     },
     {
@@ -139,10 +139,10 @@
       "group": 2,
       "start_x": 89,
       "start_y": 1,
-      "formation_files": 22,
-      "swords": 12,
-      "archers": 19,
-      "spearmen": 29,
+      "formation_files": 11,
+      "swords": 6,
+      "archers": 10,
+      "spearmen": 15,
       "mounted": 0
     },
     {
@@ -151,11 +151,11 @@
       "group": 1,
       "start_x": 107,
       "start_y": -75,
-      "formation_files": 16,
+      "formation_files": 8,
       "swords": 0,
       "archers": 0,
       "spearmen": 0,
-      "mounted": 31
+      "mounted": 16
     },
     {
       "type": "Infantry",
@@ -163,16 +163,160 @@
       "group": 3,
       "start_x": 102,
       "start_y": 68,
-      "formation_files": 21,
-      "swords": 13,
-      "archers": 18,
-      "spearmen": 22,
+      "formation_files": 11,
+      "swords": 7,
+      "archers": 9,
+      "spearmen": 11,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -84,
+      "start_y": 24,
+      "formation_files": 12,
+      "swords": 5,
+      "archers": 10,
+      "spearmen": 11,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -102,
+      "start_y": -93,
+      "formation_files": 11,
+      "swords": 6,
+      "archers": 9,
+      "spearmen": 11,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -107,
+      "start_y": 87,
+      "formation_files": 12,
+      "swords": 5,
+      "archers": 10,
+      "spearmen": 11,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -132,
+      "start_y": -29,
+      "formation_files": 11,
+      "swords": 6,
+      "archers": 9,
+      "spearmen": 12,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -147,
+      "start_y": -104,
+      "formation_files": 9,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 17
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -155,
+      "start_y": 129,
+      "formation_files": 9,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 17
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 73,
+      "start_y": 26,
+      "formation_files": 13,
+      "swords": 6,
+      "archers": 10,
+      "spearmen": 13,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 89,
+      "start_y": -91,
+      "formation_files": 12,
+      "swords": 5,
+      "archers": 10,
+      "spearmen": 12,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 90,
+      "start_y": 92,
+      "formation_files": 12,
+      "swords": 6,
+      "archers": 9,
+      "spearmen": 12,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 121,
+      "start_y": 27,
+      "formation_files": 11,
+      "swords": 6,
+      "archers": 9,
+      "spearmen": 14,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 142,
+      "start_y": -98,
+      "formation_files": 8,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 15
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 140,
+      "start_y": 94,
+      "formation_files": 11,
+      "swords": 6,
+      "archers": 9,
+      "spearmen": 11,
       "mounted": 0
     }
   ],
   "field": {
-    "width_m": 560,
-    "height_m": 360
+    "width_m": 790,
+    "height_m": 510
   },
   "figure_target": 5000
 }

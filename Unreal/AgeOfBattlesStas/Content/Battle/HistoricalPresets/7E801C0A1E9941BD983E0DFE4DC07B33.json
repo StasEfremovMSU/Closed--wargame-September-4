@@ -1,5 +1,5 @@
 {
-  "schema_version": 5,
+  "schema_version": 6,
   "name": "Ватерлоо, 1815 · Гребень Мон-Сен-Жан",
   "terrain": "Waterloo",
   "era": {
@@ -18,7 +18,7 @@
     "required_regiments": 1,
     "crossing_team": 0
   },
-  "briefing": "18 июня 1815 года союзная армия Веллингтона заняла гребень Мон-Сен-Жан. В игровом эпизоде французская колонна идёт к гребню от центра. Стрелковые линии на крыльях и артиллерия прикрывают её подход, а британские мушкетёры обороняют гребень в двух эшелонах. Угумон, Ла-Э-Сент и Папелотт перекрывают отдельные подступы. Французам нужно вытеснить защитников и удержать гребень 20 секунд подряд. На гребне должна оставаться хотя бы половина исходного состава одного французского полка в строю. Защитник в строю сбрасывает отсчёт. Участок 560 × 380 м и состав 5 000 игровых фигур условны. Подход прусской армии не разыгрывается.",
+  "briefing": "18 июня 1815 года союзная армия Веллингтона заняла гребень Мон-Сен-Жан. В игровом эпизоде французская колонна идёт к гребню от центра. Стрелковые линии на крыльях и артиллерия прикрывают её подход, а британские мушкетёры обороняют гребень в двух эшелонах. Угумон, Ла-Э-Сент и Папелотт перекрывают отдельные подступы. Французам нужно вытеснить защитников и удержать гребень 20 секунд подряд. На гребне должна оставаться хотя бы половина исходного состава одного французского полка в строю. Защитник в строю сбрасывает отсчёт. Участок 790 × 535 м и состав 5 000 игровых фигур условны. Подход прусской армии не разыгрывается.\n\nВ игровом порядке боя 12 подразделений у первой стороны и 12 у второй. Батальоны начинают несколькими линиями. Фланги поля оставлены для манёвра.",
   "sources": [
     "https://www.nationalarchives.gov.uk/education/resources/significant-events/battle-of-waterloo-1815/",
     "https://collection.nam.ac.uk/detail.php?acc=1990-08-68-1",
@@ -33,9 +33,9 @@
       "group": 2,
       "start_x": -72,
       "start_y": 12,
-      "swords": 16,
-      "archers": 5,
-      "spearmen": 3,
+      "swords": 8,
+      "archers": 3,
+      "spearmen": 2,
       "mounted": 0,
       "ranged_class": "musket"
     },
@@ -45,8 +45,8 @@
       "group": 1,
       "start_x": -75,
       "start_y": -95,
-      "swords": 4,
-      "archers": 19,
+      "swords": 2,
+      "archers": 10,
       "spearmen": 0,
       "mounted": 0,
       "infantry_profile": "fusiliers"
@@ -57,8 +57,8 @@
       "group": 3,
       "start_x": -76,
       "start_y": 82,
-      "swords": 4,
-      "archers": 19,
+      "swords": 2,
+      "archers": 10,
       "spearmen": 0,
       "mounted": 0,
       "ranged_class": "musket"
@@ -69,8 +69,8 @@
       "group": 2,
       "start_x": -123,
       "start_y": 38,
-      "swords": 8,
-      "archers": 14,
+      "swords": 4,
+      "archers": 7,
       "spearmen": 0,
       "mounted": 0,
       "infantry_profile": "old_guard"
@@ -84,7 +84,7 @@
       "swords": 0,
       "archers": 0,
       "spearmen": 0,
-      "mounted": 12,
+      "mounted": 6,
       "mounted_class": "heavy"
     },
     {
@@ -98,7 +98,7 @@
       "spearmen": 0,
       "mounted": 0,
       "platform": "field_gun",
-      "platform_count": 6
+      "platform_count": 3
     },
     {
       "type": "Infantry",
@@ -106,8 +106,8 @@
       "group": 2,
       "start_x": 87,
       "start_y": 12,
-      "swords": 4,
-      "archers": 19,
+      "swords": 2,
+      "archers": 10,
       "spearmen": 0,
       "mounted": 0,
       "ranged_class": "musket"
@@ -118,8 +118,8 @@
       "group": 1,
       "start_x": 97,
       "start_y": -95,
-      "swords": 4,
-      "archers": 17,
+      "swords": 2,
+      "archers": 9,
       "spearmen": 0,
       "mounted": 0,
       "infantry_profile": "british_light"
@@ -130,8 +130,8 @@
       "group": 3,
       "start_x": 95,
       "start_y": 96,
-      "swords": 4,
-      "archers": 17,
+      "swords": 2,
+      "archers": 9,
       "spearmen": 0,
       "mounted": 0,
       "infantry_profile": "highlanders"
@@ -142,8 +142,8 @@
       "group": 2,
       "start_x": 128,
       "start_y": 11,
-      "swords": 6,
-      "archers": 15,
+      "swords": 3,
+      "archers": 8,
       "spearmen": 0,
       "mounted": 0,
       "ranged_class": "musket"
@@ -157,7 +157,7 @@
       "swords": 0,
       "archers": 0,
       "spearmen": 0,
-      "mounted": 11,
+      "mounted": 6,
       "mounted_class": "heavy"
     },
     {
@@ -171,12 +171,158 @@
       "spearmen": 0,
       "mounted": 0,
       "platform": "field_gun",
-      "platform_count": 6
+      "platform_count": 3
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -104,
+      "start_y": 35,
+      "swords": 8,
+      "archers": 2,
+      "spearmen": 1,
+      "mounted": 0,
+      "ranged_class": "musket"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -110,
+      "start_y": -121,
+      "swords": 2,
+      "archers": 9,
+      "spearmen": 0,
+      "mounted": 0,
+      "infantry_profile": "fusiliers"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -114,
+      "start_y": 105,
+      "swords": 2,
+      "archers": 9,
+      "spearmen": 0,
+      "mounted": 0,
+      "ranged_class": "musket"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -155,
+      "start_y": 64,
+      "swords": 4,
+      "archers": 7,
+      "spearmen": 0,
+      "mounted": 0,
+      "infantry_profile": "old_guard"
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -148,
+      "start_y": 162,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 6,
+      "mounted_class": "heavy"
+    },
+    {
+      "type": "Platform",
+      "enabled": true,
+      "group": 1,
+      "start_x": -93,
+      "start_y": -62,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 0,
+      "platform": "field_gun",
+      "platform_count": 3
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 119,
+      "start_y": 35,
+      "swords": 2,
+      "archers": 9,
+      "spearmen": 0,
+      "mounted": 0,
+      "ranged_class": "musket"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 132,
+      "start_y": -121,
+      "swords": 2,
+      "archers": 8,
+      "spearmen": 0,
+      "mounted": 0,
+      "infantry_profile": "british_light"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 133,
+      "start_y": 119,
+      "swords": 2,
+      "archers": 8,
+      "spearmen": 0,
+      "mounted": 0,
+      "infantry_profile": "highlanders"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 160,
+      "start_y": 37,
+      "swords": 3,
+      "archers": 7,
+      "spearmen": 0,
+      "mounted": 0,
+      "ranged_class": "musket"
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 168,
+      "start_y": -163,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 5,
+      "mounted_class": "heavy"
+    },
+    {
+      "type": "Platform",
+      "enabled": true,
+      "group": 3,
+      "start_x": 110,
+      "start_y": -73,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 0,
+      "platform": "field_gun",
+      "platform_count": 3
     }
   ],
   "field": {
-    "width_m": 560,
-    "height_m": 380
+    "width_m": 790,
+    "height_m": 535
   },
   "figure_target": 5000,
   "adaptive_battle": true

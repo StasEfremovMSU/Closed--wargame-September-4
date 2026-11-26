@@ -1,4 +1,4 @@
-﻿#include "RegimentCommanderProfiles.h"
+#include "RegimentCommanderProfiles.h"
 
 #include "Engine/Texture2D.h"
 #include "Internationalization/Internationalization.h"
@@ -115,7 +115,7 @@ FString SeededName(const FNamePool* Pool, uint64 Seed)
     return Family.IsEmpty() ? Given : Given + TEXT(" ") + Family;
 }
 
-enum class EHeadwear : uint8 { Hair, Diadem, Helmet, Turban, Crown, Bicorne };
+enum class EHeadwear : uint8 { Hair, Diadem, Helmet, Turban, Crown, Bicorne, Kabuto };
 struct FHistoricalCommander
 {
     const TCHAR* Name;
@@ -144,12 +144,13 @@ struct FHistoricalCommander
 // https://www.english-heritage.org.uk/visit/places/1066-battle-of-hastings-abbey-and-battlefield/history-and-stories/what-happened-battle-hastings/
 // https://www.english-heritage.org.uk/learn/teaching-resources/teaching-history/teaching-medieval/
 // https://battle-poltava.org.ua/en/exposition/
+// https://col-militarymaps-frontend.rct.uk/other-18th/19th-century-conflicts/plan-of-ivangorod-and-narva-1700-ivangorod-leningrad-russia-59deg2218n-28deg1259e-narva-ida-virumaa-0
 // Accessed 2026-11-26. Portraits and numeric traits are game interpretations.
 enum ECommander : uint8
 {
     Alexander, Philip, Darius, Porus, Napoleon, Kutuzov, Wellington, PhilipVI, EdwardIII,
     CharlesAlbret, HenryV, LaHire, Talbot, Bureau, Hannibal, Scipio, Varro, CharlesXII, PeterI,
-    Joan, Melas, Wallace, Warenne, WilliamNormandy, Harold, HenryTudor, RichardIII, NoCommander
+    Joan, Melas, Wallace, Warenne, WilliamNormandy, Harold, HenryTudor, RichardIII, Croy, NoCommander
 };
 const FHistoricalCommander Historical[] = {
     {TEXT("Александр Македонский"), EHeadwear::Diadem, 0x424B69, 0xA1493C, 0x654331, 0xDEAD82, false, 9, 8, 2},
@@ -179,6 +180,7 @@ const FHistoricalCommander Historical[] = {
     {TEXT("Гарольд II Годвинсон"), EHeadwear::Crown, 0x4F4241, 0x733F3D, 0x58423A, 0xD5A18A, true, 3, 6, 9},
     {TEXT("Генрих Тюдор"), EHeadwear::Crown, 0x3E4951, 0x476155, 0x704F33, 0xDEAF91, false, 4, 7, 8},
     {TEXT("Ричард III"), EHeadwear::Crown, 0x474456, 0x4A3D53, 0x382C29, 0xCAA087, false, 9, 4, 3},
+    {TEXT("Шарль Эжен де Круа"), EHeadwear::Hair, 0x55443F, 0x705242, 0xAAA093, 0xCEA483, false, 2, 7, 8},
 };
 static_assert(UE_ARRAY_COUNT(Historical) == NoCommander);
 
@@ -213,6 +215,7 @@ const FHistoricalBattle HistoricalBattles[] = {
     {FGuid(0xE9487555, 0x480B53DD, 0xB55F05CE, 0xE1885F45), WilliamNormandy, Harold},
     {FGuid(0x22E674A1, 0x6632562B, 0x9E4F1718, 0xE52E2859), HenryTudor, RichardIII},
     {FGuid(0x655310A0, 0x48854A4A, 0xBDE3DE48, 0x9EE8DA84), CharlesXII, PeterI},
+    {FGuid(0x845BCC52, 0xB6655AA6, 0xA8E31464, 0x0A1E99B2), CharlesXII, Croy},
 };
 
 const FHistoricalCommander* ByName(const FString& Name)
@@ -303,6 +306,25 @@ FColor Rgb(uint32 Hex)
     return FColor(uint8(Hex >> 16), uint8(Hex >> 8), uint8(Hex));
 }
 
+const FHistoricalCommander* ArmyPortrait(FStringView EraId, bool bOpposingTeam)
+{
+    // A bounded set of generic portraits, in pairs for the two armies.
+    static const FHistoricalCommander Armies[][2] = {
+        {{nullptr, EHeadwear::Helmet,  0x39494D, 0x355061, 0x443125, 0xBA8566, true},
+         {nullptr, EHeadwear::Diadem,  0x634B44, 0x7E4837, 0x3A2B29, 0xD2A27E, false}},
+        {{nullptr, EHeadwear::Helmet,  0x355061, 0x41516D, 0x4D362D, 0xCFA784, true},
+         {nullptr, EHeadwear::Helmet,  0x593D43, 0x823E3E, 0x745042, 0xE1B998, false}},
+        {{nullptr, EHeadwear::Kabuto,  0x324646, 0x335463, 0x282426, 0xC49372, true},
+         {nullptr, EHeadwear::Kabuto,  0x583B36, 0x7C4A42, 0x262626, 0xD7A985, false}},
+        {{nullptr, EHeadwear::Bicorne, 0x34485F, 0x324963, 0x594236, 0xD8AC85, false},
+         {nullptr, EHeadwear::Bicorne, 0x584941, 0x844241, 0x706457, 0xE2B99A, false}},
+    };
+    const int32 Style = EraId == TEXT("sengoku") ? 2
+        : EraId == TEXT("great_northern_war") || EraId == TEXT("napoleonic") ? 3
+        : EraId == TEXT("ancient") ? 0 : 1;
+    return &Armies[Style][bOpposingTeam ? 1 : 0];
+}
+
 UTexture2D* PortraitTexture(const FHistoricalCommander* Commander)
 {
     if (!Commander)
@@ -388,6 +410,14 @@ UTexture2D* PortraitTexture(const FHistoricalCommander* Commander)
                 if (Oval(X, Y, 43, 18, 3, 3))
                     Color = Gold;
                 break;
+            case EHeadwear::Kabuto:
+                if (Y <= 25 && Oval(X, Y, 32, 22, 13, 12))
+                    Color = Y < 20 ? Ink : Uniform;
+                if (Y >= 23 && Y <= 36 && FMath::Abs(X - 32) >= 10 && FMath::Abs(X - 32) <= 17)
+                    Color = Y % 4 == 0 ? Gold : Uniform;
+                if (FMath::Abs(X - 32) <= 8 && Y == 10 + FMath::Abs(FMath::Abs(X - 32) - 6))
+                    Color = LightGold;
+                break;
             }
             if (X == 1 || Y == 1 || X == Size - 2 || Y == Size - 2)
                 Color = Gold;
@@ -466,7 +496,7 @@ void Apply(battle::Scenario& Scenario, const FMissionPreset& Preset)
     }
 }
 
-FCommanderCard Describe(const battle::World& World, battle::OfficerId OfficerId)
+FCommanderCard Describe(const battle::World& World, battle::OfficerId OfficerId, FStringView EraId)
 {
     FCommanderCard Card;
     const auto Officer = std::ranges::find(World.officers, OfficerId, &battle::OfficerSpec::id);
@@ -488,7 +518,10 @@ FCommanderCard Describe(const battle::World& World, battle::OfficerId OfficerId)
         Profile = battle::command::FindProfile(*Hierarchy, OfficerId);
     }
     Card.RoleIcon = Rank == Level::Army ? TEXT("★") : Rank == Level::Regiment ? TEXT("◆") : TEXT("▲");
-    Card.Portrait = PortraitTexture(ByName(Card.Name));
+    const auto* Appearance = ByName(Card.Name);
+    if (!Appearance && Rank == Level::Army)
+        Appearance = ArmyPortrait(EraId, Unit->independent_team != 0);
+    Card.Portrait = PortraitTexture(Appearance);
     if (!Profile)
         return Card;
     const FNumberFormattingOptions OneDecimal = FNumberFormattingOptions().SetMaximumFractionalDigits(1);
@@ -503,9 +536,9 @@ FCommanderCard Describe(const battle::World& World, battle::OfficerId OfficerId)
             "Подвижный: + темп {0} м/с · − запас здоровья {1}"), Number(Starting.speed), Number(Starting.health));
     const FText General = Profile->aggression < .6f ?
         FText::Format(NSLOCTEXT("RegimentCommanders", "Inspiring",
-            "Вдохновитель: + поддержка духа {0}% · − осторожнее контратакует"), Number(100.f * Officer->charisma)) :
+            "Вдохновитель · харизма {0}% · осторожнее контратакует"), Number(100.f * Officer->charisma)) :
         FText::Format(NSLOCTEXT("RegimentCommanders", "Decisive",
-            "Решительный: + охотнее контратакует · − поддержка духа {0}%"), Number(100.f * Officer->charisma));
+            "Решительный · харизма {0}% · охотнее контратакует"), Number(100.f * Officer->charisma));
     FText Role;
     switch (Rank)
     {
@@ -531,6 +564,8 @@ FCommanderCard Describe(const battle::World& World, battle::OfficerId OfficerId)
     }
     Card.Effects = FText::Format(NSLOCTEXT("RegimentCommanders", "CardEffects", "{0}\n{1}\n{2}"),
         Personal, General, Role);
+    Card.TacticalSkill = FText::Format(NSLOCTEXT("RegimentCommanders", "TacticalSkill", "Навык тактики · {0}"),
+        FText::AsPercent(Profile->tactical_skill));
     return Card;
 }
 }

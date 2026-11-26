@@ -66,6 +66,26 @@ LocalMelee::LocalMelee(const World &w, float dt)
         max_step_ = std::max(max_step_, std::max(u.speed * 1.45f, Length(u.desired_velocity)) * dt);
         positions.push_back({u.id, Ground(u.pose.position), r ? r->team : u.independent_team, i});
     }
+    if (const auto *officer = FindUnit(w, w.controlled);
+        officer && officer->alive && officer->platform == BattlePlatform::None) {
+        const auto velocity = Ground(officer->desired_velocity);
+        const float speed = Length(velocity);
+        const auto record = speed > .01f ? std::ranges::find(w.officers, officer->id, &OfficerSpec::unit)
+                                         : w.officers.end();
+        if (record != w.officers.end() && (record->role == 1 || record->role == 2)) {
+            officer_heading_ = velocity * (1.f / speed);
+            const float lookahead = std::clamp(speed * .45f, 1.f, 3.f);
+            const auto from = officer->pose.position;
+            const auto goal = from + officer_heading_ * lookahead;
+            const float radius = BodyRadius(*officer);
+            officer_lookahead_ = lookahead * UnitTerrainLimit(w, from, goal, radius);
+            if (officer_lookahead_ > .01f) {
+                passing_officer_ = officer;
+                officer_clearance_radius_ = officer->troop == UnitTroop::Mounted
+                    ? std::max(radius, .375f) : radius;
+            }
+        }
+    }
     if (w.scenario.rules.adaptive_battle) {
         unindexed_ = std::move(positions);
         DetectCoarseCandidates(dt);
@@ -320,6 +340,35 @@ float LocalMelee::MeleeReach(const UnitState &attacker, const UnitState &defende
 
 bool LocalMelee::Engaged(const RegimentState &r) const {
     return engaged_[&r - world_.regiments.data()];
+}
+
+bool LocalMelee::CanYieldForOfficer(const RegimentState &r) const {
+    return passing_officer_ && (passing_officer_->regiment ? passing_officer_->regiment == r.id
+                                                            : Team(*passing_officer_) == r.team);
+}
+
+Vec3 LocalMelee::OfficerClearanceGoal(const UnitState &u, const RegimentState &r) const {
+    const auto slot = u.slot.position;
+    if (u.platform != BattlePlatform::None)
+        return slot;
+    const auto officer_start = start_[UnitIndex(*passing_officer_)];
+    const auto offset = slot - officer_start;
+    const float radius = BodyRadius(u);
+    const float clearance = radius + officer_clearance_radius_ + .08f;
+    const float ahead = Dot(offset, officer_heading_);
+    if (ahead < -clearance || ahead > officer_lookahead_ + clearance)
+        return slot;
+
+    const Vec3 side{-officer_heading_.y, officer_heading_.x, 0.f};
+    const float lateral = Dot(offset, side);
+    // Give the closest file room to sidestep even when its neighboring files are tight.
+    const float falloff = std::clamp(1.f - 2.f * radius / r.formation.spacing_m, .15f, .5f);
+    const float shift = clearance - std::abs(lateral) * falloff;
+    if (shift <= 0.f)
+        return slot;
+    const float choice = std::abs(lateral) > .02f ? lateral
+        : Dot(start_[UnitIndex(u)] - officer_start, side);
+    return slot + side * (choice < 0.f ? -shift : shift);
 }
 
 void LocalMelee::Neighbors(Vec3 p, float range, std::optional<int32_t> excluded_team) const {

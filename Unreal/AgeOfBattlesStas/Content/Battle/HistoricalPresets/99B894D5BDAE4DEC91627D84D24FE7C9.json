@@ -1,5 +1,5 @@
 {
-  "schema_version": 5,
+  "schema_version": 6,
   "name": "Маренго, 1800 · Возвращение французов",
   "terrain": "OpenField",
   "era": {
@@ -19,7 +19,7 @@
     "required_regiments": 1,
     "crossing_team": 0
   },
-  "briefing": "14 июня 1800 года у Маренго австрийская армия Михаэля фон Меласа вынудила французов отступить. Подход дивизии Луи Дезе позволил войску первого консула Бонапарта вернуться в бой и победить. Сценарий начинается с подхода французского резерва, который стоит позади центра.\n\nПозиции и численность условны. Источник сверён 26.11.2026.",
+  "briefing": "14 июня 1800 года у Маренго австрийская армия Михаэля фон Меласа вынудила французов отступить. Подход дивизии Луи Дезе позволил войску первого консула Бонапарта вернуться в бой и победить. Сценарий начинается с подхода французского резерва, который стоит позади центра.\n\nПозиции и численность условны. Источник сверён 26.11.2026.\n\nВ игровом порядке боя 12 подразделений у первой стороны и 12 у второй. Батальоны начинают несколькими линиями. Фланги поля оставлены для манёвра.",
   "sources": [
     "https://www.musee-armee.fr/expoNapoleonStratege/docs/MA-livret-napoleon-strategeEN.pdf",
     "https://collections.musee-armee.fr/trompette-dhonneur-decernee-au-citoyen-norberg-pour-sa-conduite-a-la-bataille-de-marengo-14-juin-1800/"
@@ -31,10 +31,10 @@
       "group": 2,
       "start_x": -65,
       "start_y": 0,
-      "formation_files": 21,
-      "swords": 8,
-      "archers": 14,
-      "spearmen": 11,
+      "formation_files": 11,
+      "swords": 4,
+      "archers": 7,
+      "spearmen": 6,
       "mounted": 0
     },
     {
@@ -43,10 +43,10 @@
       "group": 1,
       "start_x": -78,
       "start_y": -80,
-      "formation_files": 35,
-      "swords": 4,
-      "archers": 20,
-      "spearmen": 7,
+      "formation_files": 18,
+      "swords": 2,
+      "archers": 10,
+      "spearmen": 4,
       "mounted": 0,
       "infantry_profile": "fusiliers"
     },
@@ -56,10 +56,10 @@
       "group": 3,
       "start_x": -86,
       "start_y": 70,
-      "formation_files": 33,
-      "swords": 4,
-      "archers": 20,
-      "spearmen": 7,
+      "formation_files": 17,
+      "swords": 2,
+      "archers": 10,
+      "spearmen": 4,
       "mounted": 0,
       "infantry_profile": "grenadiers"
     },
@@ -69,10 +69,10 @@
       "group": 2,
       "start_x": -145,
       "start_y": 1,
-      "formation_files": 19,
-      "swords": 7,
-      "archers": 15,
-      "spearmen": 10,
+      "formation_files": 10,
+      "swords": 4,
+      "archers": 8,
+      "spearmen": 5,
       "mounted": 0
     },
     {
@@ -81,16 +81,16 @@
       "group": 1,
       "start_x": -117,
       "start_y": -113,
-      "formation_files": 18,
+      "formation_files": 9,
       "swords": 0,
       "archers": 0,
       "spearmen": 0,
-      "mounted": 23
+      "mounted": 12
     },
     {
       "type": "Platform",
       "platform": "field_gun",
-      "platform_count": 4,
+      "platform_count": 2,
       "enabled": true,
       "group": 3,
       "start_x": -93,
@@ -106,10 +106,10 @@
       "group": 2,
       "start_x": 58,
       "start_y": 0,
-      "formation_files": 28,
-      "swords": 7,
-      "archers": 17,
-      "spearmen": 11,
+      "formation_files": 14,
+      "swords": 4,
+      "archers": 9,
+      "spearmen": 6,
       "mounted": 0
     },
     {
@@ -118,10 +118,10 @@
       "group": 1,
       "start_x": 68,
       "start_y": -70,
-      "formation_files": 34,
-      "swords": 5,
-      "archers": 19,
-      "spearmen": 7,
+      "formation_files": 17,
+      "swords": 3,
+      "archers": 10,
+      "spearmen": 4,
       "mounted": 0
     },
     {
@@ -130,10 +130,10 @@
       "group": 3,
       "start_x": 72,
       "start_y": 75,
-      "formation_files": 31,
-      "swords": 5,
-      "archers": 19,
-      "spearmen": 7,
+      "formation_files": 16,
+      "swords": 3,
+      "archers": 10,
+      "spearmen": 4,
       "mounted": 0
     },
     {
@@ -142,10 +142,10 @@
       "group": 2,
       "start_x": 120,
       "start_y": 4,
-      "formation_files": 25,
-      "swords": 7,
-      "archers": 17,
-      "spearmen": 9,
+      "formation_files": 13,
+      "swords": 4,
+      "archers": 9,
+      "spearmen": 5,
       "mounted": 0
     },
     {
@@ -154,16 +154,16 @@
       "group": 1,
       "start_x": 122,
       "start_y": -118,
-      "formation_files": 18,
+      "formation_files": 9,
       "swords": 0,
       "archers": 0,
       "spearmen": 0,
-      "mounted": 26
+      "mounted": 13
     },
     {
       "type": "Platform",
       "platform": "field_gun",
-      "platform_count": 4,
+      "platform_count": 2,
       "enabled": true,
       "group": 3,
       "start_x": 104,
@@ -172,11 +172,159 @@
       "archers": 0,
       "spearmen": 0,
       "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -97,
+      "start_y": 23,
+      "formation_files": 11,
+      "swords": 4,
+      "archers": 7,
+      "spearmen": 5,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -113,
+      "start_y": -106,
+      "formation_files": 18,
+      "swords": 2,
+      "archers": 10,
+      "spearmen": 3,
+      "mounted": 0,
+      "infantry_profile": "fusiliers"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -124,
+      "start_y": 93,
+      "formation_files": 17,
+      "swords": 2,
+      "archers": 10,
+      "spearmen": 3,
+      "mounted": 0,
+      "infantry_profile": "grenadiers"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -177,
+      "start_y": 27,
+      "formation_files": 10,
+      "swords": 3,
+      "archers": 7,
+      "spearmen": 5,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -152,
+      "start_y": -136,
+      "formation_files": 9,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 11
+    },
+    {
+      "type": "Platform",
+      "platform": "field_gun",
+      "platform_count": 2,
+      "enabled": true,
+      "group": 3,
+      "start_x": -131,
+      "start_y": 68,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 90,
+      "start_y": 23,
+      "formation_files": 14,
+      "swords": 3,
+      "archers": 8,
+      "spearmen": 5,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 103,
+      "start_y": -96,
+      "formation_files": 17,
+      "swords": 2,
+      "archers": 9,
+      "spearmen": 3,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 110,
+      "start_y": 98,
+      "formation_files": 16,
+      "swords": 2,
+      "archers": 9,
+      "spearmen": 3,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 152,
+      "start_y": 30,
+      "formation_files": 13,
+      "swords": 3,
+      "archers": 8,
+      "spearmen": 4,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 157,
+      "start_y": -141,
+      "formation_files": 9,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 13
+    },
+    {
+      "type": "Platform",
+      "platform": "field_gun",
+      "platform_count": 2,
+      "enabled": true,
+      "group": 3,
+      "start_x": 142,
+      "start_y": 69,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 0
     }
   ],
   "field": {
-    "width_m": 560,
-    "height_m": 360
+    "width_m": 790,
+    "height_m": 510
   },
   "figure_target": 5000
 }

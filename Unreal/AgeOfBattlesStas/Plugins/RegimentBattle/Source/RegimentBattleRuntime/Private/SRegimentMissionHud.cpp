@@ -5,6 +5,7 @@
 #include "RegimentGameModules.h"
 #include "RegimentHistoricalCampaign.h"
 #include "RegimentMissionScenario.h"
+#include "RegimentMissionTutorial.h"
 #include "SRegimentMissionDeploymentMap.h"
 
 #include "Brushes/SlateColorBrush.h"
@@ -296,7 +297,7 @@ FText GoalDescription(EMissionGoal Goal)
 
 FText RegimentNumber(int32 RegimentIndex)
 {
-    return FText::AsNumber(RegimentIndex % MissionRegimentsPerTeam + 1);
+    return FText::AsNumber(MissionTeamSlot(RegimentIndex) + 1);
 }
 
 FText MarchTitle(EMissionHudStage Stage)
@@ -463,7 +464,8 @@ void SRegimentMissionHud::Construct(const FArguments& InArgs)
     SetVisibility(EVisibility::SelfHitTestInvisible);
     const auto MarchVisibility = [this]
     {
-        return Stage == EMissionHudStage::Setup || Stage == EMissionHudStage::Modules || Stage == EMissionHudStage::Campaigns
+        return Stage == EMissionHudStage::Setup || Stage == EMissionHudStage::Modules ||
+            Stage == EMissionHudStage::Campaigns || Stage == EMissionHudStage::Tutorials
             ? EVisibility::Collapsed : EVisibility::SelfHitTestInvisible;
     };
 
@@ -482,7 +484,7 @@ void SRegimentMissionHud::Construct(const FArguments& InArgs)
         [
             MissionHudSlate::MakeBackground(TEXT("CampaignTable.png"), TAttribute<EVisibility>::CreateLambda([this]
             {
-                return Stage == EMissionHudStage::Setup || Stage == EMissionHudStage::Campaigns
+                return Stage == EMissionHudStage::Setup || Stage == EMissionHudStage::Campaigns || Stage == EMissionHudStage::Tutorials
                     ? EVisibility::HitTestInvisible : EVisibility::Collapsed;
             }))
         ]
@@ -540,6 +542,22 @@ void SRegimentMissionHud::Construct(const FArguments& InArgs)
                 [MakeCampaignPanel()]
             ]
         ]
+        + SOverlay::Slot()
+        [
+            SNew(SBorder)
+            .Visibility_Lambda([this]
+            {
+                return Stage == EMissionHudStage::Tutorials ? EVisibility::Visible : EVisibility::Collapsed;
+            })
+            .BorderImage(&MissionHudSlate::SetupBackdrop)
+            .Padding(FMargin(22.f))
+            [
+                SNew(SScaleBox)
+                .Stretch(EStretch::ScaleToFit)
+                .StretchDirection(EStretchDirection::DownOnly)
+                [MakeTutorialPanel()]
+            ]
+        ]
         + SOverlay::Slot().VAlign(VAlign_Top).Padding(12, 18, 12, 0)
         [
             SNew(SScaleBox)
@@ -575,6 +593,12 @@ void SRegimentMissionHud::ShowCampaignMenu()
 {
     CampaignNotice = FText::GetEmpty();
     SetStatus(EMissionHudStage::Campaigns, 0);
+}
+
+void SRegimentMissionHud::ShowTutorialMenu()
+{
+    TutorialNotice = FText::GetEmpty();
+    SetStatus(EMissionHudStage::Tutorials, 0);
 }
 
 void SRegimentMissionHud::SetModuleContext(const FString& Id, const FMissionPreset& Preset)
@@ -683,9 +707,9 @@ void SRegimentMissionHud::ChooseFaction(bool bBlue, FString Id)
     if (Selected != Id)
     {
         Selected = MoveTemp(Id);
-        const int32 First = bBlue ? 0 : MissionRegimentsPerTeam;
-        for (int32 Index = First; Index < First + MissionRegimentsPerTeam; ++Index)
+        for (int32 Slot = 0; Slot < MissionMaxRegimentsPerTeam; ++Slot)
         {
+            const int32 Index = MissionRosterIndex(bBlue ? 0 : 1, Slot);
             auto& Row = Draft.Roster[Index];
             if (Row.Platform != battle::BattlePlatform::None && !RegimentEraCatalog::PlatformTroop(*Faction, Row.Platform))
                 MissionHudSlate::ResetPlatformRow(Row, false);
@@ -1280,7 +1304,7 @@ TSharedRef<SWidget> SRegimentMissionHud::MakeObjectiveControls()
             [Label(LOCTEXT("CrossingRequired", "Полков для цели"))]
             + SHorizontalBox::Slot().AutoWidth()
             [
-                MakeField<int32>(74.f, 1, MissionRegimentsPerTeam,
+                MakeField<int32>(74.f, 1, MissionMaxRegimentsPerTeam,
                     LOCTEXT("CrossingRequiredHelp", "Сколько полков выбранной стороны должны пройти переправу"),
                     TAttribute<int32>::CreateLambda([this] { return Draft.Objective.RequiredRegiments; }),
                     SSpinBox<int32>::FOnValueChanged::CreateLambda([this](int32 Value)
@@ -1644,7 +1668,7 @@ TSharedRef<SWidget> SRegimentMissionHud::MakeLaunchStep()
                     int32 BlueCount = 0, OrangeCount = 0;
                     for (int32 Index = 0; Index < Draft.Roster.Num(); ++Index)
                         if (Draft.Roster[Index].bEnabled)
-                            ++(Index < MissionRegimentsPerTeam ? BlueCount : OrangeCount);
+                            ++(MissionTeam(Index) == 0 ? BlueCount : OrangeCount);
                     return FText::Format(LOCTEXT("SummaryRegiments", "Полки · синие {0} · оранжевые {1}"), BlueCount, OrangeCount);
                 }))]
             ]
@@ -1720,13 +1744,13 @@ TSharedRef<SWidget> SRegimentMissionHud::MakeRosterTable(int32 FirstIndex)
     const TSharedRef<SVerticalBox> RosterTable = SNew(SVerticalBox)
         + SVerticalBox::Slot().AutoHeight().Padding(12, 0, 12, 10)
         [
-            MakeText(TAttribute<FText>::CreateLambda([this, FirstIndex, bPlayer]
+            MakeText(TAttribute<FText>::CreateLambda([this, bPlayer]
             {
                 int32 Enabled = 0;
-                for (int32 Index = FirstIndex; Index < FirstIndex + MissionRegimentsPerTeam; ++Index)
-                    Enabled += Draft.Roster[Index].bEnabled ? 1 : 0;
+                for (int32 Slot = 0; Slot < MissionMaxRegimentsPerTeam; ++Slot)
+                    Enabled += Draft.Roster[MissionRosterIndex(bPlayer ? 0 : 1, Slot)].bEnabled ? 1 : 0;
                 return FText::Format(bPlayer ? LOCTEXT("BlueRegiments", "Синие полки · {0}/{1}")
-                        : LOCTEXT("OrangeRegiments", "Оранжевые полки · {0}/{1}"), Enabled, MissionRegimentsPerTeam);
+                        : LOCTEXT("OrangeRegiments", "Оранжевые полки · {0}/{1}"), Enabled, MissionMaxRegimentsPerTeam);
             }), 19, FSlateColor(bPlayer ? Blue : Orange), true)
         ]
         + SVerticalBox::Slot().AutoHeight().Padding(12, 0, 12, 7)
@@ -1779,8 +1803,9 @@ TSharedRef<SWidget> SRegimentMissionHud::MakeRosterTable(int32 FirstIndex)
             ]
         ];
 
-    for (int32 Index = FirstIndex; Index < FirstIndex + MissionRegimentsPerTeam; ++Index)
+    for (int32 Slot = 0; Slot < MissionMaxRegimentsPerTeam; ++Slot)
     {
+        const int32 Index = MissionRosterIndex(bPlayer ? 0 : 1, Slot);
         RosterTable->AddSlot().AutoHeight().Padding(0, 0, 0, 4.f)
         [
             MakeRosterRow(Index)
@@ -1849,6 +1874,14 @@ TSharedRef<SWidget> SRegimentMissionHud::MakeModulePanel()
         SNew(SButton)
         .ButtonStyle(&ModuleButtonStyle())
         .ContentPadding(FMargin(15.f, 11.f))
+        .OnClicked_Lambda([this] { ShowTutorialMenu(); return FReply::Handled(); })
+        [MakeText(LOCTEXT("TutorialEntrance", "Обучение"), 18, FSlateColor(Ink), true)]
+    ];
+    Available->AddSlot().AutoHeight().Padding(0, 0, 10, 10)
+    [
+        SNew(SButton)
+        .ButtonStyle(&ModuleButtonStyle())
+        .ContentPadding(FMargin(15.f, 11.f))
         .OnClicked_Lambda([this] { ShowCampaignMenu(); return FReply::Handled(); })
         [MakeText(LOCTEXT("CampaignEntrance", "Исторические кампании"), 18, FSlateColor(Ink), true)]
     ];
@@ -1865,13 +1898,20 @@ TSharedRef<SWidget> SRegimentMissionHud::MakeModulePanel()
             .ButtonColorAndOpacity(FSlateColor(ControlTint))
             .ContentPadding(FMargin(20.f, 10.f))
             .IsFocusable(true)
+            .ToolTipText(LOCTEXT("PracticeSummary", "Своя битва и Стерлингский мост"))
             .OnClicked(FOnClicked::CreateSP(this, &SRegimentMissionHud::SelectModule, FString()))
             [MakeText(RegimentGameModules::Name(FStringView()), 18, FSlateColor(Ink), true)]
         ]
-        + SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)
+        + SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(10, 0, 0, 0)
         [
-            SNew(STextBlock).Text(LOCTEXT("PracticeSummary", "Своя битва и Стерлингский мост"))
-            .Font(FCoreStyle::GetDefaultFontStyle("Regular", 16)).ColorAndOpacity(Muted).AutoWrapText(true)
+            MakeControl(LOCTEXT("GameStatistics", "Статистика"),
+                LOCTEXT("GameStatisticsHelp", "Посмотреть итоги всех завершённых боёв"),
+                140.f, 40.f, FSlateColor(ControlTint), FOnClicked::CreateLambda([this]
+                {
+                    if (OnShowStatistics)
+                        OnShowStatistics();
+                    return FReply::Handled();
+                }), true)
         ]
         + SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(10, 0, 0, 0)
         [
@@ -1927,6 +1967,70 @@ TSharedRef<SWidget> SRegimentMissionHud::MakeModulePanel()
         [Rule()]
         + SVerticalBox::Slot().AutoHeight()
         [MenuActions]
+    ];
+}
+
+TSharedRef<SWidget> SRegimentMissionHud::MakeTutorialPanel()
+{
+    using namespace MissionHudSlate;
+    const auto Entries = SNew(SVerticalBox);
+    int32 Number = 0;
+    for (const auto& Lesson : RegimentMissionTutorial::Lessons())
+    {
+        Entries->AddSlot().AutoHeight().Padding(0, 0, 0, 9)
+        [
+            SNew(SButton)
+            .ButtonStyle(&ModuleButtonStyle())
+            .HAlign(HAlign_Fill)
+            .ContentPadding(FMargin(16.f, 10.f))
+            .OnClicked_Lambda([this, Id = Lesson.Id]
+            {
+                TutorialNotice = FText::GetEmpty();
+                if (OnStartTutorial)
+                    OnStartTutorial(Id);
+                RegimentAudioSettings::PlayMenuSound(World, TutorialNotice.IsEmpty()
+                    ? RegimentAudioSettings::EMenuSound::Confirm : RegimentAudioSettings::EMenuSound::Error);
+                return FReply::Handled();
+            })
+            [
+                SNew(SVerticalBox)
+                + SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 3)
+                [MakeText(FText::Format(LOCTEXT("TutorialNumber", "{0}. {1}"), ++Number, Lesson.Name),
+                    19, FSlateColor(Ink), true)]
+                + SVerticalBox::Slot().AutoHeight()
+                [
+                    SNew(STextBlock)
+                    .Text(Lesson.Description).AutoWrapText(true)
+                    .Font(FCoreStyle::GetDefaultFontStyle("Regular", 15)).ColorAndOpacity(Muted)
+                ]
+            ]
+        ];
+    }
+
+    return SNew(SBox).WidthOverride(670.f)
+    [
+        SNew(SVerticalBox)
+        + SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 18)
+        [MakeText(LOCTEXT("TutorialMenu", "Обучение"), 34, FSlateColor(Ink), true)]
+        + SVerticalBox::Slot().AutoHeight()
+        [Entries]
+        + SVerticalBox::Slot().AutoHeight().Padding(0, 5, 0, 8)
+        [
+            SNew(STextBlock)
+            .Visibility_Lambda([this] { return TutorialNotice.IsEmpty() ? EVisibility::Collapsed : EVisibility::Visible; })
+            .Text_Lambda([this] { return TutorialNotice; })
+            .ColorAndOpacity(Orange)
+        ]
+        + SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Left).Padding(0, 6, 0, 0)
+        [
+            MakeControl(LOCTEXT("TutorialBack", "В главное меню"), LOCTEXT("TutorialBackHelp", "Вернуться к выбору режимов"),
+                180.f, 42.f, FSlateColor(ControlTint), FOnClicked::CreateLambda([this]
+                {
+                    RegimentAudioSettings::PlayMenuSound(World, RegimentAudioSettings::EMenuSound::Back);
+                    ShowModuleMenu();
+                    return FReply::Handled();
+                }), true)
+        ]
     ];
 }
 
@@ -2177,7 +2281,7 @@ const FRegimentEraFaction* SRegimentMissionHud::RosterFaction(int32 Index) const
     if (!Era)
         return nullptr;
     return RegimentEraCatalog::FindFaction(*Era,
-        FStringView(Index < MissionRegimentsPerTeam ? Draft.Era.BlueFaction : Draft.Era.OrangeFaction));
+        FStringView(MissionTeam(Index) == 0 ? Draft.Era.BlueFaction : Draft.Era.OrangeFaction));
 }
 
 TSharedRef<SWidget> SRegimentMissionHud::MakeRosterProfileMenu(int32 Index)
@@ -2540,8 +2644,9 @@ TSharedRef<SWidget> SRegimentMissionHud::MakeDeploymentTable(int32 FirstIndex)
             + SHorizontalBox::Slot().AutoWidth().Padding(0, 0, ColumnGap, 0)
             [MakeColumnHeading(LOCTEXT("DeploymentY", "Старт Y, м"), CoordinateWidth, HAlign_Center)]
         ];
-    for (int32 Index = FirstIndex; Index < FirstIndex + MissionRegimentsPerTeam; ++Index)
+    for (int32 Slot = 0; Slot < MissionMaxRegimentsPerTeam; ++Slot)
     {
+        const int32 Index = MissionRosterIndex(bPlayer ? 0 : 1, Slot);
         Table->AddSlot().AutoHeight().Padding(0, 0, 0, 4.f)
         [MakeDeploymentRow(Index)];
     }
@@ -2626,11 +2731,11 @@ TSharedRef<SWidget> SRegimentMissionHud::MakeDeploymentRow(int32 RegimentIndex)
 TSharedRef<SWidget> SRegimentMissionHud::MakeMarchStatus()
 {
     const auto Selectors = SNew(SHorizontalBox).Visibility(EVisibility::SelfHitTestInvisible);
-    for (int32 Index = 0; Index < MissionRegimentsPerTeam; ++Index)
+    for (int32 Slot = 0; Slot < MissionMaxRegimentsPerTeam; ++Slot)
     {
-        Selectors->AddSlot().AutoWidth().Padding(Index == 0 ? 0.f : 5.f, 0, 0, 0)
+        Selectors->AddSlot().AutoWidth().Padding(Slot == 0 ? 0.f : 5.f, 0, 0, 0)
         [
-            MakeRegimentSelector(uint64(Index + 1))
+            MakeRegimentSelector(uint64(MissionRosterIndex(0, Slot) + 1))
         ];
     }
     return SNew(SBorder)
@@ -2644,7 +2749,7 @@ TSharedRef<SWidget> SRegimentMissionHud::MakeMarchStatus()
             [
                 SNew(SBox)
                 .Visibility(EVisibility::SelfHitTestInvisible)
-                .WidthOverride(384.f)
+                .WidthOverride(288.f)
                 [
                     SNew(SVerticalBox)
                     .Visibility(EVisibility::SelfHitTestInvisible)
@@ -2673,7 +2778,11 @@ TSharedRef<SWidget> SRegimentMissionHud::MakeMarchStatus()
             ]
             + SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
             [
-                Selectors
+                SNew(SBox).MaxDesiredWidth(280.f)
+                [
+                    SNew(SScrollBox).Orientation(Orient_Horizontal)
+                    + SScrollBox::Slot()[Selectors]
+                ]
             ]
             + SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(12, 0, 0, 0)
             [

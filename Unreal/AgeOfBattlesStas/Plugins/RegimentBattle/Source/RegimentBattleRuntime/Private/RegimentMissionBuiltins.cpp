@@ -1,4 +1,4 @@
-﻿#include "RegimentMissionPreset.h"
+#include "RegimentMissionPreset.h"
 #include "RegimentEraCatalog.h"
 
 #include "Internationalization/Internationalization.h"

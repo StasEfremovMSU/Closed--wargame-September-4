@@ -120,7 +120,7 @@ public:
         };
         for (const auto& Spawn : Plan.Spawns)
         {
-            const bool bBlue = Spawn.Slot < MissionRegimentsPerTeam;
+            const bool bBlue = MissionTeam(Spawn.Slot) == 0;
             const FLinearColor Color = bBlue ? Blue : Orange;
             const auto& From = Spawn.Requested.position;
             const auto& To = Spawn.Actual.position;
@@ -133,7 +133,7 @@ public:
             Line(Footprint(Spawn.Actual, Spawn.Size), Color, 5, 2.f);
             const auto Forward = Spawn.Actual.position + battle::Forward(Spawn.Actual.yaw) * (Spawn.Size.depth_m * .5f + 3.f);
             Line({Pixel, Project(Forward.x, Forward.y)}, Color, 5, 1.4f);
-            const FString Number = FString::Printf(TEXT("%d"), Spawn.Slot % MissionRegimentsPerTeam + 1);
+            const FString Number = FString::Printf(TEXT("%d"), MissionTeamSlot(Spawn.Slot) + 1);
             FSlateDrawElement::MakeText(Elements, Layer + 6,
                 Geometry.ToPaintGeometry(FVector2D(20, 16), FSlateLayoutTransform(Pixel + FVector2D(-4, -9))),
                 Number, FCoreStyle::GetDefaultFontStyle("Bold", 10), ESlateDrawEffect::None, FLinearColor::White);

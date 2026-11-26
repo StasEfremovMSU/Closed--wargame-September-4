@@ -12,7 +12,7 @@ namespace
 constexpr const TCHAR* Section = TEXT("OfficerControls");
 constexpr const TCHAR* ActionNames[] = {
     TEXT("Forward"), TEXT("Backward"), TEXT("Left"), TEXT("Right"), TEXT("TurnLeft"),
-    TEXT("TurnRight"), TEXT("Run"), TEXT("Jump"), TEXT("Attack"), TEXT("Parry")
+    TEXT("TurnRight"), TEXT("Run"), TEXT("Jump"), TEXT("Attack"), TEXT("Parry"), TEXT("Camera")
 };
 static_assert(UE_ARRAY_COUNT(ActionNames) == FRegimentOfficerSettings::ActionCount);
 
@@ -34,7 +34,7 @@ bool IsAllowedPersonalKey(const FKey& Key, ERegimentOfficerInputAction Action)
 
 FRegimentOfficerSettings::FRegimentOfficerSettings()
     : Keys{EKeys::W, EKeys::S, EKeys::A, EKeys::D, EKeys::Q, EKeys::E, EKeys::LeftShift,
-           EKeys::SpaceBar, EKeys::LeftMouseButton, EKeys::RightMouseButton}
+           EKeys::SpaceBar, EKeys::LeftMouseButton, EKeys::RightMouseButton, EKeys::V}
 {
 }
 
@@ -63,7 +63,7 @@ FText FRegimentOfficerSettings::ActionLabel(ERegimentOfficerInputAction Action)
         LOCTEXT("Left", "Шаг влево"), LOCTEXT("Right", "Шаг вправо"),
         LOCTEXT("TurnLeft", "Поворот влево"), LOCTEXT("TurnRight", "Поворот вправо"),
         LOCTEXT("Run", "Бег"), LOCTEXT("Jump", "Прыжок"),
-        LOCTEXT("Attack", "Удар"), LOCTEXT("Parry", "Парирование")
+        LOCTEXT("Attack", "Удар"), LOCTEXT("Parry", "Парирование"), LOCTEXT("Camera", "Сменить вид офицера")
     };
     static_assert(UE_ARRAY_COUNT(Labels) == ActionCount);
     return int32(Action) < ActionCount ? Labels[int32(Action)] : FText::GetEmpty();
@@ -81,6 +81,14 @@ void FRegimentOfficerSettings::Load(const FString& Filename)
         FString Name;
         if (File.GetString(Section, ActionNames[Index], Name))
             Loaded.Keys[Index] = FKey(FName(*Name));
+        else if (Index == int32(ERegimentOfficerInputAction::Camera) && Unique.Contains(Loaded.Keys[Index]))
+        {
+            // Older settings may already use V for a personal action.
+            const FKey Alternatives[] = { EKeys::C, EKeys::F1, EKeys::F2, EKeys::F3, EKeys::F4, EKeys::F5,
+                EKeys::F6, EKeys::F7, EKeys::F8, EKeys::F9, EKeys::F10 };
+            if (const auto* Available = Algo::FindByPredicate(Alternatives, [&Unique](const FKey& Key) { return !Unique.Contains(Key); }))
+                Loaded.Keys[Index] = *Available;
+        }
         if (!IsAllowedPersonalKey(Loaded.Keys[Index], ERegimentOfficerInputAction(Index)) || Unique.Contains(Loaded.Keys[Index]))
             bValid = false;
         Unique.Add(Loaded.Keys[Index]);
@@ -89,6 +97,7 @@ void FRegimentOfficerSettings::Load(const FString& Filename)
     float Multiplier;
     if (File.GetFloat(Section, TEXT("MouseSensitivity"), Multiplier))
         SetMouse(Multiplier);
+    File.GetBool(Section, TEXT("FirstPerson"), bFirstPerson);
 }
 
 void FRegimentOfficerSettings::Save(const FString& Filename) const
@@ -98,6 +107,7 @@ void FRegimentOfficerSettings::Save(const FString& Filename) const
     for (int32 Index = 0; Index < ActionCount; ++Index)
         File.SetString(Section, ActionNames[Index], *Keys[Index].GetFName().ToString());
     File.SetFloat(Section, TEXT("MouseSensitivity"), MouseMultiplier);
+    File.SetBool(Section, TEXT("FirstPerson"), bFirstPerson);
     File.Write(Filename, false);
 }
 

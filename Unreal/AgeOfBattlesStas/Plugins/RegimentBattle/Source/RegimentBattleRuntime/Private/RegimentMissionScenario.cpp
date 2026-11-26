@@ -1,5 +1,6 @@
-﻿#include "RegimentMissionScenario.h"
+#include "RegimentMissionScenario.h"
 #include "RegimentCommanderProfiles.h"
+#include "RegimentMissionTutorial.h"
 #include "Internationalization/Internationalization.h"
 #include "RegimentEraCatalog.h"
 #include "RegimentBattlePlayback.h"
@@ -26,12 +27,12 @@ battle::Vec3 RallyStation(int32 Index, int32 Team, battle::FormationFootprint Si
     const int32 Position = Index % MissionRegimentsPerTeam;
     const int32 Rank = Position % MissionDefaultRegimentsPerGroup;
     const auto& Crossing = battle::MarchCrossings[Position / MissionDefaultRegimentsPerGroup];
-    // Lay out both rally stations away from the active lane on the side where the army marched in.
-    const float RearInset = Rank == 0 ? 21.f : 8.f;
+    // The second block uses a different station along the same lane.
+    const float RearInset = (Rank == 0 ? 21.f : 8.f) + (Index >= MissionRegimentCount ? 26.f : 0.f);
     const float RearLimit = FMath::Max(0.f, std::floor(Field.HalfWidth() - std::hypot(Size.width_m, Size.depth_m) * .5f));
     const float SideLimit = FMath::Max(0.f, std::floor(Field.HalfHeight() - std::max(Size.width_m, Size.depth_m) * .5f));
     const float LateralOffset = Crossing.half_width + (Crossing.ford ? 4.f : 2.f);
-    const float Rear = std::min(Field.HalfWidth() - RearInset, RearLimit);
+    const float Rear = std::clamp(Field.HalfWidth() - RearInset, 0.f, RearLimit);
     const float Side = std::clamp(Crossing.y + (Rank == 0 ? LateralOffset : -LateralOffset),
         -SideLimit, SideLimit);
     return {(Team == 0 ? -1.f : 1.f) * Rear, Side, 0.f};
@@ -39,6 +40,8 @@ battle::Vec3 RallyStation(int32 Index, int32 Team, battle::FormationFootprint Si
 
 int32 NavigationSpacing(battle::MarchField Field)
 {
+    if (Field.width_m >= 720 && Field.height_m >= 480)
+        return 3;
     return Field.width_m >= 400 && Field.height_m >= 250 ? 2 : 1;
 }
 
@@ -117,7 +120,7 @@ std::optional<battle::Pose> FindDeployment(battle::Pose Anchor, battle::Formatio
 }
 
 const battle::MarchRegiment* ClosestEnemy(const battle::MarchRegiment& Regiment,
-    const std::array<const battle::MarchRegiment*, MissionRegimentCount>& ById)
+    const std::array<const battle::MarchRegiment*, MissionRosterCapacity>& ById)
 {
     const battle::MarchRegiment* Result = nullptr;
     float Closest = TNumericLimits<float>::Max();
@@ -148,9 +151,9 @@ battle::command::OfficerProfile CommanderProfile(battle::OfficerId Id)
     return Profile;
 }
 
-battle::command::NodeId ArmyId(int32 Team)
+battle::command::NodeId ArmyId(int32 Team, int32 RegimentSlots)
 {
-    return {uint64(MissionRegimentCount + GroupCount + Team + 1)};
+    return {uint64(RegimentSlots + GroupCount + Team + 1)};
 }
 
 constexpr int32 FMissionRosterEntry::* TroopCounts[] = {
@@ -175,7 +178,7 @@ FMissionStrength CountMissionStrength(const FMissionRoster& Roster, bool bArmySt
     FMissionStrength Count;
     std::array<bool, TeamCount> Teams{};
     std::array<bool, GroupCount> Groups{};
-    for (int32 Index = 0; Index < MissionRegimentCount; ++Index)
+    for (int32 Index = 0; Index < MissionRosterCapacity; ++Index)
     {
         const auto& Entry = Roster[Index];
         if (!Entry.bEnabled)
@@ -184,7 +187,7 @@ FMissionStrength CountMissionStrength(const FMissionRoster& Roster, bool bArmySt
         Count.Platforms += Resolved.PlatformCount;
         Count.Troops += TroopCount(Resolved) - Resolved.PlatformCount;
         Count.Staff += MissionCommandStaffCount;
-        const int32 Team = Index / MissionRegimentsPerTeam;
+        const int32 Team = MissionTeam(Index);
         Teams[Team] = true;
         Groups[Team * MissionGroupsPerTeam + MissionGroup(Index, Entry) - 1] = true;
     }
@@ -213,9 +216,9 @@ FMissionRoster ResolveMissionRoster(const FMissionRoster& Roster, int32 FigureTa
         int32 FMissionRosterEntry::* Role;
         int32 Remainder;
     };
-    TArray<FAllocation, TInlineAllocator<MissionRegimentCount * UE_ARRAY_COUNT(TroopCounts)>> Remainders;
+    TArray<FAllocation, TInlineAllocator<MissionRosterCapacity * UE_ARRAY_COUNT(TroopCounts)>> Remainders;
     int32 Allocated = 0;
-    for (int32 Slot = 0; Slot < MissionRegimentCount; ++Slot)
+    for (int32 Slot = 0; Slot < MissionRosterCapacity; ++Slot)
     {
         auto& Entry = Resolved[Slot];
         if (!Entry.bEnabled)
@@ -284,9 +287,9 @@ const FRegimentEraInfantryProfile* FindInfantryProfile(const FRegimentEraFaction
 auto MissionInfantryProfiles(const FMissionRoster& Roster, const FRegimentEraFaction* Blue,
     const FRegimentEraFaction* Orange)
 {
-    std::array<const FRegimentEraInfantryProfile*, MissionRegimentCount> Profiles{};
-    for (int32 Index = 0; Index < MissionRegimentCount; ++Index)
-        Profiles[Index] = FindInfantryProfile(Index < MissionRegimentsPerTeam ? Blue : Orange, Roster[Index]);
+    std::array<const FRegimentEraInfantryProfile*, MissionRosterCapacity> Profiles{};
+    for (int32 Index = 0; Index < MissionRosterCapacity; ++Index)
+        Profiles[Index] = FindInfantryProfile(MissionTeam(Index) == 0 ? Blue : Orange, Roster[Index]);
     return Profiles;
 }
 
@@ -330,12 +333,12 @@ TOptional<int32> FindInvalidScaledDeployment(const FMissionPreset& Preset)
     const auto* Blue = Era ? RegimentEraCatalog::FindFaction(*Era, Preset.Era.BlueFaction) : nullptr;
     const auto* Orange = Era ? RegimentEraCatalog::FindFaction(*Era, Preset.Era.OrangeFaction) : nullptr;
     std::vector<FDeployment> Deployed;
-    for (int32 Index = 0; Index < MissionRegimentCount; ++Index)
+    for (int32 Index = 0; Index < MissionRosterCapacity; ++Index)
     {
         const auto& Entry = Roster[Index];
         if (!Entry.bEnabled)
             continue;
-        const auto* Infantry = FindInfantryProfile(Index < MissionRegimentsPerTeam ? Blue : Orange, Entry);
+        const auto* Infantry = FindInfantryProfile(MissionTeam(Index) == 0 ? Blue : Orange, Entry);
         const auto Size = FormationSize(MissionFormation(Entry, bLinearInfantry, Infantry),
             TroopCount(Entry) + MissionCommandStaffCount);
         if (Size.depth_m > Preset.Field.width_m || Size.width_m > Preset.Field.height_m)
@@ -344,7 +347,7 @@ TOptional<int32> FindInvalidScaledDeployment(const FMissionPreset& Preset)
             continue;
 
         const auto Start = MissionStartingPosition(Index, Entry, Preset.Field);
-        const battle::Pose Anchor{Start, Index < MissionRegimentsPerTeam ? 0.f : battle::Pi};
+        const battle::Pose Anchor{Start, MissionTeam(Index) == 0 ? 0.f : battle::Pi};
         const auto Pose = FindDeployment(Anchor, Size, Navigation, Deployed, Preset.Terrain, Preset.Field);
         if (!Pose)
             return Index;
@@ -361,18 +364,18 @@ std::vector<battle::MarchRegiment> MakeOpening(const FMissionRoster& Roster, bat
 {
     const auto ResolvedRoster = ResolveMissionRoster(Roster, FigureTarget, bArmyStaff);
     std::vector<battle::MarchRegiment> Regiments;
-    Regiments.reserve(MissionRegimentCount);
+    Regiments.reserve(MissionRosterExtent(Roster));
     auto Lanes = battle::MarchCrossingsFor(Terrain);
     if (Lanes.empty())
         Lanes = battle::MarchCrossings;
 
-    for (int32 Index = 0; Index < MissionRegimentCount; ++Index)
+    for (int32 Index = 0; Index < MissionRosterCapacity; ++Index)
     {
         const auto& Entry = Roster[Index];
         if (!Entry.bEnabled)
             continue;
         const auto Start = MissionStartingPosition(Index, Entry, Field);
-        const int32 Team = Index / MissionRegimentsPerTeam;
+        const int32 Team = MissionTeam(Index);
         const int32 Rank = Index % MissionDefaultRegimentsPerGroup;
         const auto Lane = std::ranges::min_element(Lanes, {},
             [Start](const auto& Crossing) { return std::abs(Crossing.y - Start.y); });
@@ -394,6 +397,7 @@ std::vector<battle::MarchRegiment> MakeOpening(const FMissionRoster& Roster, bat
     battle::MarchRegiment* Lead = nullptr;
     float StagingY = 0.f;
     float LaneDistance = TNumericLimits<float>::Max();
+    std::ranges::stable_sort(Regiments, {}, &battle::MarchRegiment::team);
     const auto Orange = std::ranges::find(Regiments, 1, &battle::MarchRegiment::team);
     for (auto Blue = Regiments.begin(); Blue != Orange; ++Blue)
     for (auto Enemy = Orange; Enemy != Regiments.end(); ++Enemy)
@@ -433,6 +437,7 @@ battle::Scenario BuildMissionBattle(const FMissionRoster& Roster, std::span<cons
     std::span<const FRegimentEraInfantryProfile* const> InfantryProfiles)
 {
     namespace Command = battle::command;
+    const int32 RegimentSlots = MissionRosterExtent(Roster);
     const auto ResolvedRoster = ResolveMissionRoster(Roster, FigureTarget, bArmyStaff);
     uint64 UnitIdStride = MinimumUnitIdStride;
     for (const auto& Entry : ResolvedRoster)
@@ -452,17 +457,17 @@ battle::Scenario BuildMissionBattle(const FMissionRoster& Roster, std::span<cons
     std::vector<FDeployment> Deployed;
     std::array<bool, GroupCount> GroupHasCavalry{};
     std::array<std::optional<battle::Pose>, TeamCount> ArmyRear{};
-    std::array<const battle::MarchRegiment*, MissionRegimentCount> ById{};
+    std::array<const battle::MarchRegiment*, MissionRosterCapacity> ById{};
     for (const auto& Regiment : March)
     {
-        if (Regiment.id.value < 1 || Regiment.id.value > MissionRegimentCount)
+        if (Regiment.id.value < 1 || Regiment.id.value > uint64(RegimentSlots))
             continue;
         const int32 Index = int32(Regiment.id.value - 1);
-        if (Roster[Index].bEnabled && Regiment.team == Index / MissionRegimentsPerTeam)
+        if (Roster[Index].bEnabled && Regiment.team == MissionTeam(Index))
             ById[Index] = &Regiment;
     }
 
-    for (int32 Index = 0; Index < MissionRegimentCount; ++Index)
+    for (int32 Index = 0; Index < RegimentSlots; ++Index)
     {
         const auto* Company = ById[Index];
         if (!Company)
@@ -490,7 +495,7 @@ battle::Scenario BuildMissionBattle(const FMissionRoster& Roster, std::span<cons
         Regiment.team = Company->team;
         Regiment.name = TCHAR_TO_UTF8(*FString::Printf(TEXT("%s %d%s"),
             Company->team == 0 ? TEXT("Синий") : TEXT("Оранжевый"),
-            Index % MissionRegimentsPerTeam + 1, bMountedRegiment ? TEXT(" · конный") : TEXT("")));
+            MissionTeamSlot(Index) + 1, bMountedRegiment ? TEXT(" · конный") : TEXT("")));
         const auto* Infantry = Index < int32(InfantryProfiles.size()) ? InfantryProfiles[Index] : nullptr;
         Regiment.loose_skirmish = Infantry && Infantry->bLooseOrder;
         Regiment.formation = MissionFormation(Entry, bLinearInfantry, Infantry);
@@ -551,7 +556,7 @@ battle::Scenario BuildMissionBattle(const FMissionRoster& Roster, std::span<cons
 
         Command::CommandNode Leaf;
         Leaf.id = LeafId;
-        Leaf.parent = {uint64(MissionRegimentCount + GroupIndex + 1)};
+        Leaf.parent = {uint64(RegimentSlots + GroupIndex + 1)};
         Leaf.level = Command::Level::Regiment;
         Leaf.team = Regiment.team;
         Leaf.name = Regiment.name;
@@ -563,7 +568,7 @@ battle::Scenario BuildMissionBattle(const FMissionRoster& Roster, std::span<cons
     for (int32 GroupIndex = 0; GroupIndex < GroupCount; ++GroupIndex)
     {
         Command::CommandNode Group;
-        Group.id = {uint64(MissionRegimentCount + GroupIndex + 1)};
+        Group.id = {uint64(RegimentSlots + GroupIndex + 1)};
         Group.level = Command::Level::Group;
         std::optional<battle::Pose> Rear;
         for (const auto& Leaf : Setup.hierarchy.nodes)
@@ -586,7 +591,7 @@ battle::Scenario BuildMissionBattle(const FMissionRoster& Roster, std::span<cons
         if (!Rear)
             continue;
 
-        Group.parent = ArmyId(Group.team);
+        Group.parent = ArmyId(Group.team, RegimentSlots);
         const int32 Lane = GroupIndex % MissionGroupsPerTeam;
         const int32 Wing = Group.team == 0 ? Lane : MissionGroupsPerTeam - Lane - 1;
         constexpr std::array Roles = {Command::SectorRole::LeftFlank, Command::SectorRole::Center,
@@ -594,11 +599,11 @@ battle::Scenario BuildMissionBattle(const FMissionRoster& Roster, std::span<cons
         const TCHAR* const Names[] = {TEXT("Левый фланг"), TEXT("Центр"), TEXT("Правый фланг")};
         Group.sector_role = Roles[Wing];
         Group.name = TCHAR_TO_UTF8(Names[Wing]);
-        Group.commander = {uint64(MissionRegimentCount * MissionCommandStaffCount + GroupIndex + 1)};
+        Group.commander = {uint64(RegimentSlots * MissionCommandStaffCount + GroupIndex + 1)};
 
         battle::UnitSpec Commander;
         const bool bMountedCommander = GroupHasCavalry[GroupIndex];
-        Commander.id = {MissionRegimentCount * UnitIdStride + uint64(GroupIndex + 1)};
+        Commander.id = {RegimentSlots * UnitIdStride + uint64(GroupIndex + 1)};
         Commander.independent_team = Group.team;
         const battle::FormationFootprint CommanderSize = bMountedCommander
             ? battle::FormationFootprint{.75f, 1.65f} : battle::FormationFootprint{.6f, .6f};
@@ -626,12 +631,12 @@ battle::Scenario BuildMissionBattle(const FMissionRoster& Roster, std::span<cons
         if (!ArmyRear[Team])
             continue;
         Command::CommandNode Army;
-        Army.id = ArmyId(Team);
+        Army.id = ArmyId(Team, RegimentSlots);
         Army.level = Command::Level::Army;
         Army.team = Team;
         const TCHAR* ArmyName = Team == 0 ? TEXT("Генерал синих") : TEXT("Генерал оранжевых");
         Army.name = TCHAR_TO_UTF8(ArmyName);
-        Army.commander = {uint64(MissionRegimentCount * MissionCommandStaffCount + GroupCount + Team + 1)};
+        Army.commander = {uint64(RegimentSlots * MissionCommandStaffCount + GroupCount + Team + 1)};
         const battle::MarchRegiment* Lead = nullptr;
         for (const auto& Group : Setup.hierarchy.nodes)
             if (Group.parent == Army.id)
@@ -642,7 +647,7 @@ battle::Scenario BuildMissionBattle(const FMissionRoster& Roster, std::span<cons
             }
 
         battle::UnitSpec General;
-        General.id = {MissionRegimentCount * UnitIdStride + uint64(GroupCount + Team + 1)};
+        General.id = {RegimentSlots * UnitIdStride + uint64(GroupCount + Team + 1)};
         General.independent_team = Team;
         General.troop = battle::UnitTroop::Mounted;
         General.health = 26.f;
@@ -671,9 +676,9 @@ battle::Scenario BuildMissionBattle(const FMissionRoster& Roster, std::span<cons
                 const auto Duty = bBodyguard ? Command::SupportDuty::Bodyguard : Command::SupportDuty::Adjutant;
                 const int32 DutyIndex = bBodyguard ? Index : Index - ArmyBodyguards;
                 const uint64 Offset = uint64(GroupCount + TeamCount + Team * ArmyStaffCount + Index + 1);
-                const battle::OfficerId StaffOfficer{MissionRegimentCount * MissionCommandStaffCount + Offset};
+                const battle::OfficerId StaffOfficer{RegimentSlots * MissionCommandStaffCount + Offset};
                 auto Staff = General;
-                Staff.id = {MissionRegimentCount * UnitIdStride + Offset};
+                Staff.id = {RegimentSlots * UnitIdStride + Offset};
                 Staff.name = TCHAR_TO_UTF8(bBodyguard ? TEXT("Телохранитель") : TEXT("Адъютант"));
                 Staff.health = bBodyguard ? 18.f : 14.f;
                 Staff.speed = bBodyguard ? 7.2f : 8.5f;
@@ -739,7 +744,8 @@ battle::Scenario BuildPresetBattle(const FMissionPreset& Preset, std::span<const
         for (auto& Task : Scenario.command_setup->missions)
         {
             Task.intent.target_regiment = {};
-            Task.intent.objective_position = {Task.recipient == ArmyId(0) ? SearchDepth : -SearchDepth, 0.f, 0.f};
+            Task.intent.objective_position = {Task.recipient == ArmyId(0, MissionRosterExtent(Preset.Roster))
+                ? SearchDepth : -SearchDepth, 0.f, 0.f};
             Task.authority.pursuit_limit_m.reset();
         }
     }
@@ -799,7 +805,7 @@ battle::Scenario BuildPresetBattle(const FMissionPreset& Preset, std::span<const
             const FRegimentEraTroop* Platform{};
             const FRegimentEraInfantryProfile* Infantry{};
         };
-        std::array<FSlotTroops, MissionRegimentCount> TroopsBySlot{};
+        std::array<FSlotTroops, MissionRosterCapacity> TroopsBySlot{};
         for (auto& Regiment : Scenario.regiments)
         {
             const int32 Slot = int32(Regiment.id.value - 1);
@@ -833,7 +839,7 @@ battle::Scenario BuildPresetBattle(const FMissionPreset& Preset, std::span<const
             else if (Troops.Infantry)
                 Regiment.speed = Troop.Speed;
             Regiment.name = TCHAR_TO_UTF8(*FString::Printf(TEXT("%s · %s %d"),
-                *Faction.Name, *Troop.Name, Slot % MissionRegimentsPerTeam + 1));
+                *Faction.Name, *Troop.Name, MissionTeamSlot(Slot) + 1));
             for (auto& Node : Scenario.command_setup->hierarchy.nodes)
                 if (Node.regiment == Regiment.id)
                     Node.name = Regiment.name;
@@ -912,5 +918,6 @@ battle::Scenario BuildPresetBattle(const FMissionPreset& Preset, std::span<const
     Scenario.rules.risky_volley = Preset.bRiskyVolley;
     Scenario.rules.adaptive_battle = Preset.bAdaptiveBattle;
     RegimentCommanderProfiles::Apply(Scenario, Preset);
+    RegimentMissionTutorial::PrepareScenario(Preset.Tutorial, Scenario);
     return Scenario;
 }

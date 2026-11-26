@@ -1,5 +1,5 @@
 {
-  "schema_version": 4,
+  "schema_version": 6,
   "name": "Павия, 1525 · Парк Мирабелло",
   "terrain": "Pavia",
   "era": {
@@ -18,7 +18,7 @@
     "required_regiments": 1,
     "crossing_team": 0
   },
-  "briefing": "24 февраля 1525 года войска Карла V вошли в парк Мирабелло, где французские жандармы столкнулись с имперской конницей и испанскими аркебузирами. Эпизод показан на гобеленах Павии, созданных в память о победе имперцев. Прикройте аркебузиров пиками у проёмов и следите за соседним проходом, через который могут обойти французские жандармы. Имперское войско представлено Испанией. Местность, три проёма в стене и численность условны. Поле 520 × 340 м. Источники сверены 25.11.2026. В этом сценарии 5 000 игровых фигур, включая командный состав и орудия.",
+  "briefing": "24 февраля 1525 года войска Карла V вошли в парк Мирабелло, где французские жандармы столкнулись с имперской конницей и испанскими аркебузирами. Эпизод показан на гобеленах Павии, созданных в память о победе имперцев. Прикройте аркебузиров пиками у проёмов и следите за соседним проходом, через который могут обойти французские жандармы. Имперское войско представлено Испанией. Местность, три проёма в стене и численность условны. Поле 735 × 480 м. Источники сверены 25.11.2026. В этом сценарии 5 000 игровых фигур, включая командный состав и орудия.\n\nВ игровом порядке боя 12 подразделений у первой стороны и 10 у второй. Батальоны начинают несколькими линиями. Фланги поля оставлены для манёвра.",
   "sources": [
     "https://www.battaglia-pavia.it/the-tapestries",
     "https://kimbellart.org/art-and-war-renaissance"
@@ -30,9 +30,9 @@
       "group": 2,
       "start_x": -50,
       "start_y": 0,
-      "swords": 9,
-      "archers": 19,
-      "spearmen": 17,
+      "swords": 5,
+      "archers": 10,
+      "spearmen": 9,
       "mounted": 0,
       "ranged_class": "gunpowder"
     },
@@ -42,9 +42,9 @@
       "group": 1,
       "start_x": -76,
       "start_y": -50,
-      "swords": 6,
-      "archers": 20,
-      "spearmen": 10,
+      "swords": 3,
+      "archers": 10,
+      "spearmen": 5,
       "mounted": 0
     },
     {
@@ -53,9 +53,9 @@
       "group": 3,
       "start_x": -67,
       "start_y": 50,
-      "swords": 8,
-      "archers": 12,
-      "spearmen": 20,
+      "swords": 4,
+      "archers": 6,
+      "spearmen": 10,
       "mounted": 0
     },
     {
@@ -64,9 +64,9 @@
       "group": 2,
       "start_x": -101,
       "start_y": 10,
-      "swords": 8,
-      "archers": 13,
-      "spearmen": 27,
+      "swords": 4,
+      "archers": 7,
+      "spearmen": 14,
       "mounted": 0
     },
     {
@@ -78,7 +78,7 @@
       "swords": 0,
       "archers": 0,
       "spearmen": 0,
-      "mounted": 14
+      "mounted": 7
     },
     {
       "type": "Cavalry",
@@ -89,7 +89,7 @@
       "swords": 0,
       "archers": 0,
       "spearmen": 0,
-      "mounted": 12,
+      "mounted": 6,
       "mounted_class": "heavy"
     },
     {
@@ -101,7 +101,7 @@
       "swords": 0,
       "archers": 0,
       "spearmen": 0,
-      "mounted": 29
+      "mounted": 15
     },
     {
       "type": "Infantry",
@@ -109,9 +109,9 @@
       "group": 1,
       "start_x": 70,
       "start_y": -50,
-      "swords": 9,
-      "archers": 9,
-      "spearmen": 26,
+      "swords": 5,
+      "archers": 5,
+      "spearmen": 13,
       "mounted": 0
     },
     {
@@ -120,9 +120,9 @@
       "group": 3,
       "start_x": 64,
       "start_y": 50,
-      "swords": 11,
-      "archers": 7,
-      "spearmen": 28,
+      "swords": 6,
+      "archers": 4,
+      "spearmen": 14,
       "mounted": 0
     },
     {
@@ -131,9 +131,9 @@
       "group": 2,
       "start_x": 109,
       "start_y": 17,
-      "swords": 15,
-      "archers": 13,
-      "spearmen": 22,
+      "swords": 8,
+      "archers": 7,
+      "spearmen": 11,
       "mounted": 0
     },
     {
@@ -145,7 +145,140 @@
       "swords": 0,
       "archers": 0,
       "spearmen": 0,
-      "mounted": 14,
+      "mounted": 7,
+      "mounted_class": "light"
+    },
+    {
+      "type": "Infantry",
+      "enabled": false,
+      "group": 2,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -82,
+      "start_y": 23,
+      "swords": 4,
+      "archers": 9,
+      "spearmen": 8,
+      "mounted": 0,
+      "ranged_class": "gunpowder"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -111,
+      "start_y": -76,
+      "swords": 3,
+      "archers": 10,
+      "spearmen": 5,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -105,
+      "start_y": 73,
+      "swords": 4,
+      "archers": 6,
+      "spearmen": 10,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -133,
+      "start_y": 36,
+      "swords": 4,
+      "archers": 6,
+      "spearmen": 13,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -80,
+      "start_y": -97,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 7
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -144,
+      "start_y": 78,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 6,
+      "mounted_class": "heavy"
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 94,
+      "start_y": 23,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 14
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 105,
+      "start_y": -76,
+      "swords": 4,
+      "archers": 4,
+      "spearmen": 13,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 102,
+      "start_y": 73,
+      "swords": 5,
+      "archers": 3,
+      "spearmen": 14,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 141,
+      "start_y": 43,
+      "swords": 7,
+      "archers": 6,
+      "spearmen": 11,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 88,
+      "start_y": 99,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 7,
       "mounted_class": "light"
     },
     {
@@ -159,8 +292,8 @@
     }
   ],
   "field": {
-    "width_m": 520,
-    "height_m": 340
+    "width_m": 735,
+    "height_m": 480
   },
   "figure_target": 5000,
   "adaptive_battle": true

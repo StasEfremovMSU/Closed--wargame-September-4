@@ -126,7 +126,7 @@ int32 TerrainMaterial(double Xcm, double Ycm, std::span<const battle::Obstacle> 
         default: break;
         }
     }
-    return int32(ERegimentGroundMaterial::Meadow);
+    return int32(G::Meadow);
 }
 }
 
@@ -146,10 +146,10 @@ UE::Geometry::FDynamicMesh3 BuildRegimentGroundMesh(const battle::TerrainHill* H
     if ((Hill && !battle::ValidHill(*Hill)) || HalfWidthCm <= 0.0 || HalfDepthCm <= 0.0)
         return Mesh;
 
-    const double RadiusX = Hill ? Hill->radius_x_m * 100.0 : 0.0;
-    const double RadiusY = Hill ? Hill->radius_y_m * 100.0 : 0.0;
+    const double RadiusX = Hill ? Hill->radius_x_m * 100.0 : HalfWidthCm;
+    const double RadiusY = Hill ? Hill->radius_y_m * 100.0 : HalfDepthCm;
     const double MinimumSpacing = Hill && Hill->relief == battle::TerrainRelief::CentralHill ? 90.0 : 380.0;
-    const double Spacing = FMath::Max(MinimumSpacing, FMath::Max(RadiusX, RadiusY) / 65.0);
+    const double Spacing = Hill ? FMath::Max(MinimumSpacing, FMath::Max(RadiusX, RadiusY) / 65.0) : 3000.0;
     const TArray<double> X = TerrainAxis(HalfWidthCm, RadiusX, Spacing, Areas, true);
     const TArray<double> Y = TerrainAxis(HalfDepthCm, RadiusY, Spacing, Areas, false);
     auto* UVs = Mesh.Attributes()->PrimaryUV();

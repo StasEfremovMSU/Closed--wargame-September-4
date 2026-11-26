@@ -22,7 +22,7 @@ enum class ERegimentAncientMaterial : uint8
 enum class ERegimentAncientFeature : uint8
 {
     None, Driver, TowerCrew, EngineCrew, Ear, Tusk, Horse, Scythe, ThrowingArm, BowArm,
-    Quiver, Greatcoat, Kilt, SlingPouch
+    Quiver, Greatcoat, Kilt, SlingPouch, Kabuto, Jingasa, Sode, Lamellar, Sashimono, Matchlock
 };
 enum class ERegimentAncientShield : uint8 { Aspis, Scutum, Wicker, Oval, Carthaginian, CavalryOval, Macedonian };
 
@@ -31,7 +31,8 @@ enum class ERegimentHistoricalFigure : uint8
     None, Legionary, Auxiliary, RomanCavalry, Numidian, Sarissa, Companion, Hoplite,
     Sparabara, PersianArcher, LooseBow, LooseSling, LooseJavelin,
     Fusilier, Grenadier, Chasseur, OldGuard, YoungGuard, RussianLine, RussianGrenadier, RussianJaeger,
-    BritishLine, BritishGrenadier, BritishLight, Highlander
+    BritishLine, BritishGrenadier, BritishLight, Highlander,
+    SengokuSamurai, SengokuAshigaru, SengokuArcher, SengokuArquebusier, SengokuCavalry
 };
 
 struct FRegimentAncientPart
@@ -61,6 +62,7 @@ double RegimentAncientPikeLength(FStringView Faction);
 ERegimentHistoricalFigure RegimentHistoricalProfile(FStringView Profile);
 ERegimentHistoricalFigure RegimentHistoricalStyle(ERegimentHistoricalFigure Profile, FStringView Faction,
     const battle::UnitSpec& Unit, bool bAncient, bool bNapoleonic);
+ERegimentHistoricalFigure RegimentSengokuStyle(const battle::UnitSpec& Unit);
 TOptional<ERegimentAncientShield> RegimentHistoricalShield(ERegimentHistoricalFigure Style);
 double RegimentHistoricalSpearLength(ERegimentHistoricalFigure Style);
 inline constexpr double RegimentHistoricalRiderHeight = 54.0;
@@ -68,5 +70,7 @@ FRegimentAncientFigure BuildRegimentHistoricalDress(ERegimentHistoricalFigure St
 FRegimentAncientFigure BuildRegimentHistoricalProxy(ERegimentHistoricalFigure Style);
 FRegimentAncientFigure BuildRegimentHistoricalTack(ERegimentHistoricalFigure Style);
 FRegimentAncientFigure BuildRegimentLooseWeapon(battle::RangedWeapon Weapon);
+FRegimentAncientFigure BuildRegimentSengokuWeapon(ERegimentHistoricalFigure Style);
+FRegimentAncientFigure BuildRegimentSengokuBanner();
 UStaticMesh* MakeRegimentAncientMesh(UObject& Owner, const FRegimentAncientFigure& Figure,
     UMaterialInterface* MaterialParent, int32& PaintSlot);

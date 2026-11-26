@@ -12,7 +12,7 @@ inline void from_json(const nlohmann::json &j, CommandKind &value) {
         raw = uint64_t(j.get<int64_t>());
     else
         throw std::invalid_argument("CommandKind must be a nonnegative integer");
-    if (raw > uint8_t(CommandKind::ParryControlledUnit))
+    if (raw > uint8_t(CommandKind::FireFieldGun))
         throw std::invalid_argument("invalid CommandKind value");
     value = CommandKind(raw);
 }

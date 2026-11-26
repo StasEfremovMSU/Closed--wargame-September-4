@@ -1,5 +1,5 @@
 {
-  "schema_version": 4,
+  "schema_version": 6,
   "name": "Брейтенфельд, 1631 · Поля севернее Лейпцига",
   "terrain": "Breitenfeld",
   "era": {
@@ -19,7 +19,7 @@
     "required_regiments": 1,
     "crossing_team": 0
   },
-  "briefing": "17 сентября 1631 года севернее Лейпцига шведско-саксонская армия Густава II Адольфа и курфюрста Иоганна Георга I встретила войска Тилли. Между Брейтенфельдом и Зеехаузеном лежало открытое поле, где исход боя зависел от того, как долго центр выдержит бой и как быстро крылья смогут прийти ему на помощь.\n\nСиним нужно разбить противника. Удерживайте связь между пиками и мушкетёрами в центре, а конницу выводите на открытое крыло. Дорога и ограды отмечают ориентиры. Шведский состав представляет шведско-саксонскую армию, австрийские Габсбурги представляют имперцев и Католическую лигу. Источник замысла — «Сто великих битв».\n\nИгровой участок 560 × 360 м вмещает 5 000 фигур. Численность и расстояния сжаты под масштаб поля.",
+  "briefing": "17 сентября 1631 года севернее Лейпцига шведско-саксонская армия Густава II Адольфа и курфюрста Иоганна Георга I встретила войска Тилли. Между Брейтенфельдом и Зеехаузеном лежало открытое поле, где исход боя зависел от того, как долго центр выдержит бой и как быстро крылья смогут прийти ему на помощь.\n\nСиним нужно разбить противника. Удерживайте связь между пиками и мушкетёрами в центре, а конницу выводите на открытое крыло. Дорога и ограды отмечают ориентиры. Шведский состав представляет шведско-саксонскую армию, австрийские Габсбурги представляют имперцев и Католическую лигу. Источник замысла — «Сто великих битв».\n\nИгровой участок 790 × 510 м вмещает 5 000 фигур. Численность и расстояния сжаты под масштаб поля.\n\nВ игровом порядке боя 12 подразделений у первой стороны и 12 у второй. Батальоны начинают несколькими линиями. Фланги поля оставлены для манёвра.",
   "sources": [
     "https://arcinsys.hessen.de/arcinsys/showArchivalDescriptionDetails?archivalDescriptionId=1314252",
     "https://www.archaeologie.sachsen.de/download/LfA_Sachsen_PDW-30_.pdf"
@@ -31,10 +31,10 @@
       "group": 2,
       "start_x": -80,
       "start_y": 0,
-      "formation_files": 32,
-      "swords": 7,
-      "archers": 20,
-      "spearmen": 18,
+      "formation_files": 16,
+      "swords": 4,
+      "archers": 10,
+      "spearmen": 9,
       "mounted": 0
     },
     {
@@ -43,10 +43,10 @@
       "group": 1,
       "start_x": -94,
       "start_y": -71,
-      "formation_files": 30,
-      "swords": 6,
-      "archers": 16,
-      "spearmen": 16,
+      "formation_files": 15,
+      "swords": 3,
+      "archers": 8,
+      "spearmen": 8,
       "mounted": 0
     },
     {
@@ -55,11 +55,11 @@
       "group": 3,
       "start_x": -88,
       "start_y": 69,
-      "formation_files": 19,
+      "formation_files": 10,
       "swords": 0,
       "archers": 0,
       "spearmen": 0,
-      "mounted": 35
+      "mounted": 18
     },
     {
       "type": "Infantry",
@@ -67,10 +67,10 @@
       "group": 2,
       "start_x": -129,
       "start_y": 3,
-      "formation_files": 27,
-      "swords": 9,
-      "archers": 15,
-      "spearmen": 15,
+      "formation_files": 14,
+      "swords": 5,
+      "archers": 8,
+      "spearmen": 8,
       "mounted": 0
     },
     {
@@ -79,11 +79,11 @@
       "group": 1,
       "start_x": -124,
       "start_y": -124,
-      "formation_files": 18,
+      "formation_files": 9,
       "swords": 0,
       "archers": 0,
       "spearmen": 0,
-      "mounted": 27
+      "mounted": 14
     },
     {
       "type": "Infantry",
@@ -91,10 +91,10 @@
       "group": 3,
       "start_x": -131,
       "start_y": 119,
-      "formation_files": 26,
-      "swords": 6,
-      "archers": 17,
-      "spearmen": 14,
+      "formation_files": 13,
+      "swords": 3,
+      "archers": 9,
+      "spearmen": 7,
       "mounted": 0
     },
     {
@@ -103,10 +103,10 @@
       "group": 2,
       "start_x": 75,
       "start_y": 0,
-      "formation_files": 33,
-      "swords": 8,
-      "archers": 15,
-      "spearmen": 25,
+      "formation_files": 17,
+      "swords": 4,
+      "archers": 8,
+      "spearmen": 13,
       "mounted": 0
     },
     {
@@ -115,11 +115,11 @@
       "group": 1,
       "start_x": 85,
       "start_y": -70,
-      "formation_files": 20,
+      "formation_files": 10,
       "swords": 0,
       "archers": 0,
       "spearmen": 0,
-      "mounted": 34
+      "mounted": 17
     },
     {
       "type": "Cavalry",
@@ -127,11 +127,11 @@
       "group": 3,
       "start_x": 87,
       "start_y": 68,
-      "formation_files": 20,
+      "formation_files": 10,
       "swords": 0,
       "archers": 0,
       "spearmen": 0,
-      "mounted": 34
+      "mounted": 17
     },
     {
       "type": "Infantry",
@@ -139,10 +139,10 @@
       "group": 2,
       "start_x": 120,
       "start_y": 2,
-      "formation_files": 30,
-      "swords": 9,
-      "archers": 16,
-      "spearmen": 21,
+      "formation_files": 15,
+      "swords": 5,
+      "archers": 8,
+      "spearmen": 11,
       "mounted": 0
     },
     {
@@ -151,10 +151,10 @@
       "group": 1,
       "start_x": 132,
       "start_y": -119,
-      "formation_files": 26,
-      "swords": 5,
-      "archers": 16,
-      "spearmen": 18,
+      "formation_files": 13,
+      "swords": 3,
+      "archers": 8,
+      "spearmen": 9,
       "mounted": 0
     },
     {
@@ -163,16 +163,160 @@
       "group": 3,
       "start_x": 122,
       "start_y": 117,
-      "formation_files": 23,
-      "swords": 5,
-      "archers": 15,
-      "spearmen": 15,
+      "formation_files": 12,
+      "swords": 3,
+      "archers": 8,
+      "spearmen": 8,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -112,
+      "start_y": 23,
+      "formation_files": 16,
+      "swords": 3,
+      "archers": 10,
+      "spearmen": 9,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -129,
+      "start_y": -97,
+      "formation_files": 15,
+      "swords": 3,
+      "archers": 8,
+      "spearmen": 8,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -126,
+      "start_y": 92,
+      "formation_files": 10,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 17
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -161,
+      "start_y": 29,
+      "formation_files": 14,
+      "swords": 4,
+      "archers": 7,
+      "spearmen": 7,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -159,
+      "start_y": -147,
+      "formation_files": 9,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 13
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -169,
+      "start_y": 145,
+      "formation_files": 13,
+      "swords": 3,
+      "archers": 8,
+      "spearmen": 7,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 107,
+      "start_y": 23,
+      "formation_files": 17,
+      "swords": 4,
+      "archers": 7,
+      "spearmen": 12,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 120,
+      "start_y": -96,
+      "formation_files": 10,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 17
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 125,
+      "start_y": 91,
+      "formation_files": 10,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 17
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 152,
+      "start_y": 28,
+      "formation_files": 15,
+      "swords": 4,
+      "archers": 8,
+      "spearmen": 10,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 167,
+      "start_y": -142,
+      "formation_files": 13,
+      "swords": 2,
+      "archers": 8,
+      "spearmen": 9,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 160,
+      "start_y": 143,
+      "formation_files": 12,
+      "swords": 2,
+      "archers": 7,
+      "spearmen": 7,
       "mounted": 0
     }
   ],
   "field": {
-    "width_m": 560,
-    "height_m": 360
+    "width_m": 790,
+    "height_m": 510
   },
   "figure_target": 5000
 }

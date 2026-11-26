@@ -48,7 +48,7 @@ Result<TickResult> Step(World &w, std::span<const CommandEnvelope> input,
             continue;
         if (!e.sequence || !Finite(e.command.pose) || !Finite(e.command.velocity) ||
             !ValidOrderShape(e.command.order) || e.tick < w.tick ||
-            uint8_t(e.command.kind) > uint8_t(CommandKind::ParryControlledUnit) ||
+            uint8_t(e.command.kind) > uint8_t(CommandKind::FireFieldGun) ||
             (e.command.kind == CommandKind::IssueCommandTask &&
              !command::ValidTaskRequest(e.command.command_task)) ||
             (e.command.kind == CommandKind::ExternalPoseSample && e.command.sample_tick != e.tick))
@@ -76,6 +76,7 @@ Result<TickResult> Step(World &w, std::span<const CommandEnvelope> input,
         return a.tick != b.tick ? a.tick < b.tick : a.sequence < b.sequence;
     });
     std::vector<CommandEnvelope> future;
+    std::optional<Command> field_gun_shot;
     for (const auto &e : w.commands) {
         if (e.tick > w.tick) {
             future.push_back(e);
@@ -108,6 +109,11 @@ Result<TickResult> Step(World &w, std::span<const CommandEnvelope> input,
             auto submitted = command::SubmitTask(w, e.command.command_task);
             status =
                 submitted.status == command::StubStatus::Ready ? Status::Ok : Status::InvalidInput;
+        } else if (e.command.kind == CommandKind::FireFieldGun) {
+            if (!field_gun_shot && e.command.unit && e.command.unit == w.controlled && e.command.target) {
+                field_gun_shot = e.command;
+                status = Status::Ok;
+            }
         } else
             status = ApplyControlCommand(w, e.command);
         if (status != Status::Ok)
@@ -154,9 +160,22 @@ Result<TickResult> Step(World &w, std::span<const CommandEnvelope> input,
         if (FindUnit(w, id)->pose != pose)
             moving_siege.push_back(id);
     std::vector<BattleEvent> attacks;
-    BuildCombatEvents(w, attacks, &w.neighbor_checks, contact ? &*contact : nullptr, moving_siege);
+    BuildCombatEvents(w, attacks, &w.neighbor_checks, contact ? &*contact : nullptr, moving_siege,
+                      field_gun_shot ? &*field_gun_shot : nullptr);
     mark(&StepProfile::targeting_ms);
     CommitCombatEvents(w, attacks, contact ? &*contact : nullptr);
+    if (field_gun_shot) {
+        const auto *officer = FindUnit(w, field_gun_shot->unit);
+        const auto fired = std::ranges::any_of(attacks, [&](const auto &event) {
+            if (!officer || event.regiment != officer->regiment || event.target != field_gun_shot->target)
+                return false;
+            return event.reason == FieldGunRoundShotReason || event.reason == FieldGunCanisterReason;
+        });
+        if (!fired)
+            w.events.push_back({EventId{w.next_event_id++}, w.tick, EventKind::CommandRejected,
+                                field_gun_shot->unit, field_gun_shot->target, {}, 0,
+                                std::string(FieldGunRejectedReason)});
+    }
     if (w.scenario.rules.regiment_tactics)
         UpdateRegimentDiscipline(w);
     ++w.tick;
