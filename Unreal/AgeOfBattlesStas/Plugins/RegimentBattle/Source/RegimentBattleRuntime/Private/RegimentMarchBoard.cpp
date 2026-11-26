@@ -14,6 +14,7 @@
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/SkyLightComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "Components/TextRenderComponent.h"
 #include "DynamicMesh/DynamicMeshAttributeSet.h"
 #include "Engine/DirectionalLight.h"
@@ -797,6 +798,41 @@ void ConfigureLandscapePrimitive(UPrimitiveComponent& Component)
     Component.SetReceivesDecals(false);
 }
 
+struct FRegimentSkyProfile
+{
+    FLinearColor Zenith;
+    FLinearColor Horizon;
+    FLinearColor CloudShade;
+    FLinearColor CloudLight;
+    FLinearColor SunGlow;
+    FLinearColor CloudLayout;
+    float SunPitch;
+    float Temperature;
+    float SunYawOffset = 0.f;
+};
+
+const FRegimentSkyProfile& SkyProfileFor(battle::MarchTerrain Terrain)
+{
+    using T = battle::MarchTerrain;
+    static constexpr FRegimentSkyProfile Temperate{
+        {.073f, .24f, .53f}, {.46f, .63f, .78f}, {.38f, .47f, .61f}, {.96f, .99f, 1.06f},
+        {.31f, .22f, .11f}, {.42f, .86f, .44f, .53f}, -49.f, 6150.f };
+    static constexpr FRegimentSkyProfile Dry{
+        {.035f, .20f, .57f}, {.58f, .69f, .71f}, {.51f, .46f, .41f}, {1.04f, .96f, .79f},
+        {.48f, .29f, .10f}, {.49f, .72f, .12f, .37f}, -63.f, 5550.f };
+    static constexpr FRegimentSkyProfile Winter{
+        {.16f, .24f, .36f}, {.49f, .57f, .67f}, {.28f, .35f, .48f}, {.76f, .82f, .91f},
+        {.15f, .17f, .22f}, {.26f, .94f, .68f, .46f}, -32.f, 7200.f };
+    static constexpr FRegimentSkyProfile Amber{
+        {.11f, .16f, .43f}, {.98f, .48f, .28f}, {.30f, .25f, .43f}, {1.04f, .68f, .48f},
+        {.82f, .39f, .12f}, {.37f, .82f, .33f, .83f}, -18.f, 4750.f, 180.f };
+    if (HasWinterSurroundings(Terrain))
+        return Winter;
+    if (Terrain == T::Waterloo || Terrain == T::Pavia || Terrain == T::Kawanakajima)
+        return Amber;
+    return HasDrySurroundings(Terrain) ? Dry : Temperate;
+}
+
 struct FRegimentDaylight
 {
     TWeakObjectPtr<UDirectionalLightComponent> StockSun;
@@ -804,6 +840,11 @@ struct FRegimentDaylight
     TWeakObjectPtr<ADirectionalLight> SpawnedSun;
     TWeakObjectPtr<ASkyLight> SpawnedSky;
     TWeakObjectPtr<AExponentialHeightFog> Haze;
+    TWeakObjectPtr<UStaticMeshComponent> SkyDome;
+    const FRegimentSkyProfile* ActiveSkyProfile = nullptr;
+    FRotator OriginalSunRotation = FRotator::ZeroRotator;
+    EComponentMobility::Type OriginalSunMobility = EComponentMobility::Movable;
+    bool bOriginalSkyRealTime = false;
     float OriginalSunIntensity = 0.f;
     float OriginalSunTemperature = 6500.f;
     float OriginalSunAngle = 0.f;
@@ -822,6 +863,10 @@ struct FRegimentDaylight
                 continue;
             StockSun = Light;
             OriginalSunIntensity = Light->Intensity;
+            OriginalSunRotation = Light->GetComponentRotation();
+            OriginalSunMobility = Light->Mobility;
+            // A registered Stationary light keeps its authored angle in a play world.
+            Light->SetMobility(EComponentMobility::Movable);
             OriginalSunTemperature = Light->Temperature;
             OriginalSunAngle = Light->LightSourceAngle;
             bOriginalUseTemperature = Light->bUseTemperature;
@@ -838,6 +883,7 @@ struct FRegimentDaylight
                 Light->SetMobility(EComponentMobility::Movable);
                 Light->SetAtmosphereSunLight(true);
                 StockSun = Light;
+                OriginalSunRotation = Light->GetComponentRotation();
                 SpawnedSun = Sun;
             }
         }
@@ -850,6 +896,7 @@ struct FRegimentDaylight
                 continue;
             StockSky = Light;
             OriginalSkyIntensity = Light->Intensity;
+            bOriginalSkyRealTime = Light->bRealTimeCapture;
             break;
         }
         if (!StockSky.IsValid())
@@ -863,24 +910,67 @@ struct FRegimentDaylight
                 SpawnedSky = Sky;
             }
         }
+        CreateSkyDome(World, Owner, Origin);
+        if (USkyLightComponent* Light = StockSky.Get(); SkyDome.IsValid() && Light && Light->bRealTimeCapture)
+            Light->SetRealTimeCapture(false);
         if (TActorIterator<AExponentialHeightFog>(&World))
             return;
         Haze = World.SpawnActor<AExponentialHeightFog>(Origin - FVector(0, 0, 700), FRotator::ZeroRotator, Spawn);
     }
 
-    void UseProfile(battle::MarchTerrain Terrain, battle::MarchField Field) const
+    void CreateSkyDome(UWorld& World, AActor& Owner, const FVector& Origin)
+    {
+        auto* Sphere = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Sphere.Sphere"));
+        auto* Material = LoadObject<UMaterialInterface>(nullptr,
+            TEXT("/Game/Battle/Materials/Terrain/M_RegimentSkyDome.M_RegimentSkyDome"));
+        if (!Sphere || !Material)
+            return;
+        auto* Dome = NewObject<UStaticMeshComponent>(&Owner, NAME_None, RF_Transient);
+        Owner.AddInstanceComponent(Dome);
+        ConfigureLandscapePrimitive(*Dome);
+        Dome->SetMobility(EComponentMobility::Movable);
+        Dome->SetStaticMesh(Sphere);
+        Dome->SetAbsolute(true, true, true);
+        Dome->SetWorldTransform(FTransform(FQuat::Identity, Origin, FVector(20000.0)));
+        Dome->SetMaterial(0, UMaterialInstanceDynamic::Create(Material, &Owner));
+        Dome->RegisterComponentWithWorld(&World);
+        SkyDome = Dome;
+    }
+
+    void UseProfile(battle::MarchTerrain Terrain, battle::MarchField Field)
     {
         const bool bCold = HasWinterSurroundings(Terrain);
         const bool bDry = HasDrySurroundings(Terrain);
+        const auto& SkyProfile = SkyProfileFor(Terrain);
+        const FRotator LightingAngle(SkyProfile.SunPitch, OriginalSunRotation.Yaw + SkyProfile.SunYawOffset, 0.f);
         if (UDirectionalLightComponent* Light = StockSun.Get())
         {
-            Light->SetTemperature(bCold ? 7200.f : bDry ? 5350.f : 6150.f);
+            Light->SetWorldRotation(LightingAngle);
+            Light->SetTemperature(SkyProfile.Temperature);
             Light->SetUseTemperature(true);
             Light->SetIntensity(bCold ? 7.2f : bDry ? 8.5f : 8.f);
             Light->SetLightSourceAngle(bCold ? 1.8f : bDry ? 1.1f : 1.4f);
         }
         if (USkyLightComponent* Light = StockSky.Get())
             Light->SetIntensity(bCold ? 1.50f : bDry ? 1.24f : 1.38f);
+        if (ActiveSkyProfile != &SkyProfile)
+        {
+            if (auto* Dome = SkyDome.Get())
+            {
+                auto* Material = CastChecked<UMaterialInstanceDynamic>(Dome->GetMaterial(0));
+                const FVector Sun = -LightingAngle.Vector();
+                Material->SetVectorParameterValue(TEXT("SunDirection"), {float(Sun.X), float(Sun.Y), float(Sun.Z), 1.f});
+                Material->SetVectorParameterValue(TEXT("Zenith"), SkyProfile.Zenith);
+                Material->SetVectorParameterValue(TEXT("Horizon"), SkyProfile.Horizon);
+                Material->SetVectorParameterValue(TEXT("CloudShade"), SkyProfile.CloudShade);
+                Material->SetVectorParameterValue(TEXT("CloudLight"), SkyProfile.CloudLight);
+                Material->SetVectorParameterValue(TEXT("SunGlow"), SkyProfile.SunGlow);
+                Material->SetVectorParameterValue(TEXT("CloudLayout"), SkyProfile.CloudLayout);
+                if (auto* Light = StockSky.Get(); Light && Light->SourceType == SLS_CapturedScene)
+                    Light->RecaptureSky();
+            }
+            ActiveSkyProfile = &SkyProfile;
+        }
         if (AExponentialHeightFog* Fog = Haze.Get())
         {
             auto* Component = Fog->GetComponent();
@@ -897,20 +987,31 @@ struct FRegimentDaylight
 
     ~FRegimentDaylight()
     {
+        const bool bHadDome = SkyDome.IsValid();
+        if (auto* Dome = SkyDome.Get())
+            Dome->DestroyComponent();
         if (AExponentialHeightFog* Fog = Haze.Get())
             Fog->Destroy();
         if (auto* Sky = SpawnedSky.Get())
             Sky->Destroy();
         else if (USkyLightComponent* Light = StockSky.Get())
+        {
             Light->SetIntensity(OriginalSkyIntensity);
+            if (Light->bRealTimeCapture != bOriginalSkyRealTime)
+                Light->SetRealTimeCapture(bOriginalSkyRealTime);
+            else if (bHadDome && Light->SourceType == SLS_CapturedScene)
+                Light->RecaptureSky();
+        }
         if (auto* Sun = SpawnedSun.Get())
             Sun->Destroy();
         else if (UDirectionalLightComponent* Light = StockSun.Get())
         {
+            Light->SetWorldRotation(OriginalSunRotation);
             Light->SetUseTemperature(bOriginalUseTemperature);
             Light->SetTemperature(OriginalSunTemperature);
             Light->SetIntensity(OriginalSunIntensity);
             Light->SetLightSourceAngle(OriginalSunAngle);
+            Light->SetMobility(OriginalSunMobility);
         }
     }
 };
@@ -1616,20 +1717,45 @@ bool FRegimentBattlefieldDaylightTest::RunTest(const FString&)
     Light->SetAtmosphereSunLight(true);
     Light->SetIntensity(2.f);
     AuthoredSun->SetActorRotation(FRotator(-35, 150, 0));
+    Light->SetMobility(EComponentMobility::Stationary);
     {
         FRegimentDaylight Daylight;
         Daylight.Initialize(*World, *Owner, FVector::ZeroVector);
         Daylight.UseProfile(battle::MarchTerrain::Waterloo, {790, 535});
         TestEqual(TEXT("A live daylight source is reused even when its rotation or intensity changes"),
             Daylight.StockSun.Get(), Light);
+        TestEqual(TEXT("The sky can rotate the existing stationary sunlight during play"),
+            Light->Mobility.GetValue(), EComponentMobility::Movable);
         TestTrue(TEXT("Waterloo has direct daylight"), Light->Intensity >= 5.f);
         TestNotNull(TEXT("The field gets ambient fill when the level has no skylight"), Daylight.StockSky.Get());
         const float Temperate = Light->Temperature;
+        const FRotator WaterlooSun = Light->GetComponentRotation();
+        auto* Dome = Daylight.SkyDome.Get();
+        TestNotNull(TEXT("The packaged sky material creates a dome"), Dome);
+        const auto* SkyMaterial = Dome ? Cast<UMaterialInstanceDynamic>(Dome->GetMaterial(0)) : nullptr;
+        FLinearColor AmberHorizon = FLinearColor::Black;
+        if (SkyMaterial)
+            TestTrue(TEXT("The shared material exposes the horizon color"),
+                SkyMaterial->GetVectorParameterValue(FMaterialParameterInfo(TEXT("Horizon")), AmberHorizon));
         Daylight.UseProfile(battle::MarchTerrain::Narva, {700, 480});
         TestTrue(TEXT("Winter light stays cooler and keeps a direct sun"), Light->Temperature > Temperate &&
             Light->Intensity >= 4.5f);
+        TestTrue(TEXT("The winter and amber skies have different sun elevations"),
+            Light->GetComponentRotation().Pitch < WaterlooSun.Pitch - 8.0);
+        TestEqual(TEXT("Changing skies reuses the original dome"), Daylight.SkyDome.Get(), Dome);
+        if (SkyMaterial)
+        {
+            FLinearColor WinterHorizon;
+            TestTrue(TEXT("The winter sky has a bluer horizon than the amber sky"),
+                SkyMaterial->GetVectorParameterValue(FMaterialParameterInfo(TEXT("Horizon")), WinterHorizon) &&
+                WinterHorizon.B > AmberHorizon.B && WinterHorizon.R < AmberHorizon.R);
+        }
     }
     TestEqual(TEXT("Leaving the battlefield restores the authored sunlight"), Light->Intensity, 2.f);
+    TestTrue(TEXT("Leaving the battlefield restores the original sun angle"),
+        Light->GetComponentRotation().Equals(FRotator(-35, 150, 0), .01));
+    TestEqual(TEXT("Leaving the battlefield restores stationary mobility"),
+        Light->Mobility.GetValue(), EComponentMobility::Stationary);
     World->DestroyWorld(false);
     return true;
 }
