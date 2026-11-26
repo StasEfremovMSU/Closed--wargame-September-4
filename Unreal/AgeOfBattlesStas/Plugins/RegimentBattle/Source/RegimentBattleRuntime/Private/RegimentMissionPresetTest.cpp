@@ -99,9 +99,10 @@ bool FRegimentMissionPresetLegacyTest::RunTest(const FString& Parameters)
     FText Error;
     if (!TestTrue(TEXT("Opens the old copy"), RegimentMissionPresets::Load(Folder.Path, Id, Loaded, Error)))
         return false;
-    for (const auto& Entry : Loaded.Roster)
+    for (int32 Slot = 0; Slot < MissionRosterCapacity; ++Slot)
     {
-        TestTrue(TEXT("Every legacy regiment stays active"), Entry.bEnabled);
+        const auto& Entry = Loaded.Roster[Slot];
+        TestEqual(TEXT("Legacy missions only activate their original slots"), Entry.bEnabled, Slot < MissionRegimentCount);
         TestFalse(TEXT("Legacy X remains automatic"), Entry.StartX.has_value());
         TestFalse(TEXT("Legacy Y remains automatic"), Entry.StartY.has_value());
     }
@@ -680,7 +681,7 @@ bool FRegimentMissionPresetFieldSizeTest::RunTest(const FString& Parameters)
 
     const FString InvalidFixtures[] = {
         FixtureWithField(TEXT("79"), TEXT("76"), TEXT("")),
-        FixtureWithField(TEXT("120"), TEXT("401"), TEXT("")),
+        FixtureWithField(TEXT("120"), TEXT("701"), TEXT("")),
         FixtureWithField(TEXT("120.5"), TEXT("76"), TEXT("")),
         FixtureWithField(TEXT("80"), TEXT("60"), TEXT(",\"start_x\":37")),
         FixtureWithField(TEXT("80"), TEXT("60"), TEXT(",\"start_y\":27")),
@@ -923,6 +924,61 @@ bool FRegimentHistoricalInfantryTest::RunTest(const FString& Parameters)
             TestEqual(TEXT("The named musket profile selects a firing line despite the legacy counts"),
                 HighlanderFormation->formation.columns,
                 LinearInfantryFormation(HighlanderFormation->formation, MarchHighlanders->figure_count, true).columns);
+    }
+    return !HasAnyErrors();
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FExpandedBattalionPresetTest, "RegimentBattle.MissionPresets.ExpandedBattalions",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FExpandedBattalionPresetTest::RunTest(const FString&)
+{
+    FMissionPreset Preset;
+    if (!TestTrue(TEXT("Loads the expanded Waterloo scenario"), RegimentMissionPresets::LoadBuiltIn(
+        FGuid(0x7E801C0A, 0x1E9941BD, 0x983E0DFE, 0x4DC07B33), Preset)))
+        return false;
+    TestTrue(TEXT("The enlarged map reserves space beyond the original field"),
+        Preset.Field.width_m * Preset.Field.height_m >= 560 * 380 * 19 / 10);
+    const auto Opening = MakeMissionOpening(Preset);
+    const auto Scenario = BuildPresetBattle(Preset, Opening, EMissionDeployment::AuthoredStart);
+    TestEqual(TEXT("Waterloo has 24 independent battalions and batteries"), int32(Scenario.regiments.size()), 24);
+    TestEqual(TEXT("The total stays at five thousand figures"), int32(Scenario.units.size()), 5000);
+    const auto World = battle::CreateWorld(Scenario, 42);
+    if (!TestTrue(TEXT("The expanded command tree is valid"), bool(World)))
+        return false;
+    for (int32 Team = 0; Team < 2; ++Team)
+    {
+        const auto LastBattalion = battle::RegimentId{uint64(MissionRosterIndex(Team, 11) + 1)};
+        const auto* Found = battle::FindRegiment(World.value, LastBattalion);
+        if (TestNotNull(TEXT("The last battalion is present"), Found))
+            TestEqual(TEXT("Expanded battalions retain the correct team"), Found->team, Team);
+    }
+    const auto Navigation = MakeMissionNavigation(Scenario.obstacles, Preset.Field);
+    const float OpenWing = Preset.Field.HalfHeight() - 20.f;
+    const battle::Pose MarchStart{{-80.f, OpenWing, 0.f}, 0.f};
+    TestTrue(TEXT("The larger playable flank has a path"),
+        Navigation.FindPath({MarchStart, {80.f, OpenWing, 0.f}, {6.f, 5.f}}).status == battle::Status::Ok);
+
+    const FMissionPresetTestFolder Folder;
+    FGuid Copy;
+    FText Error;
+    Preset.Name = TEXT("Expanded Waterloo copy");
+    if (!TestTrue(TEXT("Saves all twenty-four slots"), RegimentMissionPresets::SaveCopy(Folder.Path, Preset, Copy, Error)) ||
+        !TestTrue(TEXT("Loads the expanded copy"), RegimentMissionPresets::Load(Folder.Path, Copy, Preset, Error)))
+    {
+        AddError(Error.ToString());
+        return false;
+    }
+    TestEqual(TEXT("Records the enabled reserve slots"), MissionRosterExtent(Preset.Roster), 24);
+    const auto ExtraStart = Preset.Roster[MissionRegimentCount].StartX;
+    for (int32 Slot = MissionRegimentCount; Slot < MissionRosterCapacity; ++Slot)
+        Preset.Roster[Slot].bEnabled = false;
+    if (TestTrue(TEXT("Can suspend all extra battalions"), RegimentMissionPresets::Save(Folder.Path, Copy, Preset, Error)) &&
+        TestTrue(TEXT("Can reopen suspended extra battalions"), RegimentMissionPresets::Load(Folder.Path, Copy, Preset, Error)))
+    {
+        TestEqual(TEXT("Suspended extra battalions stay disabled"), MissionRosterExtent(Preset.Roster), MissionRegimentCount);
+        TestTrue(TEXT("Suspended battalions keep their authored positions"),
+            ExtraStart && Preset.Roster[MissionRegimentCount].StartX == ExtraStart);
     }
     return !HasAnyErrors();
 }

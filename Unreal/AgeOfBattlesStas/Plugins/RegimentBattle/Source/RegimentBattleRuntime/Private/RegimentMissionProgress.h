@@ -3,6 +3,7 @@
 #include "Containers/Set.h"
 #include "Misc/Optional.h"
 #include "RegimentMissionPreset.h"
+#include "RegimentMissionTutorial.h"
 
 THIRD_PARTY_INCLUDES_START
 #include "battle/World.h"
@@ -13,7 +14,16 @@ class FRegimentMissionProgress
 public:
     FRegimentMissionProgress(const FMissionPreset& Preset, battle::World& World);
 
-    void Update(battle::World& World);
+    void Update(battle::World& World, bool bOfficerCommandsOpen = false);
+    bool StartsPossessed() const { return Tutorial && Tutorial->StartsPossessed(); }
+    bool HidesRegiment(battle::RegimentId Regiment) const
+    {
+        return Tutorial && Tutorial->HidesRegiment(Regiment);
+    }
+    std::optional<battle::ScenarioObjective> TutorialMarker() const
+    {
+        return Tutorial ? Tutorial->Marker() : std::nullopt;
+    }
     bool IsReserveExercise() const { return Objective.Goal == EMissionGoal::ReserveExercise; }
     bool CanReleaseReserve(const battle::World& World) const;
     bool AwaitsReserveRelease(battle::RegimentId Regiment) const;
@@ -28,6 +38,7 @@ private:
 
     FMissionObjective Objective;
     battle::MarchTerrain Terrain;
+    TOptional<FRegimentTutorialProgress> Tutorial;
     FText Result;
     TArray<battle::RegimentId> StartsOnAttackingBank;
     TSet<uint64> UsedCrossing;

@@ -151,8 +151,8 @@
     }
   ],
   "field": {
-    "width_m": 520,
-    "height_m": 340
+    "width_m": 735,
+    "height_m": 480
   },
   "figure_target": 5000,
   "adaptive_battle": true

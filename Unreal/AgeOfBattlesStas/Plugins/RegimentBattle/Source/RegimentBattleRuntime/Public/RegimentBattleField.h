@@ -15,6 +15,7 @@ class ULocalPlayer;
 class UMaterialInterface;
 class USkeletalMesh;
 class UStaticMesh;
+class UStaticMeshComponent;
 enum class ERegimentBattleSpeed : uint8;
 struct FRegimentBattleSession;
 struct FRegimentMissionRuntime;
@@ -91,6 +92,8 @@ struct FRegimentOfficerHudState
     bool bCanCommand = false;
     bool bAdditionalRegiments = false;
     bool bPlanning = false;
+    bool bFirstPerson = true;
+    bool bAttackReady = true;
     bool bParryReady = true;
     bool bParryActive = false;
     TOptional<float> HealthFraction;
@@ -100,8 +103,13 @@ struct FRegimentOfficerHudState
     FText CommandTitle;
     FText CommandScope;
     FText ProfileEffects;
+    FText TacticalSkill;
+    FText FieldGunStatus;
+    FText RankIcon;
+    TWeakObjectPtr<class UTexture2D> Portrait;
     int32 CommandTier = 1;
     FText Regiment;
+    FText RegimentCondition;
     FText Notice;
 };
 
@@ -124,6 +132,7 @@ struct FRegimentDecisionHudEntry
     FText CommanderName;
     FText Duty;
     FText Effects;
+    FText TacticalSkill;
     FString RankIcon;
     TWeakObjectPtr<class UTexture2D> Portrait;
     int32 CommandTier = 1;
@@ -182,6 +191,7 @@ public:
     void IntroduceReserve();
     FText GetMissionObjectiveText() const;
     FText GetMissionReport() const;
+    bool GetTutorialMarker(FVector& Center, float& Radius) const;
     TConstArrayView<FRegimentDecisionHudEntry> GetDecisionEntries() const;
     bool ProjectCommander(uint64 UnitId, FVector2D& Normalized) const;
     void ToggleSkirmishers(uint64 NodeId);
@@ -189,6 +199,7 @@ public:
     const FRegimentOfficerHudState& GetOfficerControlState() const { return OfficerHudState; }
     bool OfficerCommandsOpen() const { return OfficerInput.bCommandsOpen; }
     void ToggleOfficerCommands();
+    void ToggleOfficerView();
     bool CanPossessOfficer(uint64 NodeId) const;
     void PossessOfficer(uint64 NodeId = 0);
     bool IsChoosingOfficer() const;
@@ -254,6 +265,7 @@ private:
     void ShowOfficerNotice(FText Notice);
     void QueueOfficerMotion();
     void UpdateOfficerCamera(float DeltaSeconds);
+    void UpdateOfficerViewBlade(ACameraActor& Camera, double Swing, bool bParrying);
     void UpdateManeuverInput(APlayerController& Controller);
     void RefreshRegimentCards();
     void RestoreOfficerCamera();
@@ -277,11 +289,13 @@ private:
     uint64 SelectedOfficerRegiment = 0;
     float OfficerNoticeSeconds = 0.f;
     TWeakObjectPtr<ACameraActor> OfficerCamera;
+    TWeakObjectPtr<UStaticMeshComponent> OfficerViewBlade;
     TWeakObjectPtr<AActor> PreviousBattleView;
     FIntVector OfficerMotionTap{0, 0, 0};
     FRegimentOfficerInput OfficerInput;
     bool bOfficerMouseCaptured = false;
     bool bOfficerRunTap = false;
+    bool bOfficerPresentationDirty = false;
     double OfficerCameraYaw = 0.0;
     double OfficerCameraPitch = -13.0;
     double OfficerCameraDistance = 365.0;

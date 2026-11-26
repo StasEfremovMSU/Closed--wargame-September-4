@@ -172,4 +172,54 @@ bool FRegimentHistoricalFigureTest::RunTest(const FString&)
         RegimentHistoricalProfile(TEXT("young_guard")) == S::YoungGuard);
     return !HasAnyErrors();
 }
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentSengokuFigureTest, "RegimentBattle.Presentation.SengokuFigures",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+
+bool FRegimentSengokuFigureTest::RunTest(const FString&)
+{
+    using S = ERegimentHistoricalFigure;
+    using F = ERegimentAncientFeature;
+    using W = battle::RangedWeapon;
+    using T = battle::UnitTroop;
+    battle::UnitSpec Figure;
+    TestEqual(TEXT("Swordsmen wear samurai armour"), RegimentSengokuStyle(Figure), S::SengokuSamurai);
+    Figure.troop = T::Spearman;
+    TestEqual(TEXT("Spearmen wear ashigaru equipment"), RegimentSengokuStyle(Figure), S::SengokuAshigaru);
+    Figure.troop = T::Infantry;
+    Figure.archer = true;
+    Figure.ranged_weapon = W::Bow;
+    TestEqual(TEXT("Archers use the yumi outfit"), RegimentSengokuStyle(Figure), S::SengokuArcher);
+    Figure.ranged_weapon = W::Gunpowder;
+    TestEqual(TEXT("Gunners use the arquebusier outfit"), RegimentSengokuStyle(Figure), S::SengokuArquebusier);
+    Figure.archer = false;
+    Figure.troop = T::Mounted;
+    TestEqual(TEXT("Cavalry keep a separate mounted figure"), RegimentSengokuStyle(Figure), S::SengokuCavalry);
+
+    for (const auto Style : {S::SengokuSamurai, S::SengokuAshigaru, S::SengokuArcher,
+            S::SengokuArquebusier, S::SengokuCavalry})
+    {
+        const auto Near = BuildRegimentHistoricalDress(Style);
+        const auto Far = BuildRegimentHistoricalProxy(Style);
+        const bool bArmored = Style == S::SengokuSamurai || Style == S::SengokuCavalry;
+        const auto Hat = bArmored ? F::Kabuto : F::Jingasa;
+        TestTrue(TEXT("The period headgear remains visible in both meshes"), Near.Count(Hat) == 1 && Far.Count(Hat) == 1);
+        TestTrue(TEXT("Both meshes preserve faction material"),
+            Near.Parts.ContainsByPredicate([](const auto& Part) { return Part.Material == ERegimentAncientMaterial::Paint; }) &&
+            Far.Parts.ContainsByPredicate([](const auto& Part) { return Part.Material == ERegimentAncientMaterial::Paint; }));
+        TestEqual(TEXT("The large shoulder guards identify armour"), Near.Count(F::Sode), bArmored ? 2 : 0);
+        TestTrue(TEXT("The proxy is simplified"), Far.bSimplified);
+        TestEqual(TEXT("Only the cavalry proxy contains a horse"), Far.Count(F::Horse), Style == S::SengokuCavalry ? 1 : 0);
+    }
+    const auto Yumi = BuildRegimentSengokuWeapon(S::SengokuArcher);
+    TestTrue(TEXT("The yumi has an extended upper limb above the grip"),
+        Yumi.Bounds.IsValid && Yumi.Bounds.GetSize().Z >= 150.0 && Yumi.Bounds.Max.Z > -Yumi.Bounds.Min.Z * 1.6);
+    TestTrue(TEXT("The arquebus has an identifiable matchlock and long horizontal silhouette"),
+        BuildRegimentSengokuWeapon(S::SengokuArquebusier).Count(F::Matchlock) == 1 &&
+        BuildRegimentSengokuWeapon(S::SengokuArquebusier).Bounds.GetSize().X > 100.0);
+    TestTrue(TEXT("Mounted tack and a cloth field sign have individual shapes"),
+        BuildRegimentHistoricalTack(S::SengokuCavalry).Parts.Num() > 3 &&
+        BuildRegimentSengokuBanner().Count(F::Sashimono) == 1);
+    return !HasAnyErrors();
+}
 #endif

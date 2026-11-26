@@ -3,7 +3,27 @@
 #if WITH_DEV_AUTOMATION_TESTS
 #include "RegimentArtilleryCameraKick.h"
 #include "RegimentFigureLod.h"
+#include "RegimentOfficerView.h"
 #include "RegimentTacticalCamera.h"
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentOfficerViewTest, "RegimentBattle.Presentation.OfficerFirstPerson",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+
+bool FRegimentOfficerViewTest::RunTest(const FString&)
+{
+    const FVector Footing(240, 460, 31);
+    const auto FootView = RegimentOfficerView::Eyes(Footing, false);
+    const auto MountedView = RegimentOfficerView::Eyes(Footing, true);
+    TestEqual(TEXT("The officer sees from their own position"), FootView, Footing + FVector(0, 0, 159));
+    TestEqual(TEXT("Mounted officers see from the saddle"), MountedView, Footing + FVector(0, 0, 219));
+    TestEqual(TEXT("Jump height is reflected without a chase delay"),
+        RegimentOfficerView::Eyes(Footing + FVector(0, 0, 43), false) - FootView, FVector(0, 0, 43));
+    TestEqual(TEXT("First person can look upward"), RegimentOfficerView::Pitch(65, true), 65.0);
+    TestEqual(TEXT("Shoulder camera retains its safe upper angle"), RegimentOfficerView::Pitch(65, false), 24.0);
+    TestTrue(TEXT("First person keeps greater peripheral awareness"),
+        RegimentOfficerView::FieldOfView(true) > RegimentOfficerView::FieldOfView(false));
+    return !HasAnyErrors();
+}
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentCameraFlightTest, "RegimentBattle.Presentation.MapFlyover",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)

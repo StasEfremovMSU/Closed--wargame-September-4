@@ -5,7 +5,7 @@
 
 enum class ERegimentOfficerInputAction : uint8
 {
-    Forward, Backward, Left, Right, TurnLeft, TurnRight, Run, Jump, Attack, Parry, Count
+    Forward, Backward, Left, Right, TurnLeft, TurnRight, Run, Jump, Attack, Parry, Camera, Count
 };
 
 class FRegimentOfficerSettings
@@ -20,6 +20,8 @@ public:
     bool Bind(ERegimentOfficerInputAction Action, const FKey& Key);
     float Mouse() const { return MouseMultiplier; }
     void SetMouse(float Multiplier);
+    bool IsFirstPerson() const { return bFirstPerson; }
+    void SetFirstPerson(bool bEnabled) { bFirstPerson = bEnabled; }
     static FText ActionLabel(ERegimentOfficerInputAction Action);
     void Load(const FString& Filename);
     void Save(const FString& Filename) const;
@@ -27,6 +29,7 @@ public:
 private:
     FKey Keys[ActionCount];
     float MouseMultiplier = 1.f;
+    bool bFirstPerson = true;
 };
 
 FRegimentOfficerSettings& RegimentOfficerSettings();

@@ -302,7 +302,7 @@ bool FRegimentNapoleonicTacticsTest::RunTest(const FString&)
         const auto Origin = Attackers.pose;
         if (Id == Waterloo)
         {
-            TestEqual(TEXT("Waterloo has six formations per side"), int32(World.regiments.size()), 12);
+            TestEqual(TEXT("Waterloo has twelve formations per side"), int32(World.regiments.size()), 24);
             TestTrue(TEXT("Crest orders stay at ground-level coordinates"),
                 Scenario.objective && Scenario.objective->center.x > 50.f &&
                 Scenario.objective->center.z == 0.f);

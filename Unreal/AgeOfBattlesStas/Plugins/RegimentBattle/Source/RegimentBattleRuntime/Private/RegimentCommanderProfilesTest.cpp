@@ -1,4 +1,4 @@
-﻿#include "RegimentCommanderProfiles.h"
+#include "RegimentCommanderProfiles.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 #include "Misc/AutomationTest.h"
@@ -46,6 +46,7 @@ bool FRegimentCommanderProfilesTest::RunTest(const FString& Parameters)
         TestFalse(TEXT("Every commander has a name"), Card.Name.IsEmpty());
         TestFalse(TEXT("Every commander has a rank icon"), Card.RoleIcon.IsEmpty());
         TestFalse(TEXT("Every commander has visible effects"), Card.Effects.IsEmpty());
+        TestFalse(TEXT("Every commander has a displayed tactical rating"), Card.TacticalSkill.IsEmpty());
         const auto Officer = std::ranges::find(Scenario.officers, Node.commander, &battle::OfficerSpec::id);
         if (!TestTrue(TEXT("Commander has a simulation officer"), Officer != Scenario.officers.end()))
             return false;
@@ -108,11 +109,13 @@ bool FRegimentCommanderProfilesTest::RunTest(const FString& Parameters)
     {
         FGuid Mission;
         const TCHAR* BlueCommander;
-    } CampaignFixtures[] = {
+        const TCHAR* OrangeCommander = nullptr;
+    } HistoricalFixtures[] = {
         {FGuid(0xB60CD12C, 0xBABE4FF6, 0x894C48EC, 0xB4F96421), TEXT("Филипп VI Валуа")},
         {FGuid(0x6DC62DF8, 0x9CFA521A, 0xB4829690, 0x956C5B22), TEXT("Наполеон Бонапарт")},
+        {FGuid(0x845BCC52, 0xB6655AA6, 0xA8E31464, 0x0A1E99B2), TEXT("Карл XII"), TEXT("Шарль Эжен де Круа")},
     };
-    for (const auto& Fixture : CampaignFixtures)
+    for (const auto& Fixture : HistoricalFixtures)
     {
         if (!TestTrue(TEXT("Historical campaign stage loads"), RegimentMissionPresets::LoadBuiltIn(Fixture.Mission, Preset)))
             return false;
@@ -121,22 +124,45 @@ bool FRegimentCommanderProfilesTest::RunTest(const FString& Parameters)
             EMissionDeployment::AuthoredStart);
         if (!TestTrue(TEXT("Historical campaign stage has a command hierarchy"), Stage.command_setup.has_value()))
             return false;
-        const auto& Nodes = Stage.command_setup->hierarchy.nodes;
-        const auto Root = std::ranges::find_if(Nodes, [](const auto& Node)
+        const auto StageWorld = battle::CreateWorld(Stage, 42);
+        if (!TestTrue(TEXT("Historical fixture creates a world"), bool(StageWorld)))
+            return false;
+        const TCHAR* Names[] = {Fixture.BlueCommander, Fixture.OrangeCommander};
+        for (int32 Team = 0; Team < UE_ARRAY_COUNT(Names); ++Team)
         {
-            return Node.level == battle::command::Level::Army && Node.team == 0;
-        });
-        if (!TestTrue(TEXT("Historical campaign stage has an army commander"), Root != Nodes.end()))
-            return false;
-        const auto Commander = std::ranges::find(Stage.officers, Root->commander, &battle::OfficerSpec::id);
-        if (!TestTrue(TEXT("Historical campaign commander has a staff entry"), Commander != Stage.officers.end()))
-            return false;
-        const auto Unit = std::ranges::find(Stage.units, Commander->unit, &battle::UnitSpec::id);
-        if (!TestTrue(TEXT("Historical campaign commander has a figure"), Unit != Stage.units.end()))
-            return false;
-        TestEqual(TEXT("Campaign stage takes the historical commander"), FString(UTF8_TO_TCHAR(Unit->name.c_str())),
-            FString(Fixture.BlueCommander));
+            if (!Names[Team])
+                continue;
+            const auto& Nodes = Stage.command_setup->hierarchy.nodes;
+            const auto Root = std::ranges::find_if(Nodes, [Team](const auto& Node)
+            {
+                return Node.level == battle::command::Level::Army && Node.team == Team;
+            });
+            if (!TestTrue(TEXT("Historical fixture has an army commander"), Root != Nodes.end()))
+                return false;
+            const auto Card = Describe(StageWorld.value, Root->commander, Preset.Era.Id);
+            TestEqual(TEXT("Scenario uses the named army commander"), Card.Name, FString(Names[Team]));
+            TestNotNull(TEXT("The named commander has a portrait"), Card.Portrait);
+        }
     }
+    Preset.HistoricalIdentity.Invalidate();
+    const auto CustomOpening = MakeMissionOpening(Preset.Roster, Preset.Terrain, Preset.Field, Preset.FigureTarget);
+    const auto CustomScenario = BuildPresetBattle(Preset, CustomOpening, EMissionDeployment::AuthoredStart);
+    const auto CustomBattle = battle::CreateWorld(CustomScenario, 42);
+    if (!TestTrue(TEXT("A battle without historical commander overrides creates a world"), bool(CustomBattle)))
+        return false;
+    TSet<UTexture2D*> CustomArmyPortraits;
+    for (const auto& Node : CustomScenario.command_setup->hierarchy.nodes)
+    {
+        if (Node.level != battle::command::Level::Army)
+            continue;
+        const auto Card = Describe(CustomBattle.value, Node.commander);
+        TestNotNull(TEXT("A generated army commander has a portrait"), Card.Portrait);
+        TestFalse(TEXT("A generated army commander has trait effects"), Card.Effects.IsEmpty());
+        TestEqual(TEXT("Generated portraits are stable on repeated reads"),
+            Describe(CustomBattle.value, Node.commander).Portrait, Card.Portrait);
+        CustomArmyPortraits.Add(Card.Portrait);
+    }
+    TestEqual(TEXT("Generated opposing commanders have their own portraits"), CustomArmyPortraits.Num(), 2);
     return true;
 }
 #endif

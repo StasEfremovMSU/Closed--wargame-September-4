@@ -1,6 +1,7 @@
 #include "TestSupport.h"
 #include "ReplayIo.h"
 #include "battle/Combat.h"
+#include "battle/Control.h"
 #include "battle/Formation.h"
 #include "../src/LocalMelee.h"
 #include "../src/RegimentDiscipline.h"
@@ -145,6 +146,47 @@ TEST_CASE("combat.field_gun_cannot_fire_through_a_wall") {
     BuildCombatEvents(world, launches);
     CHECK(launches.empty());
     CHECK(FindUnit(world, {1})->ammunition_remaining == 10);
+}
+
+TEST_CASE("combat.possessed_battery_fires_one_round_only_on_the_officer_command") {
+    auto scenario = GunFixture(120.f, 6, 2).scenario;
+    UnitSpec officer;
+    officer.id = {90};
+    officer.regiment = {1};
+    officer.name = "battery officer";
+    scenario.units.push_back(officer);
+    OfficerSpec profile;
+    profile.id = {1};
+    profile.unit = officer.id;
+    scenario.officers.push_back(profile);
+    auto created = CreateWorld(scenario, 31);
+    REQUIRE(created);
+    auto &world = created.value;
+    REQUIRE(AcquireControl(world, officer.id) == Status::Ok);
+    const FlatNavigationService navigation;
+    REQUIRE(Step(world, {}, {}, navigation));
+    CHECK(FindUnit(world, {1})->ammunition_remaining == 10);
+
+    Command fire;
+    fire.kind = CommandKind::FireFieldGun;
+    fire.unit = officer.id;
+    fire.target = {2};
+    const CommandEnvelope packet{world.tick, 120, fire};
+    REQUIRE(Step(world, std::span{&packet, 1u}, {}, navigation));
+    CHECK(FindUnit(world, {1})->ammunition_remaining == 9);
+    const auto shot = std::ranges::find_if(world.events, [](const auto &event) {
+        return event.kind == EventKind::AttackLaunched && event.source == UnitId{1};
+    });
+    REQUIRE(shot != world.events.end());
+    CHECK(shot->reason == FieldGunRoundShotReason);
+    CHECK(shot->target == fire.target);
+
+    const CommandEnvelope during_reload{world.tick, 121, fire};
+    REQUIRE(Step(world, std::span{&during_reload, 1u}, {}, navigation));
+    CHECK(FindUnit(world, {1})->ammunition_remaining == 9);
+    CHECK(std::ranges::none_of(world.events, [](const auto &event) {
+        return event.kind == EventKind::AttackLaunched && event.source == UnitId{1};
+    }));
 }
 
 TEST_CASE("combat.field_gun_canister_cannot_hit_secondary_targets_behind_cover") {

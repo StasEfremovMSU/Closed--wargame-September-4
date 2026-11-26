@@ -533,6 +533,17 @@ ERegimentHistoricalFigure RegimentHistoricalStyle(ERegimentHistoricalFigure Prof
     return S::None;
 }
 
+ERegimentHistoricalFigure RegimentSengokuStyle(const battle::UnitSpec& Unit)
+{
+    using S = ERegimentHistoricalFigure;
+    using T = battle::UnitTroop;
+    if (Unit.troop == T::Mounted)
+        return S::SengokuCavalry;
+    if (Unit.archer)
+        return battle::UsesGunpowder(Unit.ranged_weapon) ? S::SengokuArquebusier : S::SengokuArcher;
+    return Unit.troop == T::Spearman ? S::SengokuAshigaru : S::SengokuSamurai;
+}
+
 TOptional<ERegimentAncientShield> RegimentHistoricalShield(ERegimentHistoricalFigure Style)
 {
     using S = ERegimentHistoricalFigure;
@@ -557,13 +568,92 @@ double RegimentHistoricalSpearLength(ERegimentHistoricalFigure Style)
     case S::Sarissa: return 480.0;
     case S::Companion: return 280.0;
     case S::RomanCavalry: return 213.0;
+    case S::SengokuAshigaru: return 282.0;
+    case S::SengokuCavalry: return 255.0;
     default: return 242.0;
     }
+}
+
+namespace
+{
+using HistoricalFigure = ERegimentHistoricalFigure;
+
+bool IsSengokuFigure(HistoricalFigure Style)
+{
+    return Style >= HistoricalFigure::SengokuSamurai && Style <= HistoricalFigure::SengokuCavalry;
+}
+
+FRegimentAncientFigure SengokuDress(HistoricalFigure Style, bool bSimplified)
+{
+    using S = HistoricalFigure;
+    const bool bMounted = Style == S::SengokuCavalry;
+    const bool bArmoured = Style == S::SengokuSamurai || bMounted;
+    FRegimentAncientFigure Model;
+    Model.bSimplified = bSimplified;
+    Part(Model, P::BeveledBlock, M::Dark, {0, 0, 107}, {37, 50, 53});
+    Part(Model, P::BeveledBlock, M::Leather, {1, 0, 81}, {41, 53, 7});
+    const int32 Plates = bArmoured ? (bSimplified ? 3 : 5) : 2;
+    for (int32 Plate = 0; Plate < Plates; ++Plate)
+    {
+        const double Height = bArmoured ? 7.0 : 10.0;
+        const double Z = 89.0 + Plate * (bSimplified ? 15.0 : bArmoured ? 8.0 : 14.0);
+        Part(Model, P::BeveledBlock, M::Paint, {1, 0, Z}, {40, 52, Height},
+            FRotator::ZeroRotator, F::Lamellar);
+        if (bArmoured && !bSimplified)
+            Part(Model, P::Block, M::Linen, {21, 0, Z - 2}, {2.5, 34, 1.5});
+    }
+    if (bArmoured)
+    {
+        Part(Model, P::Ellipsoid, M::Dark, {-2, 0, 163}, {38, 36, 28}, FRotator::ZeroRotator, F::Kabuto);
+        Part(Model, P::Disc, M::Iron, {0, 0, 153}, {45, 49, 5});
+        for (double Z : {143., 149.})
+            Part(Model, P::BeveledBlock, M::Paint, {-12, 0, Z}, {24, 43 + (149. - Z) * .8, 6}, FRotator(-10, 0, 0));
+        Part(Model, P::BeveledBlock, M::Dark, {15, 0, 140}, {12, 26, 13}, FRotator(-8, 0, 0));
+        // A compact frontal crest leaves the head silhouette distinct from the broad ashigaru brim.
+        Part(Model, P::Disc, M::Bronze, {17, 0, 168}, {13, 13, 3}, FRotator(90, 0, 0));
+        for (double Side : {-1.0, 1.0})
+        {
+            if (bMounted)
+                Bar(Model, M::Bronze, {17, Side * 3, 168}, {16, Side * 14, 181}, 5, P::Taper);
+            Part(Model, P::BeveledBlock, M::Paint, {-1, Side * 27, 115}, {29, 9, 32},
+                FRotator(0, 0, Side * 19), F::Sode);
+            if (!bSimplified)
+                for (double Z : {108., 116., 124.})
+                    Part(Model, P::Block, M::Dark, {-1, Side * 31, Z}, {28, 3, 2}, FRotator(0, 0, Side * 19));
+            for (double X : {-14., 16.})
+                Part(Model, P::BeveledBlock, M::Paint, {X, Side * 14, 70}, {11, 22, 25},
+                    FRotator(X > 0 ? 21 : -21, 0, Side * 12));
+        }
+        Bar(Model, M::Dark, {22, -24, 83}, {-37, -24, 73}, 7, P::Disc);
+    }
+    else
+    {
+        Part(Model, P::Taper, M::Dark, {1, 0, 161}, {59, 59, 21}, FRotator(-5, 0, 0), F::Jingasa);
+        Part(Model, P::Disc, M::Leather, {0, 0, 151}, {58, 57, 4}, FRotator(-5, 0, 0));
+        Part(Model, P::BeveledBlock, M::Linen, {16, 0, 124}, {9, 35, 11});
+        for (double Side : {-1.0, 1.0})
+            Part(Model, P::BeveledBlock, M::Paint, {16, Side * 13, 70}, {8, 20, 23}, FRotator(17, 0, Side * 7));
+        if (Style == S::SengokuArcher)
+        {
+            Bar(Model, M::Leather, {-23, 16, 84}, {-26, 24, 145}, 12, P::Disc, F::Quiver);
+            for (double Y : {21., 25., 29.})
+                Bar(Model, M::Wood, {-26, Y, 139}, {-28, Y + 1, 157}, 3);
+        }
+        else if (Style == S::SengokuArquebusier)
+        {
+            Bar(Model, M::Leather, {21, -16, 123}, {22, 18, 84}, 4);
+            Part(Model, P::BeveledBlock, M::Leather, {9, 25, 82}, {17, 10, 20});
+        }
+    }
+    return Model;
+}
 }
 
 FRegimentAncientFigure BuildRegimentHistoricalDress(ERegimentHistoricalFigure Style)
 {
     using S = ERegimentHistoricalFigure;
+    if (IsSengokuFigure(Style))
+        return SengokuDress(Style, false);
     FRegimentAncientFigure Model;
     const auto Add = [&](P Shape, M Surface, FVector At, FVector Size, FRotator Rotation = FRotator::ZeroRotator,
         F Feature = F::None)
@@ -747,17 +837,30 @@ FRegimentAncientFigure BuildRegimentHistoricalTack(ERegimentHistoricalFigure Sty
         for (double Y : {-23., 23.})
             Part(Model, P::BeveledBlock, M::Leather, {-3, Y, 111}, {43, 12, 19});
     }
+    if (Style == S::SengokuCavalry)
+    {
+        Part(Model, P::BeveledBlock, M::Paint, {-5, 0, 112}, {71, 58, 17});
+        for (double X : {-24., 21.})
+            Part(Model, P::BeveledBlock, M::Dark, {X, 0, 120}, {10, 47, 19}, FRotator(X > 0 ? -13 : 13, 0, 0));
+        for (double Side : {-1., 1.})
+        {
+            Bar(Model, M::Leather, {1, Side * 24, 111}, {5, Side * 29, 74}, 4);
+            Part(Model, P::BeveledBlock, M::Iron, {11, Side * 29, 72}, {24, 10, 5}, FRotator(7, 0, 0));
+        }
+    }
     return Model;
 }
 
 FRegimentAncientFigure BuildRegimentHistoricalProxy(ERegimentHistoricalFigure Style)
 {
     using S = ERegimentHistoricalFigure;
-    auto Model = BuildRegimentHistoricalDress(Style);
+    const bool bSengoku = IsSengokuFigure(Style);
+    auto Model = bSengoku ? SengokuDress(Style, true) : BuildRegimentHistoricalDress(Style);
     if (Model.Parts.IsEmpty())
         return Model;
     Model.bSimplified = true;
-    const bool bMounted = Style == S::RomanCavalry || Style == S::Numidian || Style == S::Companion;
+    const bool bMounted = Style == S::RomanCavalry || Style == S::Numidian || Style == S::Companion ||
+        Style == S::SengokuCavalry;
     const double RideHeight = bMounted ? RegimentHistoricalRiderHeight : 0.0;
     if (bMounted)
     {
@@ -775,9 +878,9 @@ FRegimentAncientFigure BuildRegimentHistoricalProxy(ERegimentHistoricalFigure St
         Model.Parts.Append(MoveTemp(Mount.Parts));
     }
     const bool bKilt = Style == S::Highlander;
-    const M Coat = Style >= S::BritishLine ? M::Scarlet : Style >= S::RussianLine ? M::Green :
+    const M Coat = bSengoku ? M::Paint : Style >= S::BritishLine ? M::Scarlet : Style >= S::RussianLine ? M::Green :
         Style >= S::Fusilier ? M::Navy : Style == S::Numidian ? M::Linen : M::Paint;
-    const M Trousers = bKilt ? M::Skin : Style >= S::Fusilier ? M::Linen : M::Paint;
+    const M Trousers = bSengoku ? M::Dark : bKilt ? M::Skin : Style >= S::Fusilier ? M::Linen : M::Paint;
     Part(Model, P::BeveledBlock, Coat, {0, 0, 89 + RideHeight}, {32, 43, 64});
     Part(Model, P::BeveledBlock, M::Skin, {2, 0, 144 + RideHeight}, {27, 26, 27});
     for (double Side : {-1., 1.})
@@ -790,6 +893,51 @@ FRegimentAncientFigure BuildRegimentHistoricalProxy(ERegimentHistoricalFigure St
             {bMounted ? 13.0 : 3.0, Side * (bMounted ? 25.0 : 12.0), (bMounted ? 25.0 : 15.0) + RideHeight},
             {22, 17, bKilt ? 30.0 : 27.0});
     }
+    return Model;
+}
+
+FRegimentAncientFigure BuildRegimentSengokuWeapon(ERegimentHistoricalFigure Style)
+{
+    using S = ERegimentHistoricalFigure;
+    FRegimentAncientFigure Model;
+    if (Style == S::SengokuArcher)
+    {
+        // The asymmetric limbs meet at the hand, about one third of the way up the bow.
+        const FVector Limbs[] = {{-18, 0, -57}, {-5, 0, -41}, {0, 0, -17}, {0, 0, 17},
+            {5, 0, 58}, {0, 0, 96}, {-23, 0, 123}};
+        for (int32 Segment = 1; Segment < UE_ARRAY_COUNT(Limbs); ++Segment)
+            Bar(Model, M::Wood, Limbs[Segment - 1], Limbs[Segment], Segment == 3 ? 4.5 : 3.2);
+        Bar(Model, M::Linen, Limbs[0], Limbs[UE_ARRAY_COUNT(Limbs) - 1], 1.35);
+        Bar(Model, M::Dark, {0, 0, -8}, {0, 0, 8}, 5.3, P::Disc);
+    }
+    else if (Style == S::SengokuArquebusier)
+    {
+        Bar(Model, M::Iron, {0, 0, 4}, {94, 0, 4}, 5.5, P::Disc);
+        Bar(Model, M::Wood, {-12, 0, -1}, {72, 0, -1}, 7.0, P::BeveledBlock);
+        Bar(Model, M::Wood, {-35, 0, -11}, {-12, 0, -1}, 9, P::BeveledBlock);
+        Part(Model, P::BeveledBlock, M::Bronze, {8, 4, 4}, {14, 3, 7}, FRotator::ZeroRotator, F::Matchlock);
+        Part(Model, P::Disc, M::Dark, {92, 0, 4}, {7, 7, 7}, FRotator(90, 0, 0));
+    }
+    else if (Style == S::SengokuSamurai)
+    {
+        Bar(Model, M::Iron, {0, 0, 12}, {4, 0, 47}, 3, P::BeveledBlock);
+        Bar(Model, M::Iron, {4, 0, 47}, {14, 0, 81}, 3, P::BeveledBlock);
+        Bar(Model, M::Iron, {14, 0, 81}, {18, 0, 90}, 3, P::Taper);
+        Bar(Model, M::Dark, {0, 0, -15}, {0, 0, 12}, 5, P::Disc);
+        Part(Model, P::Disc, M::Bronze, {0, 0, 12}, {11, 10, 3});
+    }
+    return Model;
+}
+
+FRegimentAncientFigure BuildRegimentSengokuBanner()
+{
+    FRegimentAncientFigure Model;
+    Model.bSimplified = true;
+    Bar(Model, M::Wood, {-24, 10, 92}, {-34, 10, 231}, 3.5);
+    Bar(Model, M::Wood, {-34, 9, 231}, {-34, 44, 231}, 3.0);
+    Part(Model, P::BeveledBlock, M::Paint, {-35, 28, 207}, {4, 31, 45}, FRotator(-4, 0, 0), F::Sashimono);
+    for (double X : {-38., -32.})
+        Part(Model, P::Disc, M::Linen, {X, 28, 212}, {15, 15, 2.6}, FRotator(90, 0, 0));
     return Model;
 }
 

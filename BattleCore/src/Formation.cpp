@@ -1101,6 +1101,8 @@ void AdvanceFormations(World &w, float dt, const LocalMelee *contact) {
                                   !r.following_officer && r.pose.position == previous.position;
         const bool back_step = evading || (regiment_tactics && r.ai_action == OrderType::FallBack &&
             !r.panic && r.order && PreserveFallbackFacing(w, r, r.order->point));
+        const bool yield_for_officer = contact && !locked && !r.panic && !withdrawing &&
+            contact->CanYieldForOfficer(r);
         for (auto id : r.units) {
             auto *u = FindUnit(w, id);
             if (!u || !u->alive || u->control == ControlMode::PlayerControlled)
@@ -1117,34 +1119,35 @@ void AdvanceFormations(World &w, float dt, const LocalMelee *contact) {
             if (contact && contact->HoldForWindup(*u))
                 continue;
             const auto from = u->pose.position;
+            const auto goal = yield_for_officer ? contact->OfficerClearanceGoal(*u, r) : u->slot.position;
             float refill_speed = RankRefillSpeed(*u, pace, fatigue_factor, disordered,
                                                 1.f - .35f * r.artillery_pressure);
             // A unit already in place has no terrain segment to traverse. Preserve the
             // original arithmetic for unusual inputs where it can change float bit patterns.
-            if (from == u->slot.position && !HasNegativeZero(from) &&
-                !HasNegativeZero(u->slot.position) && std::isfinite(dt) && dt >= 0.f &&
+            if (from == goal && !HasNegativeZero(from) &&
+                !HasNegativeZero(goal) && std::isfinite(dt) && dt >= 0.f &&
                 std::isfinite(refill_speed) &&
                 (refill_speed == 0.f || refill_speed >= std::numeric_limits<float>::min())) {
                 u->pose.yaw = u->slot.yaw;
-                if (u->control == ControlMode::Returning)
+                if (u->control == ControlMode::Returning && goal == u->slot.position)
                     u->control = ControlMode::FormationControlled;
                 continue;
             }
-            const auto to_slot = u->slot.position - from;
-            const float slot_gap_squared = Dot(to_slot, to_slot);
+            const auto to_goal = goal - from;
+            const float goal_gap_squared = Dot(to_goal, to_goal);
             const bool infantry = u->troop != UnitTroop::Mounted && u->platform == BattlePlatform::None;
-            const bool close_guard_step = infantry && guard_stance && slot_gap_squared <= 1.f &&
-                Dot(to_slot, Forward(u->slot.yaw)) < -.001f;
+            const bool close_guard_step = infantry && guard_stance && goal_gap_squared <= 1.f &&
+                Dot(to_goal, Forward(u->slot.yaw)) < -.001f;
             if (close_guard_step)
                 refill_speed *= .5f;
-            Vec3 destination = Towards(from, u->slot.position, refill_speed * dt);
+            Vec3 destination = Towards(from, goal, refill_speed * dt);
             if (w.scenario.hill) {
                 destination = from + (destination - from) *
                     HillUphillSpeedMultiplier(*w.scenario.hill, from, destination, u->troop, refill_speed);
             }
             const float terrain = TerrainSpeedMultiplier(from, destination, w.scenario.obstacles,
                                                          u->troop, refill_speed);
-            destination = Towards(from, u->slot.position, Distance(from, destination) * terrain);
+            destination = Towards(from, goal, Distance(from, destination) * terrain);
             const float radius = contact ? contact->BodyRadius(*u) : r.formation.body_radius_m;
             const float fraction = UnitTerrainLimit(w, u->pose.position, destination, radius);
             if (fraction < 1.f)
@@ -1153,11 +1156,12 @@ void AdvanceFormations(World &w, float dt, const LocalMelee *contact) {
                 !IsSiegeEngine(u->platform) ? refill_speed : 0.f;
             u->pose.position = contact ? contact->Constrain(*u, destination, bypass_speed, dt) : destination;
             const bool face_motion = regiment_tactics && (r.panic || (!back_step && !close_guard_step &&
-                (advance < -.001f || u->troop == UnitTroop::Mounted || slot_gap_squared > 1.f)));
+                (advance < -.001f || u->troop == UnitTroop::Mounted || goal_gap_squared > 1.f)));
             const auto moved = u->pose.position - from;
             u->pose.yaw = face_motion && moved.x * moved.x + moved.y * moved.y > .000001f
                 ? std::atan2(moved.y, moved.x) : u->slot.yaw;
             if (u->control == ControlMode::Returning &&
+                goal == u->slot.position &&
                 Distance(u->pose.position, u->slot.position) < .01f)
                 u->control = ControlMode::FormationControlled;
         }

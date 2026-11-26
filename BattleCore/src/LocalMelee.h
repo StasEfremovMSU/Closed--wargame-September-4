@@ -14,6 +14,8 @@ class LocalMelee {
     void AdvanceSkirmisher(UnitState &, const RegimentState &, float dt) const;
     void AdvanceLine(World &, const RegimentState &, float dt) const;
     bool HoldForWindup(UnitState &) const;
+    bool CanYieldForOfficer(const RegimentState &) const;
+    Vec3 OfficerClearanceGoal(const UnitState &, const RegimentState &) const;
     Vec3 Constrain(const UnitState &, Vec3 destination, float march_speed = 0.f, float dt = 0.f) const;
     float BodyRadius(const UnitState &) const;
     float MeleeReach(const UnitState &, const UnitState &, float weapon_range) const;
@@ -85,6 +87,10 @@ class LocalMelee {
     std::vector<RegimentId> opponents_;
     std::vector<CoarseGroup> coarse_groups_;
     std::vector<size_t> unit_groups_;
+    const UnitState *passing_officer_{};
+    Vec3 officer_heading_{};
+    float officer_lookahead_{};
+    float officer_clearance_radius_{};
     mutable std::vector<size_t> nearby_;
     mutable std::vector<Shove> shoves_;
     mutable std::vector<float> shoved_;

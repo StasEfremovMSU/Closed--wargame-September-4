@@ -12,9 +12,12 @@
 #include "Kismet/KismetSystemLibrary.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
+#include "RegimentBattleField.h"
 #include "RegimentBattleGround.h"
 #include "RegimentBattlePlayback.h"
 #include "RegimentGameModules.h"
+#include "RegimentMissionTutorial.h"
+#include "SRegimentBattleResults.h"
 #include "SRegimentMissionHud.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogRegimentMission, Log, All);
@@ -53,10 +56,16 @@ FRegimentMissionRuntime::FRegimentMissionRuntime(AActor& InOwner, bool bInSmoke)
       Board(Owner, Origin)
 {
     CampaignProgress.Load(RegimentHistoricalCampaign::SavePath());
+    if (!bSmoke)
+        PlayerStatistics.Load(FRegimentPlayerStats::SavePath());
     Preset.Terrain = RequestedTerrain();
     Board.SetTerrain(Preset.Terrain, Preset.Field);
     FString Workload;
-    if (FParse::Value(FCommandLine::Get(), TEXT("RegimentPerfPreset="), Workload))
+    int32 Tutorial = 0;
+    if (!bSmoke && FParse::Value(FCommandLine::Get(), TEXT("RegimentTutorial="), Tutorial) &&
+        Tutorial >= int32(ERegimentTutorial::Infantry) && Tutorial <= int32(ERegimentTutorial::Command))
+        StartTutorial(ERegimentTutorial(Tutorial));
+    else if (FParse::Value(FCommandLine::Get(), TEXT("RegimentPerfPreset="), Workload))
     {
         const FGuid Historic(0xBD8E7423, 0xCDA541E0, 0xAD6DAF78, 0xD4C9F547);
         const FGuid Large(0x39FA5E9A, 0x273F4DCE, 0xB950627B, 0xFA9D8921);
@@ -107,6 +116,8 @@ FRegimentMissionRuntime::FRegimentMissionRuntime(AActor& InOwner, bool bInSmoke)
 
 FRegimentMissionRuntime::~FRegimentMissionRuntime()
 {
+    CloseStatisticsOverlay();
+    FlushPlayerStatistics();
     RemoveHud();
     if (auto* Camera = TacticalCamera.Get())
         Camera->Destroy();
@@ -120,9 +131,11 @@ void FRegimentMissionRuntime::AttachHud(APlayerController* Controller)
 
     Hud = SNew(SRegimentMissionHud).World(Controller->GetWorld());
     Hud->OnSelectModule = [this](const FString& Id) { SelectModule(Id); };
+    Hud->OnShowStatistics = [this] { ShowPlayerStatistics(); };
     Hud->OnQuit = [this]
     {
         FlushCampaignProgress();
+        FlushPlayerStatistics();
         UKismetSystemLibrary::QuitGame(&Owner, nullptr, EQuitPreference::Quit, false);
     };
     Hud->OnReturnToModules = [this](const FMissionPreset& Draft) { ReturnToModules(Draft); };
@@ -140,10 +153,12 @@ void FRegimentMissionRuntime::AttachHud(APlayerController* Controller)
     Hud->OnCampaignComplete = [this](int32 Campaign, int32 Stage)
     { return CampaignProgress.IsComplete(Campaign, Stage); };
     Hud->OnStartCampaign = [this](int32 Campaign, int32 Stage) { StartCampaignStage(Campaign, Stage); };
+    Hud->OnStartTutorial = [this](ERegimentTutorial Lesson) { StartTutorial(Lesson); };
     Hud->OnStart = [this](const FMissionPreset& Setup) { StartMission(Setup); };
     Hud->OnSelectRegiment = [this](uint64 Id)
     {
-        if (Id >= 1 && Id <= MissionRegimentsPerTeam && Preset.Roster[int32(Id - 1)].bEnabled)
+        if (Id >= 1 && Id <= MissionRosterCapacity && MissionTeam(int32(Id - 1)) == 0 &&
+            Preset.Roster[int32(Id - 1)].bEnabled)
         {
             Selected = Id;
             Board.SetRoutePreview({});
@@ -180,7 +195,9 @@ void FRegimentMissionRuntime::AttachHud(APlayerController* Controller)
     Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
     Controller->SetInputMode(Mode);
     Controller->bShowMouseCursor = true;
-    if (bShowCampaigns)
+    if (bShowTutorials)
+        Hud->ShowTutorialMenu();
+    else if (bShowCampaigns)
         Hud->ShowCampaignMenu();
     else if (bChoosingModule)
         Hud->ShowModuleMenu();
@@ -208,6 +225,7 @@ void FRegimentMissionRuntime::SelectModule(const FString& Id)
         return;
 
     bShowCampaigns = false;
+    bShowTutorials = false;
     ModuleId = Id;
     Preset = MoveTemp(Starter);
     bChoosingModule = false;
@@ -243,6 +261,7 @@ void FRegimentMissionRuntime::StartCampaignStage(int32 Campaign, int32 Stage)
     }
 
     FlushCampaignProgress();
+    bShowTutorials = false;
     ModuleId = Setup.Era.Id;
     bChoosingModule = false;
     StartMission(MoveTemp(Setup));
@@ -257,6 +276,28 @@ void FRegimentMissionRuntime::StartCampaignStage(int32 Campaign, int32 Stage)
         if (Hud)
             Hud->SetCampaignNotice(NSLOCTEXT("RegimentMission", "CampaignStageInvalid", "Сценарий кампании не прошёл проверку."));
     }
+}
+
+void FRegimentMissionRuntime::StartTutorial(ERegimentTutorial Lesson)
+{
+    if (!bChoosingModule || March || DirectOpening || TacticalScenario)
+        return;
+
+    FMissionPreset Setup;
+    FText Error;
+    if (!RegimentMissionTutorial::Load(Lesson, Setup) || !RegimentMissionPresets::Validate(Setup, Error))
+    {
+        UE_LOG(LogRegimentMission, Warning, TEXT("Could not start tutorial %d: %s"), int32(Lesson), *Error.ToString());
+        if (Hud)
+            Hud->SetTutorialNotice(NSLOCTEXT("RegimentMission", "TutorialUnavailable", "Не удалось открыть урок."));
+        return;
+    }
+
+    bShowCampaigns = false;
+    bShowTutorials = true;
+    ModuleId = Setup.Era.Id;
+    bChoosingModule = false;
+    StartMission(MoveTemp(Setup));
 }
 
 void FRegimentMissionRuntime::RecordCampaignOutcome(battle::BattleOutcome Outcome, int32 Winner)
@@ -276,6 +317,93 @@ void FRegimentMissionRuntime::FlushCampaignProgress()
     bCampaignSavePending = !CampaignProgress.Save(RegimentHistoricalCampaign::SavePath());
     if (bCampaignSavePending)
         UE_LOG(LogRegimentMission, Error, TEXT("Could not save historical campaign progress"));
+}
+
+void FRegimentMissionRuntime::BeginBattleReport(const battle::World* World)
+{
+    CloseStatisticsOverlay();
+    BattleReport.Reset();
+    if (World)
+        BattleReport.Emplace(*World);
+}
+
+void FRegimentMissionRuntime::ObserveBattleReport(const battle::World& World)
+{
+    if (!BattleReport)
+        return;
+    if (World.outcome == battle::BattleOutcome::Running)
+    {
+        BattleReport->Observe(World);
+        return;
+    }
+    auto Report = BattleReport->Finish(World);
+    BattleReport.Reset();
+    if (!Report)
+        return;
+    if (Preset.Tutorial == ERegimentTutorial::None)
+    {
+        PlayerStatistics.Record(*Report, PlayerTeam);
+        bStatisticsSavePending = true;
+        FlushPlayerStatistics();
+    }
+
+    TWeakObjectPtr<ARegimentBattleField> Field(Cast<ARegimentBattleField>(&Owner));
+    const auto* Battle = Field.Get();
+    if (!Battle)
+        return;
+    Report->Mission = FText::FromString(Preset.Name);
+    Report->ObjectiveResult = Battle->GetMissionObjectiveText();
+    const auto& Status = Battle->GetHudState();
+    Report->SideNames[0] = Status.BlueFaction.IsEmpty()
+        ? NSLOCTEXT("RegimentMission", "ResultsBlue", "Синяя сторона") : Status.BlueFaction;
+    Report->SideNames[1] = Status.OrangeFaction.IsEmpty()
+        ? NSLOCTEXT("RegimentMission", "ResultsOrange", "Оранжевая сторона") : Status.OrangeFaction;
+    OpenStatisticsOverlay(MakeRegimentBattleDebrief(*Report,
+        FSimpleDelegate::CreateLambda([Field] { if (auto* Live = Field.Get()) Live->RequestBattleRestart(); }),
+        FSimpleDelegate::CreateLambda([Field] { if (auto* Live = Field.Get()) Live->RequestMissionSetup(); })), true);
+}
+
+void FRegimentMissionRuntime::FlushPlayerStatistics()
+{
+    if (bStatisticsSavePending)
+        bStatisticsSavePending = !PlayerStatistics.Save(FRegimentPlayerStats::SavePath());
+}
+
+void FRegimentMissionRuntime::ShowPlayerStatistics()
+{
+    if (!bChoosingModule || StatisticsOverlay)
+        return;
+    FlushPlayerStatistics();
+    OpenStatisticsOverlay(MakeRegimentPlayerStatistics(PlayerStatistics, bStatisticsSavePending,
+        FSimpleDelegate::CreateLambda([this] { CloseStatisticsOverlay(); })), false);
+}
+
+void FRegimentMissionRuntime::OpenStatisticsOverlay(TSharedRef<SWidget> Widget, bool bDebrief)
+{
+    auto* Controller = Owner.GetWorld()->GetFirstPlayerController();
+    auto* Local = Controller ? Controller->GetLocalPlayer() : nullptr;
+    if (!Local || !Local->ViewportClient || !Local->ViewportClient->GetGameLayerManager())
+        return;
+    CloseStatisticsOverlay();
+    StatisticsOverlay = Widget;
+    StatisticsPlayer = Local;
+    bDebriefOpen = bDebrief;
+    Local->ViewportClient->AddViewportWidgetForPlayer(Local, Widget, 30);
+    FInputModeGameAndUI Mode;
+    Mode.SetWidgetToFocus(Widget);
+    Mode.SetHideCursorDuringCapture(false);
+    Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+    Controller->SetInputMode(Mode);
+    Controller->bShowMouseCursor = true;
+}
+
+void FRegimentMissionRuntime::CloseStatisticsOverlay()
+{
+    if (auto* Local = StatisticsPlayer.Get(); StatisticsOverlay && Local && Local->ViewportClient)
+        Local->ViewportClient->RemoveViewportWidgetForPlayer(Local, StatisticsOverlay.ToSharedRef());
+    StatisticsOverlay.Reset();
+    StatisticsPlayer.Reset();
+    bDebriefOpen = false;
 }
 
 void FRegimentMissionRuntime::StartMission(FMissionPreset Setup)
@@ -332,6 +460,8 @@ void FRegimentMissionRuntime::StartMission(FMissionPreset Setup)
 
 void FRegimentMissionRuntime::ReturnToSetup()
 {
+    BeginBattleReport(nullptr);
+    FlushPlayerStatistics();
     March.reset();
     DirectOpening.reset();
     TacticalScenario.reset();
@@ -341,11 +471,13 @@ void FRegimentMissionRuntime::ReturnToSetup()
     bMarchResumed = false;
     CampaignRun.Reset();
     FlushCampaignProgress();
-    if (bShowCampaigns)
+    if (bShowCampaigns || bShowTutorials)
         bChoosingModule = true;
     if (Hud)
     {
-        if (bShowCampaigns)
+        if (bShowTutorials)
+            Hud->ShowTutorialMenu();
+        else if (bShowCampaigns)
             Hud->ShowCampaignMenu();
         else
             Hud->SetStatus(EMissionHudStage::Setup, 0);
@@ -418,8 +550,8 @@ void FRegimentMissionRuntime::HandleMapInput(APlayerController& Controller)
         (Controller.IsInputKeyDown(EKeys::LeftShift) || Controller.IsInputKeyDown(EKeys::RightShift));
     const int32 AnchorIndex = int32(Selected - 1);
     const int32 Group = MissionGroup(AnchorIndex, Preset.Roster[AnchorIndex]);
-    TArray<TPair<battle::RegimentId, battle::Vec3>, TInlineAllocator<MissionRegimentsPerTeam>> Orders;
-    TArray<FMarchBoardRouteSegment, TInlineAllocator<MissionRegimentsPerTeam * 3>> Preview;
+    TArray<TPair<battle::RegimentId, battle::Vec3>, TInlineAllocator<MissionMaxRegimentsPerTeam>> Orders;
+    TArray<FMarchBoardRouteSegment, TInlineAllocator<MissionMaxRegimentsPerTeam * 3>> Preview;
     bool bClear = true;
     for (const auto& Regiment : Regiments)
     {
@@ -474,7 +606,7 @@ void FRegimentMissionRuntime::HandleMapInput(APlayerController& Controller)
 
 void FRegimentMissionRuntime::PresentMarch()
 {
-    TArray<FMarchBoardMarker, TInlineAllocator<MissionRegimentCount>> Markers;
+    TArray<FMarchBoardMarker, TInlineAllocator<MissionRosterCapacity>> Markers;
     for (const auto& Regiment : March->Regiments())
     {
         FMarchBoardMarker Marker;

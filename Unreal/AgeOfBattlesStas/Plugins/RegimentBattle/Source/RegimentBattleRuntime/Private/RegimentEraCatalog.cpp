@@ -627,8 +627,9 @@ bool ReadMission(const FManifestObject& Root, FRegimentEraDefinition& Era)
     if (!Orange)
         return Data.Invalid(TEXT("orange_faction"), TEXT("unknown faction"));
 
-    for (FMissionRosterEntry& Entry : Era.Roster)
+    for (int32 Index = 0; Index < MissionRegimentCount; ++Index)
     {
+        auto& Entry = Era.Roster[Index];
         Entry.Swords = Entry.Archers = Entry.Spearmen = Entry.Mounted = 0;
         Entry.bEnabled = false;
     }

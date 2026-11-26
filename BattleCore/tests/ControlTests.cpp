@@ -83,6 +83,105 @@ TEST_CASE("control.single_movement_authority") {
     CHECK(w.units[0].pose.position == actual);
     CHECK(w.units[0].control == ControlMode::Returning);
 }
+TEST_CASE("control.friendly_ranks_step_aside_and_refill_after_the_officer_passes") {
+    auto scenario = test::Duel(9);
+    scenario.rules.local_melee = true;
+    scenario.rules.adaptive_battle = true;
+    scenario.regiments.resize(1);
+    scenario.regiments.front().formation = {3, 1.1f, .25f};
+    scenario.units.resize(9);
+    for (auto &unit : scenario.units)
+        unit.speed = 4.f;
+    auto officer_id = UnitId{8};
+    float expected_sidestep = .5f;
+    float required_separation = .499f;
+    SUBCASE("regimental officer on foot") {}
+    SUBCASE("independent officer on horseback") {
+        auto officer = UnitSpec{};
+        officer_id = officer.id = {10};
+        officer.pose.position = {-12.5f, 0.f, 0.f};
+        officer.speed = 6.4f;
+        officer.troop = UnitTroop::Mounted;
+        scenario.units.push_back(officer);
+        expected_sidestep = .63f;
+        required_separation = .624f;
+    }
+    scenario.officers.push_back({{1}, officer_id, officer_id == UnitId{8} ? 2u : 1u});
+    auto result = CreateWorld(scenario, 42);
+    REQUIRE(result);
+    auto &world = result.value;
+    const auto &regiment = world.regiments.front();
+    const auto original_slots = regiment.slots;
+    REQUIRE(AcquireControl(world, officer_id) == Status::Ok);
+    const auto &officer = *FindUnit(world, officer_id);
+    auto move = Command{};
+    move.kind = CommandKind::MoveControlledUnit;
+    move.unit = officer_id;
+    move.velocity = {officer.speed, 0.f, 0.f};
+    const CommandEnvelope walk{world.tick, 1, move};
+    FlatNavigationService navigation;
+    REQUIRE(Step(world, std::span{&walk, 1}, {}, navigation));
+
+    float sidestep = 0.f;
+    float min_separation = 10.f;
+    for (int tick = 0; tick < 45 && officer.pose.position.x < -7.f; ++tick) {
+        REQUIRE(Step(world, {}, {}, navigation));
+        sidestep = std::max(sidestep, std::abs(FindUnit(world, {5})->pose.position.y));
+        for (auto id : regiment.units)
+            if (id != officer_id)
+                min_separation = std::min(min_separation,
+                    Distance(FindUnit(world, id)->pose.position, officer.pose.position));
+    }
+    CHECK(sidestep >= expected_sidestep);
+    CHECK(officer.pose.position.x >= -7.f);
+    CHECK(std::abs(officer.pose.position.y) < .001f);
+    CHECK(min_separation >= required_separation);
+    CHECK(regiment.slots == original_slots);
+    const auto &passed_soldier = *FindUnit(world, {5});
+    CHECK(passed_soldier.pose == original_slots[passed_soldier.slot_index]);
+
+    move.velocity = {};
+    const CommandEnvelope halt{world.tick, 2, move};
+    REQUIRE(Step(world, std::span{&halt, 1}, {}, navigation));
+    for (int tick = 0; tick < 30; ++tick)
+        REQUIRE(Step(world, {}, {}, navigation));
+    for (auto id : regiment.units) {
+        const auto &unit = *FindUnit(world, id);
+        if (id != officer_id)
+            CHECK(unit.pose == original_slots[unit.slot_index]);
+    }
+}
+TEST_CASE("control.enemy_rank_still_blocks_the_possessed_officer") {
+    auto scenario = test::Duel();
+    scenario.rules.local_melee = true;
+    scenario.rules.adaptive_battle = true;
+    scenario.regiments.erase(scenario.regiments.begin());
+    scenario.units.erase(scenario.units.begin());
+    scenario.units.front().weapon.damage = 0.f;
+    auto officer = UnitSpec{};
+    officer.id = {3};
+    officer.pose.position = {8.f, 0.f, 0.f};
+    scenario.units.push_back(officer);
+    scenario.officers.push_back({{1}, officer.id, 1});
+    auto result = CreateWorld(scenario, 42);
+    REQUIRE(result);
+    auto &world = result.value;
+    REQUIRE(AcquireControl(world, officer.id) == Status::Ok);
+    auto move = Command{};
+    move.kind = CommandKind::MoveControlledUnit;
+    move.unit = officer.id;
+    move.velocity = {2.f, 0.f, 0.f};
+    const CommandEnvelope walk{world.tick, 1, move};
+    FlatNavigationService navigation;
+    REQUIRE(Step(world, std::span{&walk, 1}, {}, navigation));
+    for (int tick = 0; tick < 40; ++tick)
+        REQUIRE(Step(world, {}, {}, navigation));
+    const auto &enemy = *FindUnit(world, {2});
+    CHECK(enemy.pose.position == Vec3{10.f, 0.f, 0.f});
+    const auto x = FindUnit(world, officer.id)->pose.position.x;
+    CHECK(x > 9.4f);
+    CHECK(x <= 9.451f);
+}
 TEST_CASE("control.external_input_atomic_conflict_and_latest_sample") {
     auto w = CreateWorld(test::Duel(), 42).value;
     AcquireControl(w, {1});

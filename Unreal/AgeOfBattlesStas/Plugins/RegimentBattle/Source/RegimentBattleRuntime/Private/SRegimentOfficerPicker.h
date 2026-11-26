@@ -19,11 +19,12 @@ public:
 
 private:
     TSharedRef<SWidget> Choice(const FRegimentDecisionHudEntry&, bool bCompact);
+    const FRegimentDecisionHudEntry* SelectedEntry() const;
     void Rebuild(ARegimentBattleField&);
     TWeakObjectPtr<ARegimentBattleField> Field;
     TSharedPtr<SConstraintCanvas> Bubbles;
     TSharedPtr<SScrollBox> Roster;
-    TArray<TSharedPtr<FSlateBrush>> Brushes;
     TMap<uint64, FVector2D> Positions;
+    uint64 SelectedNode = 0;
     uint32 Revision = 0;
 };

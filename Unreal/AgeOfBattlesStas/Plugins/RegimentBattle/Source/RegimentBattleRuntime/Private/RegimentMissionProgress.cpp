@@ -32,7 +32,9 @@ FText EventTime(TOptional<battle::Tick> Tick)
 FRegimentMissionProgress::FRegimentMissionProgress(const FMissionPreset& Preset, battle::World& World)
     : Objective(Preset.Objective), Terrain(Preset.Terrain)
 {
-    if (Objective.Goal == EMissionGoal::Crossing)
+    if (Preset.Tutorial != ERegimentTutorial::None)
+        Tutorial.Emplace(Preset.Tutorial, World);
+    else if (Objective.Goal == EMissionGoal::Crossing)
     {
         const float Direction = Objective.CrossingTeam == 0 ? 1.f : -1.f;
         for (const auto& Regiment : World.regiments)
@@ -41,7 +43,7 @@ FRegimentMissionProgress::FRegimentMissionProgress(const FMissionPreset& Preset,
     }
     else if (Objective.Goal == EMissionGoal::Breakthrough && Objective.Breakthrough)
     {
-        for (int32 Slot = 0; Slot < MissionRegimentsPerTeam; ++Slot)
+        for (int32 Slot = 0; Slot < MissionRosterCapacity; ++Slot)
             if (IsMissionBreakthroughInfantry(Slot, Preset.Roster[Slot], Objective.Breakthrough->Group))
                 BreakthroughInfantry.Add({uint64(Slot + 1)});
     }
@@ -92,6 +94,8 @@ bool FRegimentMissionProgress::CanReleaseReserve(const battle::World& World) con
 
 bool FRegimentMissionProgress::AwaitsReserveRelease(battle::RegimentId Regiment) const
 {
+    if (Tutorial)
+        return Tutorial->AwaitsReserveRelease(Regiment);
     return Reserve && Regiment == Reserve && !Delivered;
 }
 
@@ -188,8 +192,13 @@ void FRegimentMissionProgress::UpdateHillHold(battle::World& World, battle::Tick
         World.outcome = battle::BattleOutcome::Running;
 }
 
-void FRegimentMissionProgress::Update(battle::World& World)
+void FRegimentMissionProgress::Update(battle::World& World, bool bOfficerCommandsOpen)
 {
+    if (Tutorial)
+    {
+        Tutorial->Update(World, bOfficerCommandsOpen);
+        return;
+    }
     if (!Result.IsEmpty() || Objective.Goal == EMissionGoal::Eliminate)
         return;
     const auto Deadline = battle::Tick(Objective.TimeLimitSeconds) * FRegimentBattlePlayback::StepsPerSecond;
@@ -309,6 +318,8 @@ void FRegimentMissionProgress::UpdateBreakthrough(battle::World& World, battle::
 
 FText FRegimentMissionProgress::Status(const battle::World& World) const
 {
+    if (Tutorial)
+        return Tutorial->Status();
     if (!Result.IsEmpty())
         return Result;
     if (Objective.Goal == EMissionGoal::Eliminate)

@@ -1,5 +1,5 @@
 {
-  "schema_version": 5,
+  "schema_version": 6,
   "name": "Аустерлиц, 1805 · Праценские высоты",
   "terrain": "Austerlitz",
   "era": {
@@ -19,7 +19,7 @@
     "required_regiments": 1,
     "crossing_team": 0
   },
-  "briefing": "2 декабря 1805 года часть русско-австрийской армии сошла с Праценских высот в долину Гольдбаха. Французские дивизии Сульта атаковали ослабленный центр союзников. На юге пруды и долина ограничивали движение войск. Бой за гребень стал одним из решающих эпизодов Аустерлица.\n\nПолевая артиллерия обеих сторон прикрывает подступы к высотам. Синим нужно выбить защитников и удерживать гребень 20 секунд подряд, сохранив там в строю не меньше половины исходного состава одного полка. Оранжевые части могут остановить отсчёт контратакой на вершину. Австрийские полки представляют союзную армию на выбранном участке. Источник замысла — «Сто великих битв».\n\nИгровой участок 560 × 360 м вмещает 5 000 фигур. Численность и расстояния сжаты под масштаб поля.",
+  "briefing": "2 декабря 1805 года часть русско-австрийской армии сошла с Праценских высот в долину Гольдбаха. Французские дивизии Сульта атаковали ослабленный центр союзников. На юге пруды и долина ограничивали движение войск. Бой за гребень стал одним из решающих эпизодов Аустерлица.\n\nПолевая артиллерия обеих сторон прикрывает подступы к высотам. Синим нужно выбить защитников и удерживать гребень 20 секунд подряд, сохранив там в строю не меньше половины исходного состава одного полка. Оранжевые части могут остановить отсчёт контратакой на вершину. Австрийские полки представляют союзную армию на выбранном участке. Источник замысла — «Сто великих битв».\n\nИгровой участок 790 × 510 м вмещает 5 000 фигур. Численность и расстояния сжаты под масштаб поля.\n\nВ игровом порядке боя 12 подразделений у первой стороны и 12 у второй. Батальоны начинают несколькими линиями. Фланги поля оставлены для манёвра.",
   "sources": [
     "https://www.napoleon.org/en/history-of-the-two-empires/articles/the-battle-of-austerlitz-and-the-principles-of-war/",
     "https://www.napoleon.org/en/magazine/places/austerlitz-2/",
@@ -32,10 +32,10 @@
       "group": 2,
       "start_x": -71,
       "start_y": 0,
-      "formation_files": 21,
-      "swords": 8,
-      "archers": 14,
-      "spearmen": 11,
+      "formation_files": 11,
+      "swords": 4,
+      "archers": 7,
+      "spearmen": 6,
       "mounted": 0
     },
     {
@@ -44,10 +44,10 @@
       "group": 1,
       "start_x": -76,
       "start_y": -79,
-      "formation_files": 35,
-      "swords": 4,
-      "archers": 20,
-      "spearmen": 7,
+      "formation_files": 18,
+      "swords": 2,
+      "archers": 10,
+      "spearmen": 4,
       "mounted": 0
     },
     {
@@ -56,10 +56,10 @@
       "group": 3,
       "start_x": -82,
       "start_y": 73,
-      "formation_files": 33,
-      "swords": 4,
-      "archers": 20,
-      "spearmen": 7,
+      "formation_files": 17,
+      "swords": 2,
+      "archers": 10,
+      "spearmen": 4,
       "mounted": 0,
       "infantry_profile": "fusiliers"
     },
@@ -69,10 +69,10 @@
       "group": 2,
       "start_x": -118,
       "start_y": 4,
-      "formation_files": 19,
-      "swords": 7,
-      "archers": 15,
-      "spearmen": 10,
+      "formation_files": 10,
+      "swords": 4,
+      "archers": 8,
+      "spearmen": 5,
       "mounted": 0,
       "infantry_profile": "grenadiers"
     },
@@ -82,16 +82,16 @@
       "group": 1,
       "start_x": -121,
       "start_y": -129,
-      "formation_files": 18,
+      "formation_files": 9,
       "swords": 0,
       "archers": 0,
       "spearmen": 0,
-      "mounted": 23
+      "mounted": 12
     },
     {
       "type": "Platform",
       "platform": "field_gun",
-      "platform_count": 4,
+      "platform_count": 2,
       "enabled": true,
       "group": 3,
       "start_x": -112,
@@ -107,10 +107,10 @@
       "group": 2,
       "start_x": 109,
       "start_y": 0,
-      "formation_files": 28,
-      "swords": 7,
-      "archers": 17,
-      "spearmen": 11,
+      "formation_files": 14,
+      "swords": 4,
+      "archers": 9,
+      "spearmen": 6,
       "mounted": 0
     },
     {
@@ -119,10 +119,10 @@
       "group": 1,
       "start_x": 112,
       "start_y": -75,
-      "formation_files": 34,
-      "swords": 5,
-      "archers": 19,
-      "spearmen": 7,
+      "formation_files": 17,
+      "swords": 3,
+      "archers": 10,
+      "spearmen": 4,
       "mounted": 0
     },
     {
@@ -131,10 +131,10 @@
       "group": 3,
       "start_x": 109,
       "start_y": 78,
-      "formation_files": 31,
-      "swords": 5,
-      "archers": 19,
-      "spearmen": 7,
+      "formation_files": 16,
+      "swords": 3,
+      "archers": 10,
+      "spearmen": 4,
       "mounted": 0
     },
     {
@@ -143,10 +143,10 @@
       "group": 2,
       "start_x": 156,
       "start_y": 2,
-      "formation_files": 25,
-      "swords": 7,
-      "archers": 17,
-      "spearmen": 9,
+      "formation_files": 13,
+      "swords": 4,
+      "archers": 9,
+      "spearmen": 5,
       "mounted": 0
     },
     {
@@ -155,16 +155,16 @@
       "group": 1,
       "start_x": 156,
       "start_y": -126,
-      "formation_files": 18,
+      "formation_files": 9,
       "swords": 0,
       "archers": 0,
       "spearmen": 0,
-      "mounted": 26
+      "mounted": 13
     },
     {
       "type": "Platform",
       "platform": "field_gun",
-      "platform_count": 4,
+      "platform_count": 2,
       "enabled": true,
       "group": 3,
       "start_x": 145,
@@ -173,11 +173,159 @@
       "archers": 0,
       "spearmen": 0,
       "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -103,
+      "start_y": 23,
+      "formation_files": 11,
+      "swords": 4,
+      "archers": 7,
+      "spearmen": 5,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -111,
+      "start_y": -105,
+      "formation_files": 18,
+      "swords": 2,
+      "archers": 10,
+      "spearmen": 3,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -120,
+      "start_y": 96,
+      "formation_files": 17,
+      "swords": 2,
+      "archers": 10,
+      "spearmen": 3,
+      "mounted": 0,
+      "infantry_profile": "fusiliers"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -150,
+      "start_y": 30,
+      "formation_files": 10,
+      "swords": 3,
+      "archers": 7,
+      "spearmen": 5,
+      "mounted": 0,
+      "infantry_profile": "grenadiers"
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -156,
+      "start_y": -152,
+      "formation_files": 9,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 11
+    },
+    {
+      "type": "Platform",
+      "platform": "field_gun",
+      "platform_count": 2,
+      "enabled": true,
+      "group": 3,
+      "start_x": -150,
+      "start_y": 65,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 141,
+      "start_y": 23,
+      "formation_files": 14,
+      "swords": 3,
+      "archers": 8,
+      "spearmen": 5,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 147,
+      "start_y": -101,
+      "formation_files": 17,
+      "swords": 2,
+      "archers": 9,
+      "spearmen": 3,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 147,
+      "start_y": 101,
+      "formation_files": 16,
+      "swords": 2,
+      "archers": 9,
+      "spearmen": 3,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 188,
+      "start_y": 28,
+      "formation_files": 13,
+      "swords": 3,
+      "archers": 8,
+      "spearmen": 4,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 191,
+      "start_y": -149,
+      "formation_files": 9,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 13
+    },
+    {
+      "type": "Platform",
+      "platform": "field_gun",
+      "platform_count": 2,
+      "enabled": true,
+      "group": 3,
+      "start_x": 183,
+      "start_y": 67,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 0
     }
   ],
   "field": {
-    "width_m": 560,
-    "height_m": 360
+    "width_m": 790,
+    "height_m": 510
   },
   "figure_target": 5000
 }

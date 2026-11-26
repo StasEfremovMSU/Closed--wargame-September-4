@@ -45,7 +45,8 @@ enum class CommandKind : uint8_t {
     FaceControlledUnit,
     SetRegimentFollowing,
     JumpControlledUnit,
-    ParryControlledUnit
+    ParryControlledUnit,
+    FireFieldGun
 };
 // A tagged wire record; only fields belonging to kind are consumed.
 struct Command {

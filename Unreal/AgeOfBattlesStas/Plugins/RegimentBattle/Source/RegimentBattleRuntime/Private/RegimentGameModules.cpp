@@ -129,7 +129,7 @@ bool RegimentGameModules::OpenPlayable(FStringView Id, FMissionPreset& Out)
             return false;
         Out.Name = LOCTEXT("CustomBattle", "Своя битва").ToString();
         Out.Terrain = battle::MarchTerrain::OpenField;
-        Out.Field = {480, 320};
+        Out.Field = {680, 450};
         Out.FigureTarget = MissionStandardFigureTarget;
         Out.bRegimentTactics = true;
         Out.bAdaptiveBattle = true;
@@ -137,6 +137,8 @@ bool RegimentGameModules::OpenPlayable(FStringView Id, FMissionPreset& Out)
         for (int32 Index = 0; Index < Out.Roster.Num(); ++Index)
         {
             auto& Regiment = Out.Roster[Index];
+            if (!Regiment.bEnabled)
+                continue;
             const int32 Slot = Index % MissionRegimentsPerTeam;
             const float Side = Index < MissionRegimentsPerTeam ? -1.f : 1.f;
             Regiment.StartX = Side * (Slot % 2 ? 108.f : 62.f);

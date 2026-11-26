@@ -26,6 +26,7 @@ constexpr int32 DetailedPresetSchemaVersion = 2;
 constexpr int32 EraPresetSchemaVersion = 3;
 constexpr int32 ProfilePresetSchemaVersion = 4;
 constexpr int32 PlatformPresetSchemaVersion = 5;
+constexpr int32 ExpandedRosterSchemaVersion = 6;
 constexpr int32 MaxPresetNameLength = 80;
 constexpr int64 MaxPresetFileSize = 64 * 1024;
 constexpr battle::MarchField MaxMissionField{MissionMaxFieldWidth, MissionMaxFieldHeight};
@@ -327,7 +328,7 @@ bool ReadVersionTwoFields(const FJsonObject& Root, FMissionPreset& Preset, FStri
     };
     if (!ReadObjectiveNumber(TEXT("time_limit_seconds"), MissionMaxTimeLimit, Objective.TimeLimitSeconds) ||
         !ReadObjectiveNumber(TEXT("crossing"), int32(battle::MarchCrossings.size()) - 1, Objective.Crossing) ||
-        !ReadObjectiveNumber(TEXT("required_regiments"), MissionRegimentsPerTeam, Objective.RequiredRegiments) ||
+        !ReadObjectiveNumber(TEXT("required_regiments"), MissionMaxRegimentsPerTeam, Objective.RequiredRegiments) ||
         !ReadObjectiveNumber(TEXT("crossing_team"), 1, Objective.CrossingTeam))
         return false;
 
@@ -435,7 +436,7 @@ FText TeamName(int32 Team)
 FText RosterEntryError(int32 Index, const FText& Message)
 {
     return FText::Format(LOCTEXT("InvalidRegiment", "{0}, полк {1}. {2}"),
-        TeamName(Index / MissionRegimentsPerTeam), Index % MissionRegimentsPerTeam + 1, Message);
+        TeamName(MissionTeam(Index)), MissionTeamSlot(Index) + 1, Message);
 }
 
 FText AtField(const FString& Path, const FText& Message)
@@ -494,10 +495,10 @@ bool RegimentMissionPresets::Validate(const FMissionPreset& Preset, FText& OutEr
     int32 BlueGroups[MissionGroupsPerTeam] = {};
     bool bHasEnabledPlatform = false;
     bool bHasFormationOverride = false;
-    for (int32 Index = 0; Index < MissionRegimentCount; ++Index)
+    for (int32 Index = 0; Index < MissionRosterCapacity; ++Index)
     {
         const FMissionRosterEntry& Entry = Preset.Roster[Index];
-        const int32 Team = Index / MissionRegimentsPerTeam;
+        const int32 Team = MissionTeam(Index);
         const auto* Faction = Factions[Team];
         if (Entry.Platform != battle::BattlePlatform::None)
         {
@@ -659,7 +660,7 @@ bool RegimentMissionPresets::Validate(const FMissionPreset& Preset, FText& OutEr
         InvalidObjectiveField = TEXT("objective.crossing_team");
     else if (Objective.Crossing < 0 || Objective.Crossing >= int32(battle::MarchCrossings.size()))
         InvalidObjectiveField = TEXT("objective.crossing");
-    else if (Objective.RequiredRegiments < 1 || Objective.RequiredRegiments > MissionRegimentsPerTeam)
+    else if (Objective.RequiredRegiments < 1 || Objective.RequiredRegiments > MissionMaxRegimentsPerTeam)
         InvalidObjectiveField = TEXT("objective.required_regiments");
     if (InvalidObjectiveField)
     {
@@ -697,7 +698,7 @@ bool RegimentMissionPresets::Validate(const FMissionPreset& Preset, FText& OutEr
             return false;
         }
         int32 Eligible = 0;
-        for (int32 Slot = 0; Slot < MissionRegimentsPerTeam; ++Slot)
+        for (int32 Slot = 0; Slot < MissionRosterCapacity; ++Slot)
             Eligible += IsMissionBreakthroughInfantry(Slot, Preset.Roster[Slot], Zone.Group);
         if (Eligible < Objective.RequiredRegiments)
         {
@@ -733,11 +734,11 @@ bool RegimentMissionPresets::Validate(const FMissionPreset& Preset, FText& OutEr
             OutError = LOCTEXT("NotEnoughCrossingRegiments", "Цель переправы требует больше полков, чем включено у выбранной стороны.");
             return false;
         }
-        const int32 FirstSlot = Objective.CrossingTeam * MissionRegimentsPerTeam;
         const float Direction = Objective.CrossingTeam == 0 ? 1.f : -1.f;
         int32 EligibleRegiments = 0;
-        for (int32 Index = FirstSlot; Index < FirstSlot + MissionRegimentsPerTeam; ++Index)
+        for (int32 Slot = 0; Slot < MissionMaxRegimentsPerTeam; ++Slot)
         {
+            const int32 Index = MissionRosterIndex(Objective.CrossingTeam, Slot);
             const FMissionRosterEntry& Entry = Preset.Roster[Index];
             if (Entry.bEnabled && MissionStartingPosition(Index, Entry, Preset.Field).x * Direction <= -(battle::MarchRiverHalfWidth + 2.f))
                 ++EligibleRegiments;
@@ -799,9 +800,10 @@ namespace
 bool MatchesEra(const FJsonObject& Object, FStringView EraId)
 {
     int32 Version;
-    if (!ReadWholeNumber(Object, TEXT("schema_version"), PlatformPresetSchemaVersion, Version))
+    if (!ReadWholeNumber(Object, TEXT("schema_version"), ExpandedRosterSchemaVersion, Version))
         return false;
-    if (Version == LegacyPresetSchemaVersion || Version == DetailedPresetSchemaVersion)
+    if (Version == LegacyPresetSchemaVersion || Version == DetailedPresetSchemaVersion ||
+        (Version == ExpandedRosterSchemaVersion && !Object.HasField(TEXT("era"))))
         return EraId.IsEmpty();
     FMissionEraSelection Selection;
     return Version >= EraPresetSchemaVersion && ReadEraSelection(Object, Selection) && EraId.Equals(Selection.Id);
@@ -866,7 +868,7 @@ bool RegimentMissionPresets::Load(const FString& Directory, FGuid Id, FMissionPr
         OutError = LOCTEXT("InvalidPresetFile", "Не удалось прочитать файл сохранённой миссии.");
         return false;
     }
-    if (Version < LegacyPresetSchemaVersion || Version > PlatformPresetSchemaVersion)
+    if (Version < LegacyPresetSchemaVersion || Version > ExpandedRosterSchemaVersion)
     {
         OutError = LOCTEXT("UnsupportedPresetVersion", "Эта версия файла сохранённой миссии не поддерживается.");
         return false;
@@ -879,12 +881,13 @@ bool RegimentMissionPresets::Load(const FString& Directory, FGuid Id, FMissionPr
         return false;
     }
     FString Terrain;
+    const int32 RosterSize = Version == ExpandedRosterSchemaVersion ? MissionRosterCapacity : MissionRegimentCount;
     const TArray<TSharedPtr<FJsonValue>>* Entries;
     if (!ReadPresetName(*Object, Loaded.Name) || !Object->HasTypedField<EJson::String>(TEXT("terrain")) ||
         !Object->TryGetStringField(TEXT("terrain"), Terrain) || !Object->TryGetArrayField(TEXT("regiments"), Entries) ||
-        Entries->Num() != MissionRegimentCount)
+        Entries->Num() != RosterSize)
     {
-        OutError = LOCTEXT("IncompletePreset", "В файле миссии нужны название, карта и состав всех 12 полков.");
+        OutError = LOCTEXT("IncompleteRosterPreset", "Проверьте название, карту и количество полков в файле миссии.");
         return false;
     }
 
@@ -896,7 +899,7 @@ bool RegimentMissionPresets::Load(const FString& Directory, FGuid Id, FMissionPr
     }
     Loaded.Terrain = *TerrainMatch;
 
-    for (int32 Index = 0; Index < MissionRegimentCount; ++Index)
+    for (int32 Index = 0; Index < RosterSize; ++Index)
     {
         const TCHAR* Field;
         if (!ReadRosterEntry((*Entries)[Index], Version, Loaded.Roster[Index], Field))
@@ -905,7 +908,8 @@ bool RegimentMissionPresets::Load(const FString& Directory, FGuid Id, FMissionPr
             return false;
         }
     }
-    if (Version >= EraPresetSchemaVersion)
+    if (Version >= EraPresetSchemaVersion &&
+        (Version < ExpandedRosterSchemaVersion || Object->HasField(TEXT("era"))))
     {
         FMissionEraSelection Selection;
         if (!ReadEraSelection(*Object, Selection))
@@ -947,10 +951,11 @@ bool SerializePreset(const FMissionPreset& Preset, const FString& Name, FString&
 
     const auto* TerrainMatch = Algo::FindBy(PresetTerrains, Preset.Terrain, &FPresetTerrain::Terrain);
     TArray<TSharedPtr<FJsonValue>> Entries;
-    Entries.Reserve(MissionRegimentCount);
+    const int32 RosterSize = MissionSavedRosterExtent(Preset.Roster);
+    Entries.Reserve(RosterSize);
     bool bHasSelectedTroopClass = false;
     bool bHasPlatforms = false;
-    for (int32 Index = 0; Index < MissionRegimentCount; ++Index)
+    for (int32 Index = 0; Index < RosterSize; ++Index)
     {
         const FMissionRosterEntry& Entry = Preset.Roster[Index];
         const auto Object = MakeShared<FJsonObject>();
@@ -1015,6 +1020,8 @@ bool SerializePreset(const FMissionPreset& Preset, const FString& Name, FString&
         Version = ProfilePresetSchemaVersion;
     if (bHasPlatforms)
         Version = PlatformPresetSchemaVersion;
+    if (RosterSize == MissionRosterCapacity)
+        Version = ExpandedRosterSchemaVersion;
     Root->SetNumberField(TEXT("schema_version"), Version);
     Root->SetStringField(TEXT("name"), Name);
     Root->SetStringField(TEXT("terrain"), TerrainMatch->Value);

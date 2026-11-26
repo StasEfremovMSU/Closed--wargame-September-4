@@ -9,8 +9,8 @@
     "orange_faction": "england"
   },
   "field": {
-    "width_m": 540,
-    "height_m": 360
+    "width_m": 765,
+    "height_m": 510
   },
   "regiment_tactics": true,
   "risky_volley": false,

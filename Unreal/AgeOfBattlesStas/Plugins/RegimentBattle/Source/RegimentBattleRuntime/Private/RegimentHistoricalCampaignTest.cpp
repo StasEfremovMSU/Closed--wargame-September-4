@@ -1,4 +1,4 @@
-﻿#include "RegimentHistoricalCampaign.h"
+#include "RegimentHistoricalCampaign.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 #include "HAL/FileManager.h"

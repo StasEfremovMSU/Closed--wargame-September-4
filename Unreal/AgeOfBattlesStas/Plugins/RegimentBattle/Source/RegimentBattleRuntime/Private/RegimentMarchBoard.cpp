@@ -1,4 +1,5 @@
 #include "RegimentMarchBoard.h"
+#include "RegimentGrassPresentation.h"
 #include "RegimentHillPresentation.h"
 #include "RegimentMissionRoster.h"
 #include "RegimentWallPresentation.h"
@@ -9,6 +10,7 @@
 #include "Components/DirectionalLightComponent.h"
 #include "Components/DynamicMeshComponent.h"
 #include "Components/ExponentialHeightFogComponent.h"
+#include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/SkyLightComponent.h"
@@ -24,6 +26,8 @@
 #include "GameFramework/Actor.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 #if WITH_DEV_AUTOMATION_TESTS
 #include "Misc/AutomationTest.h"
 #endif
@@ -329,7 +333,8 @@ TArray<FShapeBatch> MakeHistoricTerrain(battle::MarchTerrain Terrain, battle::Ma
     const double Depth = 2.0 * BoardHalfDepth;
     const bool bCannae = Terrain == battle::MarchTerrain::Cannae;
     AddBox(Batches, EBoardColor::Earth, {0.0, 0.0, -260.0}, {Width, Depth, 360.0});
-    AddBox(Batches, bCannae ? EBoardColor::Plain : EBoardColor::Snow, {0.0, 0.0, -40.0}, {Width, Depth, 80.0});
+    if (!bCannae)
+        AddBox(Batches, EBoardColor::Snow, {0.0, 0.0, -40.0}, {Width, Depth, 80.0});
 
     if (bCannae)
     {
@@ -368,7 +373,7 @@ TArray<FShapeBatch> MakeHistoricTerrain(battle::MarchTerrain Terrain, battle::Ma
     const float IceLimitX = float(BoardHalfWidth - 370.0);
     const float IceLimitY = float(BoardHalfDepth - 200.0);
     const double IceAreaScale = Width * Depth / (4.0 * Cm * Cm * battle::MarchHalfWidth * battle::MarchHalfHeight);
-    const int32 IceStreakCount = FMath::RoundToInt(38.0 * IceAreaScale);
+    const int32 IceStreakCount = FMath::Clamp(FMath::RoundToInt(38.0 * IceAreaScale), 38, 440);
     for (int32 Index = 0; Index < IceStreakCount; ++Index)
     {
         const double X = Ice.FRandRange(-IceLimitX, IceLimitX);
@@ -415,24 +420,56 @@ TArray<FShapeBatch> MakeDetailedTerrain(battle::MarchTerrain Terrain, battle::Ma
                 const double Tz = Ground(Tx, Ty);
                 const bool bConifer = Terrain == battle::MarchTerrain::Sekigahara ||
                     Terrain == battle::MarchTerrain::Nagashino || Terrain == battle::MarchTerrain::Kawanakajima;
-                AddTree(Batches, Random, {Tx, Ty, Tz}, Random.FRandRange(310.f, 690.f), bConifer, false);
+                AddTree(Batches, Random, {Tx, Ty, Tz}, Random.FRandRange(310.f, 690.f), bConifer,
+                    bConifer && Index % 3 == 0);
             }
             break;
         }
         case T::PloughedField:
-            if (!Hill)
-                for (double Row = -SizeY * .5 + 250.0; Row < SizeY * .5 - 100.0; Row += 430.0)
-                    AddBox(Batches, EBoardColor::Harvest, {X, Y + Row, 2.4}, {SizeX, 65.0, 1.0});
+        {
+            const double RowSpacing = FMath::Max(420.0, SizeY / 18.0);
+            constexpr int32 LengthSegments = 6;
+            const double Segment = SizeX * .92 / LengthSegments;
+            for (int32 Row = 0; (Row + .5) * RowSpacing < SizeY; ++Row)
+            {
+                const double AlongY = Y - SizeY * .5 + (Row + .5) * RowSpacing;
+                const auto Tint = Row % 3 == 0 ? EBoardColor::Harvest : EBoardColor::Rut;
+                for (int32 Index = 0; Index < LengthSegments; ++Index)
+                {
+                    const double AlongX = X + (Index + .5 - LengthSegments * .5) * Segment;
+                    const double Base = Ground(AlongX, AlongY);
+                    const double Rise = Ground(AlongX + Segment * .5, AlongY) - Ground(AlongX - Segment * .5, AlongY);
+                    AddShape(Batches, EShape::Box, Tint, {AlongX, AlongY, Base + 4.0},
+                        {Segment * .96, 42.0, 3.0}, FRotator(FMath::RadiansToDegrees(std::atan2(Rise, Segment)), 0, 0));
+                }
+            }
             break;
+        }
         case T::Barrier:
         {
             const double Height = FMath::Clamp(FMath::Min(SizeX, SizeY) * .4, 310.0, 510.0);
             AddBox(Batches, EBoardColor::WallPale, {X, Y, Z + .5 * Height - 35.0}, {SizeX, SizeY, Height + 70.0});
             const double RoofPanel = SizeY * .53;
             for (const double Side : {-1.0, 1.0})
+            {
                 AddShape(Batches, EShape::Box, EBoardColor::Orange,
                     {X, Y + Side * RoofPanel * .45, Z + Height + RoofPanel * .15},
                     {SizeX + 80.0, RoofPanel + 32.0, 25.0}, FRotator(0.0, 0.0, Side * 17.0));
+                const double Face = Y + Side * (SizeY * .5 + 3.0);
+                AddBox(Batches, EBoardColor::WallStone, {X, Face, Z + 43.0}, {SizeX, 16.0, 105.0});
+                AddBox(Batches, EBoardColor::Timber, {X, Face, Z + Height * .24}, {119.0, 19.0, Height * .49});
+                const int32 Windows = FMath::Clamp(FMath::RoundToInt(SizeX / 410.0), 2, 8);
+                for (int32 Index = 0; Index < Windows; ++Index)
+                {
+                    const double SillX = X + ((Index + .5) / Windows - .5) * SizeX * .84;
+                    if (FMath::Abs(SillX - X) < 95.0)
+                        continue;
+                    AddBox(Batches, EBoardColor::Earth, {SillX, Face, Z + Height * .60}, {79.0, 11.0, 91.0});
+                    AddBox(Batches, EBoardColor::WallCap, {SillX, Face + Side * 8.0, Z + Height * .60 - 50.0}, {95.0, 19.0, 13.0});
+                }
+            }
+            AddBox(Batches, EBoardColor::WallStone, {X + SizeX * .27, Y, Z + Height + RoofPanel * .22},
+                {105.0, 97.0, 182.0});
             break;
         }
         case T::StoneWall:
@@ -764,38 +801,70 @@ struct FRegimentDaylight
 {
     TWeakObjectPtr<UDirectionalLightComponent> StockSun;
     TWeakObjectPtr<USkyLightComponent> StockSky;
+    TWeakObjectPtr<ADirectionalLight> SpawnedSun;
+    TWeakObjectPtr<ASkyLight> SpawnedSky;
     TWeakObjectPtr<AExponentialHeightFog> Haze;
+    float OriginalSunIntensity = 0.f;
+    float OriginalSunTemperature = 6500.f;
+    float OriginalSunAngle = 0.f;
+    float OriginalSkyIntensity = 0.f;
+    bool bOriginalUseTemperature = false;
 
     void Initialize(UWorld& World, AActor& Owner, const FVector& Origin)
     {
-        // Runtime look for the shipped theatre. Respect customized light rigs.
+        // Only the stock battlefield calls this. Reuse its active lights across different level revisions.
         for (TActorIterator<ADirectionalLight> It(&World); It; ++It)
         {
             ADirectionalLight* Sun = *It;
             auto* Light = Cast<UDirectionalLightComponent>(Sun->GetLightComponent());
-            if (Sun->GetLevel() == World.PersistentLevel && Sun->GetFName() == TEXT("DirectionalLight_0") && Light &&
-                Light->Mobility == EComponentMobility::Stationary && !Light->bUseTemperature &&
-                Light->bAtmosphereSunLight && FMath::IsNearlyEqual(Light->Intensity, 5.0f) &&
-                FMath::IsNearlyEqual(Light->Temperature, 6500.f) &&
-                FMath::IsNearlyEqual(Light->LightSourceAngle, .5357f) &&
-                Sun->GetActorRotation().Equals(FRotator(-49, -27, 0), .01))
-                StockSun = Light;
+            if (Sun->GetLevel() != World.PersistentLevel || !Light || Light->Mobility == EComponentMobility::Static ||
+                !Light->IsVisible() || !Light->bAtmosphereSunLight || Sun->GetActorForwardVector().Z >= -.20)
+                continue;
+            StockSun = Light;
+            OriginalSunIntensity = Light->Intensity;
+            OriginalSunTemperature = Light->Temperature;
+            OriginalSunAngle = Light->LightSourceAngle;
+            bOriginalUseTemperature = Light->bUseTemperature;
+            break;
         }
+        FActorSpawnParameters Spawn;
+        Spawn.Owner = &Owner;
+        Spawn.ObjectFlags |= RF_Transient;
         if (!StockSun.IsValid())
-            return;
+        {
+            if (auto* Sun = World.SpawnActor<ADirectionalLight>(Origin, FRotator(-49, -27, 0), Spawn))
+            {
+                auto* Light = CastChecked<UDirectionalLightComponent>(Sun->GetLightComponent());
+                Light->SetMobility(EComponentMobility::Movable);
+                Light->SetAtmosphereSunLight(true);
+                StockSun = Light;
+                SpawnedSun = Sun;
+            }
+        }
         for (TActorIterator<ASkyLight> It(&World); It; ++It)
         {
             ASkyLight* Sky = *It;
             USkyLightComponent* Light = Sky->GetLightComponent();
-            if (Sky->GetLevel() == World.PersistentLevel && Sky->GetFName() == TEXT("SkyLight_0") &&
-                Light && FMath::IsNearlyEqual(Light->Intensity, 1.f))
+            if (Sky->GetLevel() != World.PersistentLevel || !Light || Light->Mobility == EComponentMobility::Static ||
+                !Light->IsVisible())
+                continue;
+            StockSky = Light;
+            OriginalSkyIntensity = Light->Intensity;
+            break;
+        }
+        if (!StockSky.IsValid())
+        {
+            if (auto* Sky = World.SpawnActor<ASkyLight>(Origin + FVector(0, 0, 600), FRotator::ZeroRotator, Spawn))
+            {
+                auto* Light = Sky->GetLightComponent();
+                Light->SetMobility(EComponentMobility::Movable);
+                Light->RecaptureSky();
                 StockSky = Light;
+                SpawnedSky = Sky;
+            }
         }
         if (TActorIterator<AExponentialHeightFog>(&World))
             return;
-        FActorSpawnParameters Spawn;
-        Spawn.Owner = &Owner;
-        Spawn.ObjectFlags |= RF_Transient;
         Haze = World.SpawnActor<AExponentialHeightFog>(Origin - FVector(0, 0, 700), FRotator::ZeroRotator, Spawn);
     }
 
@@ -805,13 +874,13 @@ struct FRegimentDaylight
         const bool bDry = HasDrySurroundings(Terrain);
         if (UDirectionalLightComponent* Light = StockSun.Get())
         {
-            Light->SetTemperature(bCold ? 7900.f : bDry ? 4900.f : 6300.f);
+            Light->SetTemperature(bCold ? 7200.f : bDry ? 5350.f : 6150.f);
             Light->SetUseTemperature(true);
-            Light->SetIntensity(bCold ? 3.7f : bDry ? 4.8f : 4.15f);
-            Light->SetLightSourceAngle(bCold ? 2.9f : bDry ? 1.35f : 2.1f);
+            Light->SetIntensity(bCold ? 7.2f : bDry ? 8.5f : 8.f);
+            Light->SetLightSourceAngle(bCold ? 1.8f : bDry ? 1.1f : 1.4f);
         }
         if (USkyLightComponent* Light = StockSky.Get())
-            Light->SetIntensity(bCold ? 1.64f : bDry ? 1.38f : 1.54f);
+            Light->SetIntensity(bCold ? 1.50f : bDry ? 1.24f : 1.38f);
         if (AExponentialHeightFog* Fog = Haze.Get())
         {
             auto* Component = Fog->GetComponent();
@@ -820,9 +889,9 @@ struct FRegimentDaylight
             Component->SetFogInscatteringColor(bCold ? FLinearColor(.34f, .40f, .49f) :
                 bDry ? FLinearColor(.42f, .34f, .22f) : FLinearColor(.29f, .36f, .40f));
             Component->SetDirectionalInscatteringColor(FLinearColor::Black);
-            Component->SetStartDistance(float(FMath::Max(14500.0, Cm * FMath::Max(Field.HalfWidth(), Field.HalfHeight()) * 1.10)));
-            Component->SetFogMaxOpacity(bCold ? .44f : bDry ? .28f : .37f);
-            Component->SetFogDensity(bCold ? .013f : bDry ? .008f : .011f);
+            Component->SetStartDistance(float(FMath::Max(24000.0, Cm * FMath::Max(Field.HalfWidth(), Field.HalfHeight()) * 1.65)));
+            Component->SetFogMaxOpacity(bCold ? .30f : bDry ? .20f : .24f);
+            Component->SetFogDensity(bCold ? .008f : bDry ? .005f : .006f);
         }
     }
 
@@ -830,14 +899,18 @@ struct FRegimentDaylight
     {
         if (AExponentialHeightFog* Fog = Haze.Get())
             Fog->Destroy();
-        if (USkyLightComponent* Light = StockSky.Get())
-            Light->SetIntensity(1.f);
-        if (UDirectionalLightComponent* Light = StockSun.Get())
+        if (auto* Sky = SpawnedSky.Get())
+            Sky->Destroy();
+        else if (USkyLightComponent* Light = StockSky.Get())
+            Light->SetIntensity(OriginalSkyIntensity);
+        if (auto* Sun = SpawnedSun.Get())
+            Sun->Destroy();
+        else if (UDirectionalLightComponent* Light = StockSun.Get())
         {
-            Light->SetUseTemperature(false);
-            Light->SetTemperature(6500.f);
-            Light->SetIntensity(5.f);
-            Light->SetLightSourceAngle(.5357f);
+            Light->SetUseTemperature(bOriginalUseTemperature);
+            Light->SetTemperature(OriginalSunTemperature);
+            Light->SetIntensity(OriginalSunIntensity);
+            Light->SetLightSourceAngle(OriginalSunAngle);
         }
     }
 };
@@ -934,7 +1007,7 @@ FLinearColor EarthTone(EBoardColor Color, battle::MarchTerrain Terrain, const FL
         if (HasWinterSurroundings(Terrain))
             return LinearColor(0xA2ABAA);
         if (HasDrySurroundings(Terrain))
-            return LinearColor(0xA38A53);
+            return LinearColor(0x987E4C);
         if (Terrain == battle::MarchTerrain::Waterloo)
             return LinearColor(0x8A8462);
         return LinearColor(0x9A9160);
@@ -965,8 +1038,8 @@ TArray<FShapeBatch> MakeTerrain(battle::MarchTerrain Terrain, battle::MarchField
         AddWoodland(Batches, Field, &*Hill);
         return Batches;
     }
-    AddBox(Batches, bWalls ? EBoardColor::Meadow : EBoardColor::Harvest,
-        {0.0, 0.0, -40.0}, {Width, Depth, 80.0});
+    if (bWalls)
+        AddBox(Batches, EBoardColor::Meadow, {0.0, 0.0, -40.0}, {Width, Depth, 80.0});
 
     if (bWalls)
     {
@@ -1046,7 +1119,7 @@ void ApplyRegimentBattleCameraExposure(UCameraComponent& Camera)
         Settings.bOverride_AutoExposureApplyPhysicalCameraExposure = true;
         Settings.AutoExposureApplyPhysicalCameraExposure = false;
         Settings.bOverride_AutoExposureBias = true;
-        Settings.AutoExposureBias = -.72f;
+        Settings.AutoExposureBias = -.25f;
         Settings.bOverride_LocalExposureShadowContrastScale = true;
         Settings.LocalExposureShadowContrastScale = .72f;
         Settings.bOverride_BloomIntensity = true;
@@ -1082,7 +1155,11 @@ struct FRegimentMarchBoard::FScene
         {
             bStockMap = IsStockBattleMap(*World);
             if (bStockMap)
+            {
                 Daylight.Initialize(*World, InOwner, BoardOrigin);
+                if (Basic && !FParse::Param(FCommandLine::Get(), TEXT("RegimentNoGrass")))
+                    GrassMesh.Reset(MakeRegimentGrassMesh(InOwner, *Basic));
+            }
 
             const FRotator View(-80.0, -90.0, 0.0);
             FActorSpawnParameters Spawn;
@@ -1197,7 +1274,7 @@ struct FRegimentMarchBoard::FScene
             {
                 Material->SetVectorParameterValue(TEXT("BoardOrigin"), Origin);
                 Material->SetVectorParameterValue(TEXT("EarthTone"), EarthTone(Color, Choice, BaseColor));
-                Material->SetScalarParameterValue(TEXT("PatternScale"), bLongBattlefield ? .00037f : .00070f);
+                Material->SetScalarParameterValue(TEXT("PatternScale"), bLongBattlefield ? .00022f : .00070f);
             }
             else if (IsRiverColor(Color))
             {
@@ -1234,6 +1311,42 @@ struct FRegimentMarchBoard::FScene
         Visual.Surfaces.Add(Component);
     }
 
+    void AddGrass(USceneComponent& Parent, battle::MarchTerrain Choice, const battle::MarchField& Field,
+        const battle::TerrainHill* Hill, std::span<const battle::Obstacle> Areas)
+    {
+        AActor* Actor = Owner.Get();
+        UStaticMesh* Mesh = GrassMesh.Get();
+        if (!Actor || !Mesh)
+            return;
+        const TArray<FTransform> Instances = BuildRegimentGrassTransforms(Choice, Field, Hill, Areas);
+        if (Instances.IsEmpty())
+            return;
+
+        auto* Component = NewObject<UHierarchicalInstancedStaticMeshComponent>(Actor, NAME_None, RF_Transient);
+        Component->SetMobility(EComponentMobility::Movable);
+        ConfigureLandscapePrimitive(*Component);
+        Component->SetGenerateOverlapEvents(false);
+        Component->SetCullDistances(0, RegimentGrassCullDistanceCm);
+        Component->SetStaticMesh(Mesh);
+        if (auto* Material = UMaterialInstanceDynamic::Create(Mesh->GetMaterial(0), Component))
+        {
+            const bool bDry = HasDrySurroundings(Choice);
+            const EBoardColor Floor = Choice == battle::MarchTerrain::Cannae ? EBoardColor::Plain : EBoardColor::Meadow;
+            const FLinearColor Ground = LinearColor(TerrainColor(Floor, Choice));
+            Material->SetVectorParameterValue(TEXT("Color"),
+                FMath::Lerp(Ground, LinearColor(bDry ? 0x827342 : 0x526641), .63f));
+            Material->SetScalarParameterValue(TEXT("Roughness"), .94f);
+            Component->SetMaterial(0, Material);
+        }
+        Actor->AddInstanceComponent(Component);
+        Component->SetupAttachment(&Parent);
+        Component->bAutoRebuildTreeOnInstanceChanges = false;
+        Component->AddInstances(Instances, false, false, false);
+        Component->BuildTreeIfOutdated(false, false);
+        Component->RegisterComponent();
+        Terrain.Meshes.Add(Component);
+    }
+
     void AddMarkerLabel(FBoardVisual& Visual, uint64 Id, float Height, float OffsetY, FColor Color) const
     {
         AActor* Actor = Owner.Get();
@@ -1246,7 +1359,7 @@ struct FRegimentMarchBoard::FScene
         Label->SetCollisionEnabled(ECollisionEnabled::NoCollision);
         Label->SetCanEverAffectNavigation(false);
         Label->SetCastShadow(false);
-        Label->SetText(FText::AsNumber(int32((Id - 1) % MissionRegimentsPerTeam) + 1));
+        Label->SetText(FText::AsNumber(MissionTeamSlot(int32(Id - 1)) + 1));
         Label->SetHorizontalAlignment(EHTA_Center);
         Label->SetVerticalAlignment(EVRTA_TextCenter);
         Label->SetWorldSize(132.f);
@@ -1293,13 +1406,14 @@ struct FRegimentMarchBoard::FScene
             using B = EBoardColor;
             using T = battle::MarchTerrain;
             auto Areas = battle::MarchTerrainAreas(Choice, Field);
-            if (Hill || battle::MarchUsesDetailedTerrain(Choice))
+            if (Hill || battle::MarchUsesDetailedTerrain(Choice) || Choice == T::OpenField || Choice == T::Cannae)
             {
                 auto Mesh = BuildRegimentGroundMesh(Hill ? &*Hill : nullptr, HalfExtent.X, HalfExtent.Y, Areas);
                 if (bStockMap)
                     SetExterior(*Root, MakeSurroundingLandscape(Choice, HalfExtent, &Mesh, Areas));
-                constexpr B GroundMaterials[] = {B::Meadow, B::Stubble, B::Dust, B::Harvest, B::Lawn,
-                    B::DeepWater, B::Ford, B::Bank, B::Ditch, B::EarthBank, B::BankTurf};
+                const B GroundMaterials[] = {Choice == T::Cannae ? B::Plain : B::Meadow,
+                    B::Stubble, B::Dust, B::Harvest, B::Lawn, B::DeepWater, B::Ford, B::Bank,
+                    B::Ditch, B::EarthBank, B::BankTurf};
                 static_assert(UE_ARRAY_COUNT(GroundMaterials) == int32(ERegimentGroundMaterial::BankTurf) + 1);
                 AddSurface(*Root, Terrain, MoveTemp(Mesh), GroundMaterials);
             }
@@ -1317,6 +1431,7 @@ struct FRegimentMarchBoard::FScene
             constexpr B RoadMaterials[] = {B::Dust, B::Rut};
             AddSurface(*Root, Terrain,
                 BuildRegimentRoadMesh(Hill ? &*Hill : nullptr, HalfExtent.X, HalfExtent.Y, Areas), RoadMaterials, true);
+            AddGrass(*Root, Choice, Field, Hill ? &*Hill : nullptr, Areas);
         }
     }
 
@@ -1441,6 +1556,7 @@ struct FRegimentMarchBoard::FScene
     TWeakObjectPtr<AActor> Owner;
     const FVector BoardOrigin;
     TWeakObjectPtr<ACameraActor> OverviewCamera;
+    TStrongObjectPtr<UStaticMesh> GrassMesh;
     TStrongObjectPtr<UStaticMesh> Shapes[int32(EShape::Count)];
     TStrongObjectPtr<UMaterialInstanceDynamic> Colors[int32(EBoardColor::Count)];
     FBoardVisual Terrain;
@@ -1487,6 +1603,37 @@ ACameraActor* FRegimentMarchBoard::GetOverviewCamera() const
 }
 
 #if WITH_DEV_AUTOMATION_TESTS
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentBattlefieldDaylightTest, "RegimentBattle.Presentation.BattlefieldDaylight",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FRegimentBattlefieldDaylightTest::RunTest(const FString&)
+{
+    UWorld* World = UWorld::CreateWorld(EWorldType::Game, false);
+    AActor* Owner = World->SpawnActor<AActor>();
+    auto* AuthoredSun = World->SpawnActor<ADirectionalLight>();
+    auto* Light = CastChecked<UDirectionalLightComponent>(AuthoredSun->GetLightComponent());
+    Light->SetMobility(EComponentMobility::Movable);
+    Light->SetAtmosphereSunLight(true);
+    Light->SetIntensity(2.f);
+    AuthoredSun->SetActorRotation(FRotator(-35, 150, 0));
+    {
+        FRegimentDaylight Daylight;
+        Daylight.Initialize(*World, *Owner, FVector::ZeroVector);
+        Daylight.UseProfile(battle::MarchTerrain::Waterloo, {790, 535});
+        TestEqual(TEXT("A live daylight source is reused even when its rotation or intensity changes"),
+            Daylight.StockSun.Get(), Light);
+        TestTrue(TEXT("Waterloo has direct daylight"), Light->Intensity >= 5.f);
+        TestNotNull(TEXT("The field gets ambient fill when the level has no skylight"), Daylight.StockSky.Get());
+        const float Temperate = Light->Temperature;
+        Daylight.UseProfile(battle::MarchTerrain::Narva, {700, 480});
+        TestTrue(TEXT("Winter light stays cooler and keeps a direct sun"), Light->Temperature > Temperate &&
+            Light->Intensity >= 4.5f);
+    }
+    TestEqual(TEXT("Leaving the battlefield restores the authored sunlight"), Light->Intensity, 2.f);
+    World->DestroyWorld(false);
+    return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentBattlefieldSurroundingsTest, "RegimentBattle.Presentation.BattlefieldSurroundings",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 

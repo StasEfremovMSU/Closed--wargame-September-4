@@ -10,6 +10,8 @@ THIRD_PARTY_INCLUDES_END
 
 inline constexpr int32 MissionRegimentsPerTeam = 6;
 inline constexpr int32 MissionRegimentCount = 2 * MissionRegimentsPerTeam;
+inline constexpr int32 MissionMaxRegimentsPerTeam = 12;
+inline constexpr int32 MissionRosterCapacity = 2 * MissionMaxRegimentsPerTeam;
 inline constexpr int32 MissionGroupsPerTeam = 3;
 inline constexpr int32 MissionDefaultRegimentsPerGroup = MissionRegimentsPerTeam / MissionGroupsPerTeam;
 inline constexpr int32 MissionCommandStaffCount = 3;
@@ -42,6 +44,8 @@ struct FMissionRosterEntry
     ERegimentMountClass MountedClass = ERegimentMountClass::FactionDefault;
     ERegimentRangedClass RangedClass = ERegimentRangedClass::FactionDefault;
     FString InfantryProfile;
+
+    bool operator==(const FMissionRosterEntry&) const = default;
 
     FMissionRosterEntry() = default;
     FMissionRosterEntry(int32 InSwords, int32 InArchers, int32 InSpearmen = 0)
@@ -83,7 +87,44 @@ struct FMissionRosterEntry
     }
 };
 
-using FMissionRoster = TStaticArray<FMissionRosterEntry, MissionRegimentCount>;
+// The second block adds slots without renumbering either side in legacy presets.
+constexpr int32 MissionTeam(int32 Index) { return Index % MissionRegimentCount / MissionRegimentsPerTeam; }
+constexpr int32 MissionTeamSlot(int32 Index)
+{
+    return Index % MissionRegimentsPerTeam + Index / MissionRegimentCount * MissionRegimentsPerTeam;
+}
+constexpr int32 MissionRosterIndex(int32 Team, int32 TeamSlot)
+{
+    return Team * MissionRegimentsPerTeam + TeamSlot % MissionRegimentsPerTeam +
+        TeamSlot / MissionRegimentsPerTeam * MissionRegimentCount;
+}
+
+struct FMissionRoster : TStaticArray<FMissionRosterEntry, MissionRosterCapacity>
+{
+    FMissionRoster()
+    {
+        for (int32 Index = MissionRegimentCount; Index < MissionRosterCapacity; ++Index)
+            (*this)[Index].bEnabled = false;
+    }
+};
+
+inline int32 MissionRosterExtent(const FMissionRoster& Roster)
+{
+    for (int32 Index = MissionRegimentCount; Index < MissionRosterCapacity; ++Index)
+        if (Roster[Index].bEnabled)
+            return MissionRosterCapacity;
+    return MissionRegimentCount;
+}
+
+inline int32 MissionSavedRosterExtent(const FMissionRoster& Roster)
+{
+    FMissionRosterEntry Unused;
+    Unused.bEnabled = false;
+    for (int32 Index = MissionRegimentCount; Index < MissionRosterCapacity; ++Index)
+        if (Roster[Index] != Unused)
+            return MissionRosterCapacity;
+    return MissionRegimentCount;
+}
 
 inline int32 MissionGroup(int32 Index, const FMissionRosterEntry& Entry)
 {
@@ -96,10 +137,11 @@ inline battle::Vec3 MissionStartingPosition(int32 Index, const FMissionRosterEnt
     battle::MarchField Field = {})
 {
     const int32 Slot = Index % MissionRegimentsPerTeam;
-    const float Side = Index < MissionRegimentsPerTeam ? -1.f : 1.f;
+    const float Side = MissionTeam(Index) == 0 ? -1.f : 1.f;
     const float DepthScale = Field.HalfWidth() / battle::MarchHalfWidth;
-    const float DefaultX = Side * (39.f + 13.f * (Slot % MissionDefaultRegimentsPerGroup)) * DepthScale;
-    const float DefaultY = battle::MarchCrossings[Slot / MissionDefaultRegimentsPerGroup].y;
+    const bool bAdditional = Index >= MissionRegimentCount;
+    const float DefaultX = Side * (39.f + 13.f * (Slot % MissionDefaultRegimentsPerGroup) + (bAdditional ? 9.f : 0.f)) * DepthScale;
+    const float DefaultY = battle::MarchCrossings[Slot / MissionDefaultRegimentsPerGroup].y + (bAdditional ? 10.f : 0.f);
     return {Entry.StartX.value_or(DefaultX), Entry.StartY.value_or(DefaultY), 0.f};
 }
 
