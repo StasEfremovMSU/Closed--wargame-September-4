@@ -395,7 +395,10 @@ TArray<FShapeBatch> MakeDetailedTerrain(battle::MarchTerrain Terrain, battle::Ma
     const auto Hill = battle::MarchHill(Terrain, Field);
     const auto Areas = battle::MarchTerrainAreas(Terrain, Field);
     const double Width = Cm * Field.width_m, Depth = Cm * Field.height_m;
-    AddBox(Batches, EBoardColor::Earth, {0.0, 0.0, -225.0}, {Width, Depth, 300.0});
+    // The backing slab sits below the lowest possible depression in the detailed profiles.
+    const double Basement = Hill && Hill->relief >= battle::TerrainRelief::HistoricalFirst
+        ? -225.0 - Cm * Hill->height_m : -225.0;
+    AddBox(Batches, EBoardColor::Earth, {0.0, 0.0, Basement}, {Width, Depth, 300.0});
 
     const auto Ground = [&](double X, double Y)
     {
@@ -420,7 +423,8 @@ TArray<FShapeBatch> MakeDetailedTerrain(battle::MarchTerrain Terrain, battle::Ma
                 const double Ty = Y + SizeY * Random.FRandRange(-.46f, .46f);
                 const double Tz = Ground(Tx, Ty);
                 const bool bConifer = Terrain == battle::MarchTerrain::Sekigahara ||
-                    Terrain == battle::MarchTerrain::Nagashino || Terrain == battle::MarchTerrain::Kawanakajima;
+                    Terrain == battle::MarchTerrain::Nagashino || Terrain == battle::MarchTerrain::Kawanakajima ||
+                    Terrain == battle::MarchTerrain::Mikatagahara || Terrain == battle::MarchTerrain::Okehazama;
                 AddTree(Batches, Random, {Tx, Ty, Tz}, Random.FRandRange(310.f, 690.f), bConifer,
                     bConifer && Index % 3 == 0);
             }
@@ -521,13 +525,16 @@ EBoardColor ExteriorFieldColor(battle::MarchTerrain Terrain)
 bool HasDrySurroundings(battle::MarchTerrain Terrain)
 {
     using T = battle::MarchTerrain;
-    return Terrain == T::OpenField || Terrain == T::Cannae || Terrain == T::Gaugamela || Terrain == T::Zama ||
+    return Terrain == battle::MarchTerrain::Thermopylae || Terrain == battle::MarchTerrain::Issus ||
+        Terrain == battle::MarchTerrain::Hydaspes || Terrain == battle::MarchTerrain::Chaeronea ||
+        Terrain == battle::MarchTerrain::OpenField || Terrain == battle::MarchTerrain::Cannae || Terrain == T::Gaugamela || Terrain == T::Zama ||
         Terrain == T::Kalka || Terrain == T::Dorylaeum;
 }
 
 bool HasWinterSurroundings(battle::MarchTerrain Terrain)
 {
-    return Terrain == battle::MarchTerrain::Narva || Terrain == battle::MarchTerrain::Peipus;
+    return Terrain == battle::MarchTerrain::Narva || Terrain == battle::MarchTerrain::Peipus ||
+        Terrain == battle::MarchTerrain::Fraustadt;
 }
 
 template <typename FSurfaceHeight>
@@ -624,8 +631,10 @@ FSurroundingLandscape MakeSurroundingLandscape(battle::MarchTerrain Terrain, FVe
                 Rim.Add(FVector2D(Vertex.X, Vertex.Y), Vertex.Z);
         }
     }
-    const bool bChannel = Terrain == T::River || Terrain == T::StirlingBridge;
-    const double ChannelSamples[] = {-RiverHalfWidth, -RiverHalfWidth + 90.0, RiverHalfWidth - 90.0, RiverHalfWidth};
+    const bool bChannel = Terrain == T::River || Terrain == T::StirlingBridge || Terrain == T::Granicus;
+    const bool bCoast = Terrain == T::Thermopylae || Terrain == T::Issus;
+    const double ChannelSamples[] = {-RiverHalfWidth, -RiverHalfWidth + 90.0,
+        RiverHalfWidth - 90.0, RiverHalfWidth};
     const double CannaeSamples[] = {-HalfExtent.Y - 1765.0, -HalfExtent.Y - 235.0};
     TConstArrayView<double> WaterEdgeSamples;
     double NarvaSamples[2] = {};
@@ -652,6 +661,8 @@ FSurroundingLandscape MakeSurroundingLandscape(battle::MarchTerrain Terrain, FVe
     {
         if (bChannel)
             return FMath::Abs(Point.Y) >= HalfExtent.Y && FMath::Abs(Point.X) < RiverHalfWidth;
+        if (bCoast)
+            return Point.Y < -HalfExtent.Y;
         if (Terrain == T::Cannae)
             return Point.Y < -HalfExtent.Y - 235.0 && Point.Y > -HalfExtent.Y - 1765.0;
         if (Terrain == T::Narva)
@@ -673,6 +684,8 @@ FSurroundingLandscape MakeSurroundingLandscape(battle::MarchTerrain Terrain, FVe
             return -42.0;
         if (bChannel && FMath::Abs(Point.X) < RiverHalfWidth && FMath::Abs(Point.Y) >= HalfExtent.Y)
             return -40.0;
+        if (bCoast && Point.Y <= -HalfExtent.Y)
+            return EdgeHeight * FMath::Exp(-Distance / 4200.0) - 30.0 * FMath::Min(1.0, Distance / 4200.0);
         const double Undulation = FMath::PerlinNoise2D(Point / 38200.0 + FVector2D(3.7, 5.8)) +
             .36 * FMath::PerlinNoise2D(Point / 12500.0 + FVector2D(19.1, -4.5));
         const double Relief = Undulation * (bDry ? 5800.0 : 8400.0);

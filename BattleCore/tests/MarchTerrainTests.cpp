@@ -517,3 +517,39 @@ TEST_CASE("integration.historical_relief_and_navigation_follow_the_map") {
     CHECK(crossing.PreviewCrossing(regiment.id, {24.f, 0.f, 0.f}));
 }
 } // namespace battle
+
+TEST_CASE("terrain.historical_relief_moves_the_crest_to_the_documented_side") {
+    using namespace battle;
+    const MarchField field{790, 510};
+    const auto pratzen = MarchHill(MarchTerrain::Austerlitz, field);
+    const auto traditional_crecy = MarchHill(MarchTerrain::Crecy, field);
+    const auto waterloo = MarchHill(MarchTerrain::Waterloo, field);
+    REQUIRE(pratzen);
+    REQUIRE(traditional_crecy);
+    REQUIRE(waterloo);
+    CHECK(pratzen->relief != waterloo->relief);
+    CHECK(traditional_crecy->relief != waterloo->relief);
+    const auto crest = HillObjectiveCrest(*pratzen);
+    REQUIRE(crest);
+    CHECK(crest->center.x > 70.f);
+    CHECK(crest->center.y < -20.f);
+    CHECK(HillHeight(*pratzen, crest->center) > 20.f);
+    CHECK(HillHeight(*pratzen, {-70.f, crest->center.y, 0.f}) < 5.f);
+
+    const auto kliszow = MarchHill(MarchTerrain::Kliszow, field);
+    REQUIRE(kliszow);
+    CHECK(HillHeight(*kliszow, {.13f * field.HalfWidth(), -.77f * field.HalfHeight(), 0.f}) < -2.f);
+}
+
+TEST_CASE("terrain.granicus_has_a_traversable_ford_and_impassable_river_banks") {
+    using namespace battle;
+    const MarchField field{760, 510};
+    const auto crossings = MarchCrossingsFor(MarchTerrain::Granicus);
+    REQUIRE(crossings.size() == 3);
+    CHECK(crossings[1].ford);
+    CHECK(crossings[1].y == 0.f);
+    const auto areas = MarchTerrainAreas(MarchTerrain::Granicus, field);
+    const GridNavigationService nav(areas, 3.f, 255, 171, {-380.f, -255.f, 0.f});
+    CHECK(nav.CanTraverse({{-22.f, 0.f, 0.f}, 0.f}, {{22.f, 0.f, 0.f}, 0.f}, {8.f, 8.f}));
+    CHECK_FALSE(nav.CanTraverse({{-22.f, 42.f, 0.f}, 0.f}, {{22.f, 42.f, 0.f}, 0.f}, {8.f, 8.f}));
+}

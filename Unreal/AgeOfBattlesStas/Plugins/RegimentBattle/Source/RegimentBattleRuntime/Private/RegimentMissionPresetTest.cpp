@@ -16,6 +16,8 @@
 #include "Serialization/JsonReader.h"
 #include "Serialization/JsonSerializer.h"
 
+#include <tuple>
+
 namespace
 {
 struct FMissionPresetTestFolder
@@ -569,6 +571,82 @@ bool FRegimentMissionPresetEraInvalidTest::RunTest(const FString& Parameters)
     }
     return true;
 }
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentDedicatedHistoricalTerrainTest, "RegimentBattle.MissionPresets.DedicatedHistoricalTerrain",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+
+bool FRegimentDedicatedHistoricalTerrainTest::RunTest(const FString&)
+{
+    const FString Directory = FPaths::ProjectContentDir() / TEXT("Battle/HistoricalPresets");
+    const struct
+    {
+        const TCHAR* Id;
+        battle::MarchTerrain Terrain;
+    } Cases[] = {
+        {TEXT("FD67C93DB19B57598941C25169B7EBFF"), battle::MarchTerrain::Thermopylae},
+        {TEXT("458A83AA2AFE423F8A6DE3E17F556DBC"), battle::MarchTerrain::Issus},
+        {TEXT("E7EC562E317D5FADA49C380D1E3684AE"), battle::MarchTerrain::Alesia},
+        {TEXT("120A3C1B7539440E8D53A2A671463891"), battle::MarchTerrain::Chaeronea},
+        {TEXT("CF730162A275449991AFABD448FFA2B8"), battle::MarchTerrain::Hydaspes},
+        {TEXT("47EB0F39FBB54ECCA5CC7C9744028A40"), battle::MarchTerrain::Granicus},
+        {TEXT("831D2E85792C5DFCAFBF95C9977A4114"), battle::MarchTerrain::Fraustadt},
+        {TEXT("2DB8DD75301050769300FF906C1C84DE"), battle::MarchTerrain::Kliszow},
+        {TEXT("8DCBBD50057A5ECABAE1A0A58D94849D"), battle::MarchTerrain::Bouvines},
+        {TEXT("E9487555480B53DDB55F05CEE1885F45"), battle::MarchTerrain::Hastings},
+        {TEXT("3C6B98A848E1574FB7B55AAC7B34E809"), battle::MarchTerrain::Patay},
+        {TEXT("22E674A16632562B9E4F1718E52E2859"), battle::MarchTerrain::Bosworth},
+        {TEXT("6CA83B6340274A0B92DBBDC6DCDBE4AD"), battle::MarchTerrain::Castillon},
+        {TEXT("33BC0C6F226A508195759648C085EA58"), battle::MarchTerrain::Jena},
+        {TEXT("99B894D5BDAE4DEC91627D84D24FE7C9"), battle::MarchTerrain::Marengo},
+        {TEXT("6DC62DF89CFA521AB4829690956C5B22"), battle::MarchTerrain::Wachau},
+        {TEXT("A938BFE636485BD3A1B7DBA8251D74B4"), battle::MarchTerrain::Nordlingen},
+        {TEXT("F63E551F8B3152D399681B394B5F531A"), battle::MarchTerrain::Rocroi},
+        {TEXT("6D7EE25807D4514B8F6C6E69A2C87431"), battle::MarchTerrain::Mikatagahara},
+        {TEXT("1AB2126AA76C5916B8E82E65A7F3C978"), battle::MarchTerrain::Okehazama},
+        {TEXT("478F6CC7240352E4A8BA99FCF4DF769A"), battle::MarchTerrain::Austerlitz},
+        {TEXT("B60CD12CBABE4FF6894C48ECB4F96421"), battle::MarchTerrain::Crecy},
+    };
+    for (const auto& Case : Cases)
+    {
+        const FString Label = RegimentMissionPresets::TerrainKey(Case.Terrain);
+        FGuid Id;
+        FGuid::ParseExact(Case.Id, EGuidFormats::Digits, Id);
+        FMissionPreset Disk, BuiltIn;
+        FText Error;
+        if (!RegimentMissionPresets::Load(Directory, Id, Disk, Error))
+        {
+            AddError(Label + TEXT(" preset: ") + Error.ToString());
+            continue;
+        }
+        if (!TestTrue(Label + TEXT(" built-in loads"), RegimentMissionPresets::LoadBuiltIn(Id, BuiltIn)))
+            continue;
+        TestTrue(Label + TEXT(" keeps its terrain through built-in loading"), Disk.Terrain == Case.Terrain &&
+            BuiltIn.Terrain == Case.Terrain && battle::MarchUsesDetailedTerrain(BuiltIn.Terrain));
+        TestFalse(Label + TEXT(" has map sources"), BuiltIn.Sources.IsEmpty());
+        const auto Scenario = BuildPresetBattle(BuiltIn, MakeMissionOpening(BuiltIn), EMissionDeployment::AuthoredStart);
+        const auto AreaFields = [](const battle::Obstacle& Area)
+        {
+            return std::tie(Area.min_x, Area.min_y, Area.max_x, Area.max_y, Area.feature, Area.blocks_projectiles);
+        };
+        TestTrue(Label + TEXT(" shares terrain across editor and battle"),
+            std::ranges::equal(Scenario.obstacles, battle::MarchTerrainAreas(Case.Terrain, BuiltIn.Field),
+                std::ranges::equal_to{}, AreaFields, AreaFields) &&
+            Scenario.hill == battle::MarchHill(Case.Terrain, BuiltIn.Field));
+        TestTrue(Label + TEXT(" deploys its authored forces"), bool(battle::CreateWorld(Scenario, 42)));
+        if (BuiltIn.Objective.Goal == EMissionGoal::HillHold && Scenario.hill)
+            TestTrue(Label + TEXT(" has a reachable height objective"), battle::HillObjectiveCrest(*Scenario.hill).has_value());
+        if (BuiltIn.Objective.Goal == EMissionGoal::Crossing)
+            TestTrue(Label + TEXT(" uses a ford for the crossing objective"),
+                battle::MarchCrossingsFor(Case.Terrain)[BuiltIn.Objective.Crossing].ford);
+        if (Case.Terrain == battle::MarchTerrain::Crecy)
+        {
+            Disk.Objective.Goal = EMissionGoal::HillHold;
+            TestTrue(TEXT("Older custom Crecy presets can still hold the crest"),
+                RegimentMissionPresets::Validate(Disk, Error));
+        }
+    }
+    return !HasAnyErrors();
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentHistoricalMissionsTest, "RegimentBattle.MissionPresets.HistoricalBattles",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 

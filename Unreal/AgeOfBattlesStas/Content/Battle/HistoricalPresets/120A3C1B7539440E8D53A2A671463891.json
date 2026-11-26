@@ -1,7 +1,7 @@
 {
   "schema_version": 4,
   "name": "Херонея, 338 до н. э. · Войско Филиппа II",
-  "terrain": "OpenField",
+  "terrain": "Chaeronea",
   "era": {
     "id": "ancient",
     "version": 1,
@@ -23,10 +23,12 @@
     "required_regiments": 1,
     "crossing_team": 0
   },
-  "briefing": "Филипп II победил союз афинян и фиванцев в Беотии. В войске Филиппа сражался его сын Александр. В игре Македония выводит фалангу в центре и конный отряд на левом крыле, а греческий союз опирается на две линии гоплитов.\n\nПозиции и численность условны. Источники сверены 26.11.2026.",
+  "briefing": "Филипп II победил союз афинян и фиванцев в долине Кефисса в Беотии. В войске Филиппа сражался его сын Александр. Игровая карта передаёт открытую равнину между рекой и предгорьями у Херонеи.\n\nТочные линии построения остаются спорными. На карте условно показаны рельеф, позиции и численность войск. Источники сверены 26.11.2026.",
   "sources": [
     "https://www.metmuseum.org/de/essays/the-rise-of-macedonia-and-the-conquests-of-alexander-the-great",
-    "https://resources.metmuseum.org/resources/metpublications/pdf/Pergamon_and_the_Hellenistic_Kingdoms_of_the_Ancient_World.pdf"
+    "https://resources.metmuseum.org/resources/metpublications/pdf/Pergamon_and_the_Hellenistic_Kingdoms_of_the_Ancient_World.pdf",
+    "https://sourcebooks.web.fordham.edu/ancient/338chaeronea.asp",
+    "https://www.cambridge.org/core/journals/journal-of-hellenic-studies/article/abs/chaironeia-338-topographies-of-commemoration/B9CAA6CE82C7013319E994CC50F94DE7"
   ],
   "regiments": [
     {

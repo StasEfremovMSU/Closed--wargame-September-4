@@ -95,8 +95,10 @@ public:
                     const double Y = HalfY - Step.Y * Row;
                     const float Height = battle::HillHeight(*Plan.Hill,
                         {float(X + Step.X * .5), float(Y - Step.Y * .5), 0.f});
-                    const float Ratio = FMath::Clamp(Height / Plan.Hill->height_m, 0.f, 1.f);
-                    Box(Project(X, Y), Step * Meter, FMath::Lerp(Meadow, FLinearColor(.55f, .52f, .34f), Ratio), 1);
+                    const float Ratio = FMath::Min(FMath::Abs(Height) / Plan.Hill->height_m, 1.f);
+                    const FLinearColor Shade = Height < 0.f ? FLinearColor(.09f, .13f, .12f) :
+                        FLinearColor(.55f, .52f, .34f);
+                    Box(Project(X, Y), Step * Meter, FMath::Lerp(Meadow, Shade, Ratio), 1);
                 }
         }
         for (const auto& Feature : Plan.Terrain)

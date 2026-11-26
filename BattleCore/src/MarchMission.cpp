@@ -1,5 +1,6 @@
 #include "battle/MarchMission.h"
 #include "battle/Navigation.h"
+#include "HistoricalTerrainProfiles.h"
 #include <limits>
 #include <utility>
 
@@ -48,7 +49,16 @@ constexpr std::array<MarchCrossing, 3> BattlefieldFords{{{-70.f, 23.f, true},
                                                          { 70.f, 23.f, true}}};
 constexpr CrossingStrip BattlefieldStream{MarchRiverHalfWidth, BattlefieldFords};
 
+constexpr std::array<MarchCrossing, 3> GranicusFords{{{-78.f, 18.f, true},
+                                                       {  0.f, 25.f, true},
+                                                       { 78.f, 16.f, true}}};
+constexpr CrossingStrip GranicusRiver{MarchRiverHalfWidth, GranicusFords};
+
 const CrossingStrip *StripFor(MarchTerrain terrain) {
+    if (terrain == MarchTerrain::Granicus)
+        return &GranicusRiver;
+    if (historical::ReliefFor(terrain))
+        return nullptr;
     switch (terrain) {
     case MarchTerrain::OpenField:
     case MarchTerrain::Cannae:
@@ -82,8 +92,9 @@ const CrossingStrip *StripFor(MarchTerrain terrain) {
     case MarchTerrain::Lesnaya:
     case MarchTerrain::Kawanakajima:
         return &BattlefieldStream;
+    default:
+        return &River;
     }
-    return &River;
 }
 
 bool WithinCrossing(const MarchCrossing &crossing, float y, float half_frontage) {
@@ -433,6 +444,8 @@ bool MarchStartWalkable(const MarchRegiment &regiment, MarchTerrain terrain, boo
 }
 
 bool MarchUsesDetailedTerrain(MarchTerrain terrain) {
+    if (historical::ReliefFor(terrain))
+        return true;
     switch (terrain) {
     case MarchTerrain::Waterloo:
     case MarchTerrain::Sekigahara:
@@ -471,6 +484,15 @@ std::span<const MarchCrossing> MarchCrossingsFor(MarchTerrain terrain) {
 
 std::optional<TerrainHill> MarchHill(MarchTerrain terrain, MarchField field) {
     if (!ValidField(field)) return std::nullopt;
+    if (const auto relief = historical::ReliefFor(terrain)) {
+        const auto &profile = *historical::FindProfile(*relief);
+        float height = 0.f;
+        for (const auto &lobe : profile.heights)
+            height = std::max(height, std::abs(lobe.height_m));
+        return height > 0.f
+            ? std::optional{TerrainHill{field.HalfWidth(), field.HalfHeight(), height, .35f, *relief}}
+            : std::nullopt;
+    }
     switch (terrain) {
     case MarchTerrain::Hill:
         return TerrainHill{};
@@ -482,12 +504,8 @@ std::optional<TerrainHill> MarchHill(MarchTerrain terrain, MarchField field) {
         return TerrainHill{.37f * field.HalfWidth(), .90f * field.HalfHeight(), 2.4f, .26f};
     case MarchTerrain::Grunwald:
         return TerrainHill{.67f * field.HalfWidth(), .81f * field.HalfHeight(), 4.2f, .40f};
-    case MarchTerrain::Crecy:
-        return TerrainHill{field.HalfWidth(), field.HalfHeight(), 7.f, .35f, TerrainRelief::Waterloo};
     case MarchTerrain::Lutzen:
         return TerrainHill{.44f * field.HalfWidth(), .33f * field.HalfHeight(), 5.5f, .47f};
-    case MarchTerrain::Austerlitz:
-        return TerrainHill{field.HalfWidth(), field.HalfHeight(), 11.f, .35f, TerrainRelief::Waterloo};
     case MarchTerrain::Borodino:
         return TerrainHill{.59f * field.HalfWidth(), .47f * field.HalfHeight(), 7.f, .43f};
     default:
@@ -502,6 +520,11 @@ void AppendHistoricalAreas(std::vector<Obstacle> &areas, MarchTerrain terrain, M
         areas.push_back({x1 * field.HalfWidth(), y1 * field.HalfHeight(),
                          x2 * field.HalfWidth(), y2 * field.HalfHeight(), blocks_projectiles, feature});
     };
+    if (const auto relief = historical::ReliefFor(terrain)) {
+        for (const auto &area : historical::FindProfile(*relief)->areas)
+            add(area.min_x, area.min_y, area.max_x, area.max_y, area.feature, area.blocks_projectiles);
+        return;
+    }
     using T = TerrainFeature;
     const auto redoubt = [&](float front, float back, float low, float high) {
         const float ramp_depth = .25f * (back - front);
@@ -591,11 +614,6 @@ void AppendHistoricalAreas(std::vector<Obstacle> &areas, MarchTerrain terrain, M
         add(.04f, .69f, .81f, .99f, T::Forest);
         add(-.41f, .28f, .12f, .63f, T::PloughedField);
         break;
-    case MarchTerrain::Crecy:
-        add(-.94f, -.99f, -.51f, -.66f, T::Forest);
-        add(.33f, .78f, .91f, .99f, T::Forest);
-        add(-.48f, -.50f, -.09f, .52f, T::PloughedField);
-        break;
     case MarchTerrain::Breitenfeld:
         add(-1.f, .49f, 1.f, .51f, T::Road);
         add(-.24f, -.70f, .31f, -.43f, T::PloughedField);
@@ -627,13 +645,6 @@ void AppendHistoricalAreas(std::vector<Obstacle> &areas, MarchTerrain terrain, M
         add(.074f, .52f, .54f, .87f, T::Forest);
         add(.45f, -.44f, .50f, -.36f, T::Barrier, true);
         add(.10f, .09f, .34f, .26f, T::Marsh);
-        break;
-    case MarchTerrain::Austerlitz:
-        add(-1.f, -.22f, .86f, -.20f, T::Road);
-        add(.24f, .68f, .56f, .89f, T::River);
-        add(.64f, .82f, .94f, .99f, T::River);
-        add(.55f, .72f, .72f, .86f, T::Marsh);
-        add(-.60f, -.60f, -.04f, -.37f, T::PloughedField);
         break;
     case MarchTerrain::Borodino:
         add(-1.f, -.99f, -.35f, -.74f, T::River);

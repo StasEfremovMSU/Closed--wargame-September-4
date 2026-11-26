@@ -5,6 +5,7 @@
 #include "battle/Formation.h"
 #include "battle/command/Services.h"
 #include "doctest.h"
+#include <array>
 using namespace battle;
 namespace c = battle::command;
 

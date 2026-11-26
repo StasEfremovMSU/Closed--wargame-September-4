@@ -1,6 +1,7 @@
 #include "battle/Terrain.h"
 #include "battle/Scenario.h"
 #include "battle/Formation.h"
+#include "HistoricalTerrainProfiles.h"
 
 namespace battle {
 namespace {
@@ -41,8 +42,16 @@ double Height(const TerrainHill &hill, double x, double y) {
             .92 * HillMass(x, y, -.49, .92, .55, .45),
             .63 * HillMass(x, y, .69, -.91, .47, .43),
             .52 * HillMass(x, y, .72, .92, .42, .41)});
+    default:
+        double rise = 0., depression = 0.;
+        if (const auto *profile = historical::FindProfile(hill.relief))
+            for (const auto &lobe : profile->heights) {
+                const double height = lobe.height_m * HillMass(x, y, lobe.x, lobe.y, lobe.rx, lobe.ry);
+                rise = std::max(rise, height);
+                depression = std::min(depression, height);
+            }
+        return rise + depression;
     }
-    return 0.;
 }
 
 struct SegmentInterval {
@@ -86,6 +95,18 @@ bool CrossesSteepSlope(const TerrainHill &hill, Vec3 from, Vec3 to) {
             std::max(std::abs(from.y), std::abs(to.y)) < .43f * hill.radius_y_m)
             return false;
 
+        if (const auto *profile = historical::FindProfile(hill.relief)) {
+            double rise_grade = 0., depression_grade = 0.;
+            for (const auto &lobe : profile->heights) {
+                // Upper bound on the gradient of a squared compact elliptical lobe.
+                const double grade = 1.55 * std::abs(lobe.height_m) /
+                    std::min(lobe.rx * hill.radius_x_m, lobe.ry * hill.radius_y_m);
+                auto &bound = lobe.height_m >= 0.f ? rise_grade : depression_grade;
+                bound = std::max(bound, grade);
+            }
+            if (rise_grade + depression_grade < SteepGrade)
+                return false;
+        }
         const auto delta = to - from;
         const int steps = std::max(1, int(std::ceil(std::min(160., std::hypot(
             double(delta.x) / hill.radius_x_m, double(delta.y) / hill.radius_y_m) * 55.))));
@@ -340,8 +361,7 @@ bool ValidHill(const TerrainHill &hill) {
            std::isfinite(hill.height_m) && hill.height_m > 0.f &&
            std::isfinite(hill.crest_fraction) && hill.crest_fraction >= 0.f &&
            hill.crest_fraction < 1.f &&
-           (hill.relief == TerrainRelief::CentralHill || hill.relief == TerrainRelief::Waterloo ||
-            hill.relief == TerrainRelief::Sekigahara);
+           hill.relief <= TerrainRelief::HistoricalLast;
 }
 
 float HillHeight(const TerrainHill &hill, Vec3 point) {
@@ -354,6 +374,14 @@ float HillHeight(const TerrainHill &hill, Vec3 point) {
 std::optional<TerrainCrest> HillObjectiveCrest(const TerrainHill &hill) {
     if (!ValidHill(hill) || hill.relief == TerrainRelief::Sekigahara)
         return std::nullopt;
+    if (const auto *profile = historical::FindProfile(hill.relief)) {
+        if (!profile->crest)
+            return std::nullopt;
+        const auto &crest = *profile->crest;
+        Vec3 center{crest.x * hill.radius_x_m, crest.y * hill.radius_y_m, 0.f};
+        center.z = HillHeight(hill, center);
+        return TerrainCrest{center, crest.rx * hill.radius_x_m, crest.ry * hill.radius_y_m};
+    }
     if (hill.relief == TerrainRelief::Waterloo)
         return TerrainCrest{{.27f * hill.radius_x_m, 0.f, hill.height_m},
                             .085f * hill.radius_x_m, .64f * hill.radius_y_m};

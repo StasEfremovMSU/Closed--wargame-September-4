@@ -241,6 +241,26 @@ FText TerrainName(battle::MarchTerrain Terrain)
         case MarchTerrain::Lesnaya: return LOCTEXT("LesnayaTerrain", "Лесная");
         case MarchTerrain::Austerlitz: return LOCTEXT("AusterlitzTerrain", "Аустерлиц");
         case MarchTerrain::Borodino: return LOCTEXT("BorodinoTerrain", "Бородино");
+        case MarchTerrain::Thermopylae: return LOCTEXT("ThermopylaeTerrain", "Фермопилы");
+        case MarchTerrain::Issus: return LOCTEXT("IssusTerrain", "Исс");
+        case MarchTerrain::Alesia: return LOCTEXT("AlesiaTerrain", "Алезия");
+        case MarchTerrain::Chaeronea: return LOCTEXT("ChaeroneaTerrain", "Херонея");
+        case MarchTerrain::Hydaspes: return LOCTEXT("HydaspesTerrain", "Гидасп");
+        case MarchTerrain::Granicus: return LOCTEXT("GranicusTerrain", "Граник");
+        case MarchTerrain::Fraustadt: return LOCTEXT("FraustadtTerrain", "Фрауштадт");
+        case MarchTerrain::Kliszow: return LOCTEXT("KliszowTerrain", "Клишов");
+        case MarchTerrain::Bouvines: return LOCTEXT("BouvinesTerrain", "Бувин");
+        case MarchTerrain::Hastings: return LOCTEXT("HastingsTerrain", "Гастингс");
+        case MarchTerrain::Patay: return LOCTEXT("PatayTerrain", "Пате");
+        case MarchTerrain::Bosworth: return LOCTEXT("BosworthTerrain", "Босворт");
+        case MarchTerrain::Castillon: return LOCTEXT("CastillonTerrain", "Кастийон");
+        case MarchTerrain::Jena: return LOCTEXT("JenaTerrain", "Йена");
+        case MarchTerrain::Marengo: return LOCTEXT("MarengoTerrain", "Маренго");
+        case MarchTerrain::Wachau: return LOCTEXT("WachauTerrain", "Вахау");
+        case MarchTerrain::Nordlingen: return LOCTEXT("NordlingenTerrain", "Нёрдлинген");
+        case MarchTerrain::Rocroi: return LOCTEXT("RocroiTerrain", "Рокруа");
+        case MarchTerrain::Mikatagahara: return LOCTEXT("MikatagaharaTerrain", "Микатагахара");
+        case MarchTerrain::Okehazama: return LOCTEXT("OkehazamaTerrain", "Окэхадзама");
         case MarchTerrain::StoneWalls: return LOCTEXT("StoneWalls", "Каменные стены");
         case MarchTerrain::StirlingBridge: return LOCTEXT("StirlingBridge", "Стерлингский мост");
         case MarchTerrain::Cannae: return LOCTEXT("CannaeBanks", "Берег Ауфида");
@@ -994,6 +1014,17 @@ TSharedRef<SWidget> SRegimentMissionHud::MakeTerrainSelector()
                 }), true)
         ];
     };
+    const auto AddEraRow = [this, &AddOption, &EraBattlefields](const TCHAR* Era,
+        std::initializer_list<MarchTerrain> Terrains)
+    {
+        const auto Row = SNew(SHorizontalBox).Visibility_Lambda([this, EraId = FString(Era)]
+        {
+            return Draft.Era.Id == EraId ? EVisibility::SelfHitTestInvisible : EVisibility::Collapsed;
+        });
+        for (const auto Terrain : Terrains)
+            AddOption(Row, Terrain);
+        EraBattlefields->AddSlot().AutoHeight().Padding(0, 0, 0, 7)[Row];
+    };
     AddOption(Top, MarchTerrain::River);
     AddOption(Top, MarchTerrain::OpenField);
     AddOption(Top, MarchTerrain::Hill);
@@ -1007,32 +1038,20 @@ TSharedRef<SWidget> SRegimentMissionHud::MakeTerrainSelector()
     AddOption(OtherBattlefields, MarchTerrain::Poltava);
     AddOption(OtherBattlefields, MarchTerrain::Nagashino);
     AddOption(OtherBattlefields, MarchTerrain::Sekigahara);
-    struct FEraBattlefields
-    {
-        const TCHAR* Era;
-        MarchTerrain First;
-        TOptional<MarchTerrain> Second;
-    };
-    const FEraBattlefields EraOptions[] = {
-        {TEXT("ancient"), MarchTerrain::Gaugamela, MarchTerrain::Zama},
-        {TEXT("high_medieval"), MarchTerrain::Dorylaeum, MarchTerrain::Kalka},
-        {TEXT("late_medieval"), MarchTerrain::Crecy, MarchTerrain::Grunwald},
-        {TEXT("renaissance"), MarchTerrain::Breitenfeld, MarchTerrain::Lutzen},
-        {TEXT("sengoku"), MarchTerrain::Kawanakajima, {}},
-        {TEXT("great_northern_war"), MarchTerrain::Narva, MarchTerrain::Lesnaya},
-        {TEXT("napoleonic"), MarchTerrain::Austerlitz, MarchTerrain::Borodino},
-    };
-    for (const auto& Options : EraOptions)
-    {
-        const auto Row = SNew(SHorizontalBox).Visibility_Lambda([this, Era = FString(Options.Era)]
-        {
-            return Draft.Era.Id == Era ? EVisibility::SelfHitTestInvisible : EVisibility::Collapsed;
-        });
-        AddOption(Row, Options.First);
-        if (Options.Second)
-            AddOption(Row, *Options.Second);
-        EraBattlefields->AddSlot().AutoHeight()[Row];
-    }
+    AddEraRow(TEXT("ancient"), {MarchTerrain::Gaugamela, MarchTerrain::Zama});
+    AddEraRow(TEXT("ancient"), {MarchTerrain::Thermopylae, MarchTerrain::Granicus, MarchTerrain::Issus});
+    AddEraRow(TEXT("ancient"), {MarchTerrain::Chaeronea, MarchTerrain::Hydaspes, MarchTerrain::Alesia});
+    AddEraRow(TEXT("high_medieval"), {MarchTerrain::Dorylaeum, MarchTerrain::Kalka});
+    AddEraRow(TEXT("high_medieval"), {MarchTerrain::Hastings, MarchTerrain::Bouvines});
+    AddEraRow(TEXT("late_medieval"), {MarchTerrain::Crecy, MarchTerrain::Grunwald});
+    AddEraRow(TEXT("late_medieval"), {MarchTerrain::Patay, MarchTerrain::Castillon, MarchTerrain::Bosworth});
+    AddEraRow(TEXT("renaissance"), {MarchTerrain::Breitenfeld, MarchTerrain::Lutzen});
+    AddEraRow(TEXT("renaissance"), {MarchTerrain::Nordlingen, MarchTerrain::Rocroi});
+    AddEraRow(TEXT("sengoku"), {MarchTerrain::Kawanakajima, MarchTerrain::Mikatagahara, MarchTerrain::Okehazama});
+    AddEraRow(TEXT("great_northern_war"), {MarchTerrain::Narva, MarchTerrain::Lesnaya});
+    AddEraRow(TEXT("great_northern_war"), {MarchTerrain::Fraustadt, MarchTerrain::Kliszow});
+    AddEraRow(TEXT("napoleonic"), {MarchTerrain::Austerlitz, MarchTerrain::Borodino});
+    AddEraRow(TEXT("napoleonic"), {MarchTerrain::Marengo, MarchTerrain::Jena, MarchTerrain::Wachau});
     return SNew(SVerticalBox)
         + SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 7)[Top]
         + SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 7)[Bottom]
@@ -1323,10 +1342,13 @@ TSharedRef<SWidget> SRegimentMissionHud::MakeObjectiveControls()
             + SHorizontalBox::Slot().AutoWidth().Padding(0, 0, 12, 0)
             [
                 SNew(SBox)
-                .Visibility_Lambda([this] { return Draft.Terrain == battle::MarchTerrain::StirlingBridge
-                    ? EVisibility::Collapsed : EVisibility::Visible; })
+                .Visibility_Lambda([this] { return battle::MarchCrossingsFor(Draft.Terrain).size() > 1
+                    ? EVisibility::Visible : EVisibility::Collapsed; })
                 [
-                    MakeField<int32>(74.f, 1, static_cast<int32>(battle::MarchCrossings.size()),
+                    MakeField<int32>(74.f, 1, TAttribute<TOptional<int32>>::CreateLambda([this]() -> TOptional<int32>
+                        {
+                            return FMath::Max(1, int32(battle::MarchCrossingsFor(Draft.Terrain).size()));
+                        }),
                         LOCTEXT("CrossingPointHelp", "Номер переправы на карте"),
                         TAttribute<int32>::CreateLambda([this] { return Draft.Objective.Crossing + 1; }),
                         SSpinBox<int32>::FOnValueChanged::CreateLambda([this](int32 Value)
@@ -1342,9 +1364,11 @@ TSharedRef<SWidget> SRegimentMissionHud::MakeObjectiveControls()
                 {
                     if (Draft.Terrain == battle::MarchTerrain::StirlingBridge)
                         return LOCTEXT("StirlingCrossingName", "Стерлингский мост");
-                    const int32 Index = FMath::Clamp(Draft.Objective.Crossing, 0, static_cast<int32>(battle::MarchCrossings.size()) - 1);
-                    return FText::Format(LOCTEXT("CrossingPointY", "Y = {0} м"),
-                        FText::AsNumber(battle::MarchCrossings[Index].y));
+                    const auto Crossings = battle::MarchCrossingsFor(Draft.Terrain);
+                    if (Crossings.empty())
+                        return FText::GetEmpty();
+                    const int32 Index = FMath::Clamp(Draft.Objective.Crossing, 0, int32(Crossings.size()) - 1);
+                    return FText::Format(LOCTEXT("CrossingPointY", "Y = {0} м"), FText::AsNumber(Crossings[Index].y));
                 }), 15, FSlateColor(Muted))
             ]
         ];

@@ -1,7 +1,7 @@
 {
   "schema_version": 4,
   "name": "Исс, 333 до н. э. · Между горами и морем",
-  "terrain": "Agincourt",
+  "terrain": "Issus",
   "era": {
     "id": "ancient",
     "version": 1,
@@ -23,10 +23,13 @@
     "required_regiments": 1,
     "crossing_team": 0
   },
-  "briefing": "В Киликии Александр впервые встретил в бою самого Дария III. Игровое поле передаёт сжатый фронт у Исса. Македонская фаланга образует центр, а персидские части сгруппированы плотнее. Берег и горы обозначены границами игрового участка.\n\nПозиции и численность условны. Источники сверены 26.11.2026.",
+  "briefing": "В Киликии Александр впервые встретил в бою Дария III. Македоняне идут с юга по прибрежной равнине между заливом и предгорьями Амана. Персидская линия занимает противоположный берег Пинара. Крутые участки берега чередуются с пологими переправами.\n\nБереговая линия, русло и переправы показаны схематически. Отождествление Пинара с конкретной современной рекой остаётся спорным. Позиции и численность условны. Источники сверены 26.11.2026.",
   "sources": [
     "https://www.metmuseum.org/it/toah/ht/04/waa",
-    "https://beta.perseus.tufts.edu/urn%3Acts%3AgreekLit%3Atlg0099.tlg001.perseus-eng4%3A14.5/"
+    "https://beta.perseus.tufts.edu/urn%3Acts%3AgreekLit%3Atlg0099.tlg001.perseus-eng4%3A14.5/",
+    "https://en.wikisource.org/wiki/The_Anabasis_of_Alexander/Book_II/Chapter_VIII",
+    "https://en.wikisource.org/wiki/The_Anabasis_of_Alexander/Book_II/Chapter_X",
+    "https://academic.oup.com/edited-volume/61673/chapter-abstract/549651276"
   ],
   "regiments": [
     {

@@ -34,7 +34,11 @@ void AssignCoverGuardSlots(const World &, RegimentState &);
 TerrainShot EvaluateTerrainShot(Vec3 from, Vec3 to, std::span<const Obstacle>,
                                bool hard_projectile_cover = false);
 
-enum class TerrainRelief : uint8_t { CentralHill, Waterloo, Sekigahara };
+enum class TerrainRelief : uint8_t {
+    CentralHill, Waterloo, Sekigahara,
+    // Stored in snapshots. The historical field IDs and their order are defined in HistoricalTerrainProfiles.cpp.
+    HistoricalFirst, HistoricalLast = HistoricalFirst + 21
+};
 
 struct TerrainHill {
     float radius_x_m{36.f}, radius_y_m{28.f}, height_m{4.f}, crest_fraction{.35f};

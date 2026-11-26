@@ -1,7 +1,7 @@
 {
   "schema_version": 5,
   "name": "Гидасп, 326 до н. э. · Войско царя Пора",
-  "terrain": "OpenField",
+  "terrain": "Hydaspes",
   "era": {
     "id": "ancient",
     "version": 1,
@@ -23,10 +23,12 @@
     "required_regiments": 1,
     "crossing_team": 0
   },
-  "briefing": "Александр встретил войско царя Пора у Гидаспа, современного Джелама. Источники отмечают присутствие боевых слонов. Сценарий начинается после переправы македонян, когда обе армии уже могут развернуться на одном берегу.\n\nПозиции и численность условны. Источники сверены 26.11.2026.",
+  "briefing": "Александр встретил войско царя Пора у Гидаспа, современного Джелама. По Арриану, Пор развернул войско со слонами на ровной местности с твёрдым песчаным грунтом. Игра начинается после переправы македонян. Обе армии стоят на одном берегу рядом с разливом реки.\n\nТочное место битвы спорно. Форма поймы, позиции и численность показаны условно. Источники сверены 26.11.2026.",
   "sources": [
     "https://resources.metmuseum.org/resources/metpublications/pdf/Pergamon_and_the_Hellenistic_Kingdoms_of_the_Ancient_World.pdf",
-    "https://resources.metmuseum.org/resources/metpublications/pdf/Art_of_the_Hellenistic_Kingdoms_From_Pergamon_to_Rome.pdf"
+    "https://resources.metmuseum.org/resources/metpublications/pdf/Art_of_the_Hellenistic_Kingdoms_From_Pergamon_to_Rome.pdf",
+    "https://en.wikisource.org/wiki/The_Anabasis_of_Alexander/Book_V/Chapter_XV",
+    "https://dsr.nii.ac.jp/toyobunko/XIII-6-A-4/V-1/page/0055.html.en"
   ],
   "regiments": [
     {

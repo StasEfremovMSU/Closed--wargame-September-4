@@ -8,7 +8,10 @@ namespace battle {
 enum class MarchTerrain { River, OpenField, StoneWalls, StirlingBridge, Cannae, Peipus, Hill,
                           Waterloo, Sekigahara, Agincourt, Pavia, Poltava, Nagashino,
                           Gaugamela, Zama, Kalka, Dorylaeum, Grunwald, Crecy, Breitenfeld, Lutzen,
-                          Kawanakajima, Narva, Lesnaya, Austerlitz, Borodino };
+                          Kawanakajima, Narva, Lesnaya, Austerlitz, Borodino,
+                          Thermopylae, Issus, Alesia, Chaeronea, Hydaspes, Granicus,
+                          Fraustadt, Kliszow, Bouvines, Hastings, Patay, Bosworth, Castillon,
+                          Jena, Marengo, Wachau, Nordlingen, Rocroi, Mikatagahara, Okehazama };
 enum class MarchPosture { TravelColumn, BattleLine };
 
 struct MarchCrossing {

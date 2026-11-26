@@ -74,6 +74,22 @@ bool FRegimentGroundPickTest::RunTest(const FString& Parameters)
         TestTrue(TEXT("The pick agrees with the authoritative profile"),
             FMath::IsNearlyEqual(Meters.Z, double(battle::HillHeight(*Hill, {float(Meters.X), float(Meters.Y), 0.f})), .005));
     }
+    const battle::MarchField Field{790, 510};
+    const auto Lowland = battle::MarchHill(battle::MarchTerrain::Kliszow, Field);
+    const FVector LowPoint(13.0 * Field.HalfWidth(), -77.0 * Field.HalfHeight(), 0.0);
+    const auto Basin = RegimentGroundPoint(FieldOrigin + LowPoint + FVector(-1500, 0, 1200),
+        FVector(1, 0, -1), FieldOrigin, Lowland);
+    if (TestTrue(TEXT("An oblique pick reaches a depression below the base plane"), Basin.IsSet()))
+    {
+        const FVector Meters = (*Basin - FieldOrigin) / 100.0;
+        TestTrue(TEXT("The basin pick is below the base plane"), Meters.Z < -2.0);
+        TestTrue(TEXT("The basin pick follows the real surface"), FMath::IsNearlyEqual(Meters.Z,
+            double(battle::HillHeight(*Lowland, {float(Meters.X), float(Meters.Y), 0.f})), .005));
+    }
+    const auto BelowBase = RegimentGroundPoint(FieldOrigin + LowPoint + FVector(0, 0, -120),
+        Down, FieldOrigin, Lowland);
+    TestTrue(TEXT("A downward ray starting below the base plane still reaches the basin"),
+        BelowBase.IsSet() && BelowBase->Z < FieldOrigin.Z - 200.0);
     return !HasAnyErrors();
 }
 

@@ -16,17 +16,20 @@ inline TOptional<FVector> RegimentGroundPoint(const FVector& RayOrigin, const FV
     const double Base = (FieldOrigin.Z - RayOrigin.Z) / Ray.Z;
     if (!Hill)
         return Base > 0.0 ? TOptional<FVector>(RayOrigin + Ray * Base) : TOptional<FVector>{};
-    if (Ray.Z >= 0.0 || Base <= 0.0)
+    if (Ray.Z >= 0.0)
         return {};
-
     constexpr double Cm = 100.0;
+    const bool bSignedRelief = Hill->relief >= battle::TerrainRelief::HistoricalFirst;
+    const auto BaseHit = Base > 0.0 ? TOptional<FVector>(RayOrigin + Ray * Base) : TOptional<FVector>{};
     const auto GroundClearance = [&](double Distance)
     {
         const FVector Position = (RayOrigin + Ray * Distance - FieldOrigin) / Cm;
         return Position.Z - battle::HillHeight(*Hill, {float(Position.X), float(Position.Y), 0.f});
     };
     double Start = FMath::Max(0.0, Base + Cm * Hill->height_m / Ray.Z);
-    double End = Base;
+    double End = bSignedRelief ? Base - Cm * Hill->height_m / Ray.Z : Base;
+    if (Start > End || End <= 0.0)
+        return {};
     const auto ClipAxis = [&](double Position, double Direction, double Radius)
     {
         if (FMath::IsNearlyZero(Direction))
@@ -40,7 +43,7 @@ inline TOptional<FVector> RegimentGroundPoint(const FVector& RayOrigin, const FV
     const FVector Relative = RayOrigin - FieldOrigin;
     if (!ClipAxis(Relative.X, Ray.X, Hill->radius_x_m * Cm) ||
         !ClipAxis(Relative.Y, Ray.Y, Hill->radius_y_m * Cm))
-        return RayOrigin + Ray * Base;
+        return BaseHit;
 
     if (GroundClearance(Start) <= 0.0)
         return RayOrigin + Ray * Start;
@@ -65,5 +68,5 @@ inline TOptional<FVector> RegimentGroundPoint(const FVector& RayOrigin, const FV
         }
         return RayOrigin + Ray * Hit;
     }
-    return RayOrigin + Ray * Base;
+    return BaseHit;
 }

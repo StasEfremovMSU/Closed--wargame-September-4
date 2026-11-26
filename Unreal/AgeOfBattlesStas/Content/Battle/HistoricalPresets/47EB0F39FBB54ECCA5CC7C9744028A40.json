@@ -1,7 +1,7 @@
 {
   "schema_version": 4,
   "name": "Граник, 334 до н. э. · Начало похода",
-  "terrain": "River",
+  "terrain": "Granicus",
   "era": {
     "id": "ancient",
     "version": 1,
@@ -23,10 +23,12 @@
     "required_regiments": 1,
     "crossing_team": 0
   },
-  "briefing": "На реке Граник в Малой Азии Александр столкнулся с войском персидских сатрапов. Победа открыла ему путь дальше вглубь Малой Азии. На игровой карте обозначена условная переправа, которую атакует Македония. Проведите через неё один полк или разгромите противника.\n\nПозиции и численность условны. Источники сверены 26.11.2026.",
+  "briefing": "На реке Граник в Малой Азии Александр столкнулся с войском персидских сатрапов. Сценарий следует рассказу Арриана о переправе в присутствии противника. Вдоль русла чередуются обрывистые участки берега и броды.\n\nПроведите один македонский полк через отмеченный брод или разгромите противника. Русло, броды, позиции и численность условны. Античные авторы по-разному описывают ход переправы. Источники сверены 26.11.2026.",
   "sources": [
     "https://beta.perseus.tufts.edu/urn%3Acts%3AgreekLit%3Atlg0099.tlg001.perseus-eng4%3A13.1/",
-    "https://resources.metmuseum.org/resources/metpublications/pdf/Pergamon_and_the_Hellenistic_Kingdoms_of_the_Ancient_World.pdf"
+    "https://resources.metmuseum.org/resources/metpublications/pdf/Pergamon_and_the_Hellenistic_Kingdoms_of_the_Ancient_World.pdf",
+    "https://en.wikisource.org/wiki/The_Anabasis_of_Alexander/Book_I/Chapter_XIII",
+    "https://dergipark.org.tr/tr/pub/troymuseum/article/1631720"
   ],
   "regiments": [
     {
