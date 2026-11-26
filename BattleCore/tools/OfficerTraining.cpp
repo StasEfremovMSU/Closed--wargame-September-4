@@ -1,3 +1,4 @@
+#include "battle/MarchMission.h"
 #include "battle/Simulation.h"
 #include "battle/Snapshot.h"
 #include "battle/command/GroupPolicy.h"
@@ -257,6 +258,41 @@ const std::array FourthRoundHoldout{
             {0, -12, 2, -7, true, TerrainFeature::StoneWall},
             {5, 5, 9, 6, true, TerrainFeature::Hedge}},
            true, true, Doctrine::Napoleonic},
+};
+
+Family BattlefieldSector(std::string_view name, MarchTerrain terrain, Doctrine doctrine,
+                         Vec3 lead, Vec3 primary, Vec3 wing, Vec3 alternate) {
+    constexpr MarchField field{320, 210};
+    return {name, {lead, 0.f}, {primary, Pi}, {wing, 0.f}, {alternate, Pi},
+            MarchTerrainAreas(terrain, field), true, true, doctrine, MarchHill(terrain, field)};
+}
+
+// Compact two-regiment-per-side experiments use game terrain geometry and ground rules.
+const std::array FifthRoundTrain{
+    BattlefieldSector("granicus_center", MarchTerrain::Granicus, Doctrine::Ancient,
+        {-18, 1, 0}, {11, 1, 0}, {-22, 16, 0}, {13, 20, 0}),
+    BattlefieldSector("senlac_approach", MarchTerrain::Hastings, Doctrine::Ancient,
+        {-17, -2, 0}, {13, 0, 0}, {-18, 12, 0}, {16, 15, 0}),
+    BattlefieldSector("waterloo_middle", MarchTerrain::Waterloo, Doctrine::Napoleonic,
+        {-17, -3, 0}, {14, -2, 0}, {-21, 12, 0}, {15, 15, 0}),
+};
+const std::array FifthRoundValidation{
+    BattlefieldSector("bouvines_plateau", MarchTerrain::Bouvines, Doctrine::Ancient,
+        {-17, 0, 0}, {12, 1, 0}, {-20, 14, 0}, {15, 18, 0}),
+    BattlefieldSector("kliszow_east", MarchTerrain::Kliszow, Doctrine::Napoleonic,
+        {-16, 10, 0}, {16, 10, 0}, {-19, 23, 0}, {15, 27, 0}),
+    BattlefieldSector("marengo_approach", MarchTerrain::Marengo, Doctrine::Napoleonic,
+        {-18, -2, 0}, {12, -1, 0}, {-21, 13, 0}, {15, 16, 0}),
+};
+const std::array FifthRoundHoldout{
+    BattlefieldSector("issus_fords", MarchTerrain::Issus, Doctrine::Ancient,
+        {-19, 1, 0}, {12, 2, 0}, {-21, 14, 0}, {13, 18, 0}),
+    BattlefieldSector("patay_hedges", MarchTerrain::Patay, Doctrine::Ancient,
+        {-18, 4, 0}, {13, 5, 0}, {-20, 18, 0}, {14, 22, 0}),
+    BattlefieldSector("borodino_outer_line", MarchTerrain::Borodino, Doctrine::Napoleonic,
+        {-18, -11, 0}, {14, -10, 0}, {-20, 9, 0}, {16, 12, 0}),
+    BattlefieldSector("wachau_ridge", MarchTerrain::Wachau, Doctrine::Napoleonic,
+        {-20, -4, 0}, {14, -2, 0}, {-20, 14, 0}, {16, 17, 0}),
 };
 
 struct Job {
@@ -918,21 +954,30 @@ int main(int argc, char **argv) {
         const bool collect_third_round = mode == "collect-historical-v3";
         const bool validate_third_round = mode == "validate-historical-v3";
         const bool evaluate_third_round = mode == "evaluate-historical-v3";
+        const bool collect_fifth_round = mode == "collect-historical-v5";
+        const bool validate_fifth_round = mode == "validate-historical-v5";
+        const bool evaluate_fifth_round = mode == "evaluate-historical-v5";
+        const bool fifth_round = collect_fifth_round || validate_fifth_round || evaluate_fifth_round;
         const bool collect_fourth_round = mode == "collect-historical-v4";
         const bool validate_fourth_round = mode == "validate-historical-v4";
         const bool evaluate_fourth_round = mode == "evaluate-historical-v4";
         const bool commitment_round = collect_third_round || validate_third_round || evaluate_third_round ||
-                                      collect_fourth_round || validate_fourth_round || evaluate_fourth_round;
+                                      collect_fourth_round || validate_fourth_round || evaluate_fourth_round || fifth_round;
         const bool validate_second_round = mode == "validate-historical-v2";
         const bool second_round = validate_second_round || mode == "collect-historical-v2" ||
                                   mode == "evaluate-historical-v2";
-        const bool evaluate = validate_third_round || evaluate_third_round ||
+        const bool evaluate = validate_fifth_round || evaluate_fifth_round || validate_third_round || evaluate_third_round ||
                               validate_fourth_round || evaluate_fourth_round ||
                               mode == "evaluate" || mode == "evaluate-historical" ||
                               mode == "evaluate-historical-v2" || validate_second_round;
         const bool historical = second_round || mode == "collect-historical" ||
                                 mode == "evaluate-historical";
-        const bool use_weights = evaluate || ((collect_third_round || collect_fourth_round) && argc == 6);
+        constexpr std::string_view BlockArgument = "--seed-block=";
+        const std::string_view tail = argc > 5 ? argv[argc - 1] : "";
+        const bool has_block = fifth_round && tail.starts_with(BlockArgument);
+        const char *block = has_block ? argv[--argc] + BlockArgument.size() : nullptr;
+        const bool use_weights = evaluate ||
+            ((collect_third_round || collect_fourth_round || collect_fifth_round) && argc == 6);
         if ((mode != "collect" && !historical && !commitment_round && !evaluate) ||
             argc != (use_weights ? 6 : 5)) {
             std::cerr << "battle_officer_training collect output_dir seeds_per_family workers\n"
@@ -940,7 +985,7 @@ int main(int argc, char **argv) {
                          "model_file\n"
                       << "Use collect-historical and evaluate-historical for the historical pilot.\n"
                       << "Use collect-historical-vN, validate-historical-vN, or evaluate-historical-vN "
-                         "for historical rounds 2 to 4.\n";
+                         "for historical rounds 2 to 5. Round 5 accepts --seed-block=N.\n";
             return 2;
         }
         auto parse_count = [](const char *arg, unsigned max) {
@@ -952,6 +997,7 @@ int main(int argc, char **argv) {
         };
         const auto seeds = parse_count(argv[3], 500);
         const auto workers = parse_count(argv[4], 32);
+        const uint64_t offset = fifth_round ? 1'000'000ULL * (block ? parse_count(block, 1000) : 1) : 0;
         std::optional<c::GroupPolicy> model;
         if (use_weights) {
             std::ifstream weights(argv[5]);
@@ -970,10 +1016,25 @@ int main(int argc, char **argv) {
                                       std::string_view split) {
             for (size_t family = 0; family < families.size(); ++family)
                 for (unsigned seed = 0; seed < seeds; ++seed)
-                    jobs.push_back({&families[family], start_seed + family * 1000 + seed,
+                    jobs.push_back({&families[family], offset + start_seed + family * 1000 + seed,
                                     split.empty() ? (seed % 5 == 4 ? "validation" : "train") : split});
         };
-        if (validate_fourth_round)
+        if (validate_fifth_round)
+            add_families(FifthRoundValidation, 500000, "validation");
+        else if (evaluate_fifth_round)
+            add_families(FifthRoundHoldout, 700000, "holdout");
+        else if (collect_fifth_round) {
+            const uint64_t start = model ? 300000 : 100000;
+            add_families(HistoricalTrain, start, "train");
+            add_families(HistoricalValidation, start + 10000, "train");
+            add_families(HistoricalHoldout, start + 20000, "train");
+            add_families(SecondRoundValidation, start + 30000, "train");
+            add_families(SecondRoundHoldout, start + 40000, "train");
+            add_families(ThirdRoundHoldout, start + 50000, "train");
+            add_families(FifthRoundTrain, start + 60000, "train");
+            if (!model)
+                add_families(FifthRoundValidation, 490000, "validation");
+        } else if (validate_fourth_round)
             add_families(ThirdRoundValidation, 855000, "validation");
         else if (evaluate_fourth_round)
             add_families(FourthRoundHoldout, 880000, "holdout");

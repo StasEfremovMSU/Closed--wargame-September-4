@@ -36,6 +36,8 @@ public:
     void ReleaseReserve(battle::World& World);
     FText Status(const battle::World& World) const;
     FText Report() const;
+    TOptional<battle::Tick> FirstCrestControlTick() const { return FirstHillControl; }
+    TOptional<battle::Tick> FirstReserveContactTick() const { return FirstContact; }
 
 private:
     void Finish(battle::World& World, int32 Winner, FText Explanation);

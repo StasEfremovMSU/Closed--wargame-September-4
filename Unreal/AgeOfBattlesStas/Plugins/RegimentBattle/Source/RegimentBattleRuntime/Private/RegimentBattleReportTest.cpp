@@ -78,4 +78,89 @@ bool FRegimentBattleReportTest::RunTest(const FString& Parameters)
     return !HasAnyErrors();
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentBattleCombatMomentsTest,
+    "RegimentBattle.Results.Debrief.CombatMoments",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FRegimentBattleCombatMomentsTest::RunTest(const FString&)
+{
+    battle::World World;
+    World.regiments.resize(2);
+    World.regiments[0].id = {1};
+    World.regiments[0].name = "Forward battalion";
+    World.regiments[0].units = {{1}};
+    World.regiments[1].id = {87};
+    World.regiments[1].name = "Rear battalion";
+    World.regiments[1].team = 1;
+    World.regiments[1].units = {{2}};
+    World.units.resize(2);
+    World.units[0].id = {1};
+    World.units[0].regiment = {1};
+    World.units[1].id = {2};
+    World.units[1].regiment = {87};
+    FRegimentBattleReportAccumulator Accumulator(World);
+
+    World.tick = 40;
+    World.events = {{{1}, 40, battle::EventKind::Hit, {1}, {2}, {87}, 10.f, "melee attack"}};
+    Accumulator.Observe(World);
+    World.tick = 80;
+    World.regiments[1].panic = true;
+    World.events = {{{2}, 80, battle::EventKind::OrderChanged, {}, {}, {87}, 0.f,
+        "panic: attacked from the rear"}};
+    Accumulator.Observe(World);
+    Accumulator.Observe(World);
+    World.tick = 163;
+    World.regiments[1].units.clear();
+    World.units[1].alive = false;
+    World.events = {{{3}, 163, battle::EventKind::OrderChanged, {}, {}, {87}, 0.f,
+        "rout: fled off the battlefield"}};
+    World.outcome = battle::BattleOutcome::Victory;
+    World.winner_team = 0;
+
+    const auto Report = Accumulator.Finish(World);
+    if (!TestTrue(TEXT("A finished battle has a report"), Report.IsSet()) ||
+        !TestEqual(TEXT("The debrief shows two turning points and the outcome"), Report->Moments.Num(), 3))
+        return false;
+    TestTrue(TEXT("An early panic matters more than routine damage"),
+        Report->Moments[0].Kind == ERegimentBattleMomentKind::Panic);
+    TestEqual(TEXT("The panic retains its original simulation tick"), Report->Moments[0].Tick, battle::Tick(80));
+    TestTrue(TEXT("The panic identifies the affected battalion"),
+        Report->Moments[0].Description.ToString().Contains(TEXT("Rear battalion")));
+    TestTrue(TEXT("The final rout survives the finishing tick"),
+        Report->Moments[1].Kind == ERegimentBattleMomentKind::Rout);
+    TestEqual(TEXT("The rout and finish retain the same tick"), Report->Moments[1].Tick, battle::Tick(163));
+    TestTrue(TEXT("The outcome follows events at the same tick"),
+        Report->Moments[2].Kind == ERegimentBattleMomentKind::BattleEnded);
+    TestEqual(TEXT("The final entry is timed"), Report->Moments[2].Tick, battle::Tick(163));
+    return !HasAnyErrors();
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentBattleMissionMomentsTest,
+    "RegimentBattle.Results.Debrief.MissionMoments",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FRegimentBattleMissionMomentsTest::RunTest(const FString&)
+{
+    battle::World World;
+    FRegimentBattleReportAccumulator Accumulator(World);
+    World.tick = 240;
+    World.outcome = battle::BattleOutcome::Victory;
+    World.winner_team = 0;
+    const auto Report = Accumulator.Finish(World, {battle::Tick(142), battle::Tick(38)});
+    if (!TestTrue(TEXT("A finished mission has a report"), Report.IsSet()) ||
+        !TestEqual(TEXT("Both observed objective milestones appear"), Report->Moments.Num(), 3))
+        return false;
+    TestTrue(TEXT("Mission milestones use chronological order"),
+        Report->Moments[0].Kind == ERegimentBattleMomentKind::ReserveContact &&
+        Report->Moments[1].Kind == ERegimentBattleMomentKind::CrestControl);
+    TestEqual(TEXT("Reserve contact retains its actual tick"), Report->Moments[0].Tick, battle::Tick(38));
+    TestEqual(TEXT("Crest control retains its actual tick"), Report->Moments[1].Tick, battle::Tick(142));
+
+    FRegimentBattleReportAccumulator SparseBattle(battle::World{});
+    const auto SparseReport = SparseBattle.Finish(World);
+    return TestTrue(TEXT("An uneventful battle never invents turning points"),
+        SparseReport && SparseReport->Moments.Num() == 1 &&
+        SparseReport->Moments[0].Kind == ERegimentBattleMomentKind::BattleEnded) && !HasAnyErrors();
+}
+
 #endif

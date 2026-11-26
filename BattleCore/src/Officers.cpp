@@ -725,11 +725,23 @@ void UpdateOfficers(World &w, const NavigationService &nav) {
                 const float yaw = resolved.facing.value_or(Length(delta) > .01f
                                       ? std::atan2(delta.y, delta.x) : r.pose.yaw);
                 const Pose end{d.point, yaw};
+                const auto player_destination = resolved.player_direct ? std::optional<Pose>{end} : std::nullopt;
                 existing_route = existing_route && (!resolved.facing || r.route.back() == end) &&
                                  (r.waypoint == r.route.size() ||
-                                  CanContinueFormationMarch(w, r, r.route[r.waypoint]));
+                                  CanContinueFormationMarch(w, r, r.route[r.waypoint], player_destination));
                 if (!existing_route)
                     d.path = FindFormationRoute(nav, w, r, end);
+            } else if (const auto &lane = r.march_lane;
+                       existing_route && active && d.action == OrderType::MoveTo && !resolved.player_direct &&
+                       w.scenario.field_bounds && w.tick >= r.decision_tick && lane && lane->order == resolved.id &&
+                       lane->detour.empty() && lane->recovery_attempts == MarchLane::MaxAttempts &&
+                       lane->stalled_seconds >= MarchLane::StallSeconds) {
+                // The original marching route used the terrain grid. Once a regiment has waited
+                // and tried local detours, route around live formations or report the failed move.
+                existing_route = false;
+                d.path = FindFormationRoute(nav, w, r, {d.point, r.route.back().yaw});
+                d.reason = d.path.status == Status::Ok ? "reroute around occupied formations"
+                                                       : "assigned movement route blocked by formations";
             } else if (!existing_route) {
                 const auto *lead = FindUnit(w, r.units.front());
                 const bool face_travel = w.scenario.rules.regiment_tactics &&

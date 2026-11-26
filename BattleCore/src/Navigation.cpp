@@ -323,12 +323,20 @@ bool FormationRouteSegmentClear(const World &world, const RegimentState &moving,
     return (!slope || slope(moving.pose, goal)) && ClearFormationBlocks(moving.pose, goal, Footprint(moving), occupied);
 }
 
-bool CanContinueFormationMarch(const World &world, const RegimentState &moving, Pose waypoint) {
+bool CanContinueFormationMarch(const World &world, const RegimentState &moving, Pose waypoint,
+                               std::optional<Pose> player_destination) {
     const auto footprint = Footprint(moving);
     const auto slope = HillConstraint(world, moving);
     if ((slope && !slope(moving.pose, waypoint)) ||
         !ClearTerrain(moving.pose, waypoint, footprint, world))
         return false;
+    // An enemy that occupies the destination can still be approached along the
+    // plotted route. The movement sweep stops the march at physical contact.
+    if (player_destination && std::ranges::any_of(world.regiments, [&](const auto &other) {
+            return other.team != moving.team && !other.units.empty() &&
+                   RectanglesOverlap(*player_destination, footprint, other.pose, Footprint(other));
+        }))
+        return true;
     if (const auto &lane = moving.march_lane; lane && lane->waypoint == waypoint &&
         lane->detour.empty() && lane->recovery_attempts == MarchLane::MaxAttempts &&
         lane->stalled_seconds >= MarchLane::StallSeconds)

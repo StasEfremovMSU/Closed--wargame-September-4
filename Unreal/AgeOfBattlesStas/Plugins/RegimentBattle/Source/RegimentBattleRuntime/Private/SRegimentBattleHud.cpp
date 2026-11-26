@@ -724,19 +724,64 @@ TSharedRef<SWidget> MakeOfficerCommandGroup(FText Heading, const TSharedRef<SVer
         ];
 }
 
-FText OfficerDeliveryText(const FRegimentOrderPresentation& Order)
+FText OfficerDeliveryPhase(const FRegimentOrderPresentation& Order)
 {
     switch (Order.Delivery)
     {
-        case ERegimentOrderDelivery::Paused: return LOCTEXT("OrderPaused", "Приказ ждёт продолжения боя");
-        case ERegimentOrderDelivery::Queued: return LOCTEXT("OrderQueued", "Приказ в очереди");
-        case ERegimentOrderDelivery::InTransit: return LOCTEXT("OrderInTransit", "Приказ передаётся полку");
-        case ERegimentOrderDelivery::Executing: return LOCTEXT("OrderExecuting", "Приказ получен · выполняется");
-        case ERegimentOrderDelivery::Complete: return LOCTEXT("OrderComplete", "Приказ выполнен");
-        case ERegimentOrderDelivery::Unapplied:
-            return FText::Format(LOCTEXT("OrderUnapplied", "Исполнение не подтверждено. {0}"), Order.OrderDetail);
+        case ERegimentOrderDelivery::Paused: return LOCTEXT("OrderPaused", "Ждёт продолжения боя");
+        case ERegimentOrderDelivery::Queued: return LOCTEXT("OrderQueued", "В очереди");
+        case ERegimentOrderDelivery::InTransit: return Order.bCourier ? LOCTEXT("CourierInTransit", "Адъютант в пути")
+            : LOCTEXT("OrderInTransit", "Передаётся полку");
+        case ERegimentOrderDelivery::AwaitingCourier: return LOCTEXT("CourierAwaiting", "Ждёт свободного адъютанта");
+        case ERegimentOrderDelivery::Delivered: return LOCTEXT("CourierDelivered", "Доставлен командиру группы");
+        case ERegimentOrderDelivery::Executing: return LOCTEXT("OrderExecuting", "Выполняется");
+        case ERegimentOrderDelivery::Complete: return LOCTEXT("OrderComplete", "Выполнен");
+        case ERegimentOrderDelivery::Blocked: return LOCTEXT("OrderBlocked", "Временно приостановлен");
+        case ERegimentOrderDelivery::Unapplied: return Order.bCourier ? LOCTEXT("CourierUnapplied", "Не доставлен")
+            : LOCTEXT("OrderUnapplied", "Исполнение не подтверждено");
         default: return FText::GetEmpty();
     }
+}
+
+FText OfficerDeliveryText(TWeakObjectPtr<ARegimentBattleField> Field)
+{
+    const auto& State = OfficerState(Field);
+    const auto& Order = State.Order;
+    if (Order.Delivery == ERegimentOrderDelivery::None)
+        return Order.Follow == ERegimentFollowStatus::Off ? FText::GetEmpty()
+            : FText::Format(LOCTEXT("FollowSummary", "{0} · {1}"),
+                ShortFriendlyRegimentName(Field, State.Regiment), Order.Activity);
+    const auto Recipient = Order.bCourier ? Order.Recipient : ShortFriendlyRegimentName(Field, Order.Recipient);
+    const auto Phase = OfficerDeliveryPhase(Order);
+    return Order.OrderDetail.IsEmpty()
+        ? FText::Format(LOCTEXT("OrderSummary", "{0} · {1}\n{2}"), Recipient, Order.Action, Phase)
+        : FText::Format(LOCTEXT("OrderSummaryWithDetail", "{0} · {1}\n{2} · {3}"),
+            Recipient, Order.Action, Phase, Order.OrderDetail);
+}
+
+TSharedRef<SWidget> MakeOfficerOrderFeedback(TWeakObjectPtr<ARegimentBattleField> Field, bool bInCommandSheet)
+{
+    return SNew(STextBlock)
+        .Visibility_Lambda([Field, bInCommandSheet]
+        {
+            const auto& State = OfficerState(Field);
+            return Field.IsValid() && Field->OfficerCommandsOpen() == bInCommandSheet &&
+                (State.Order.Delivery != ERegimentOrderDelivery::None ||
+                    State.Order.Follow != ERegimentFollowStatus::Off || !State.Notice.IsEmpty())
+                ? EVisibility::HitTestInvisible : EVisibility::Collapsed;
+        })
+        .Text_Lambda([Field]
+        {
+            const auto& Notice = OfficerState(Field).Notice;
+            const auto Delivery = OfficerDeliveryText(Field);
+            if (Notice.IsEmpty())
+                return Delivery;
+            if (Delivery.IsEmpty())
+                return Notice;
+            return FText::Format(LOCTEXT("OrderAndNotice", "{0}\n{1}"), Notice, Delivery);
+        })
+        .ColorAndOpacity(Brass).Font(FCoreStyle::GetDefaultFontStyle("Regular", 13))
+        .AutoWrapText(true);
 }
 
 TSharedRef<SWidget> MakeOfficerCommandSheet(TWeakObjectPtr<ARegimentBattleField> Field)
@@ -859,6 +904,12 @@ TSharedRef<SWidget> MakeOfficerCommandSheet(TWeakObjectPtr<ARegimentBattleField>
                 + SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 7)
                 [
                     SNew(STextBlock)
+                    .Visibility_Lambda([Field]
+                    {
+                        const auto& Order = OfficerState(Field).Order;
+                        return Order.Delivery == ERegimentOrderDelivery::None && Order.Follow != ERegimentFollowStatus::Off
+                            ? EVisibility::Collapsed : EVisibility::HitTestInvisible;
+                    })
                     .Text_Lambda([Field]
                     {
                         const auto& Order = OfficerState(Field).Order;
@@ -866,6 +917,10 @@ TSharedRef<SWidget> MakeOfficerCommandSheet(TWeakObjectPtr<ARegimentBattleField>
                     })
                     .ColorAndOpacity(Muted).Font(FCoreStyle::GetDefaultFontStyle("Regular", 13))
                     .OverflowPolicy(ETextOverflowPolicy::Ellipsis)
+                ]
+                + SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 6)
+                [
+                    MakeOfficerOrderFeedback(Field, true)
                 ]
                 + SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 6)
                 [
@@ -914,19 +969,6 @@ TSharedRef<SWidget> MakeOfficerCommandSheet(TWeakObjectPtr<ARegimentBattleField>
                             ]
                         ]
                     ]
-                ]
-                + SVerticalBox::Slot().AutoHeight().Padding(0, 6, 0, 0)
-                [
-                    SNew(STextBlock)
-                    .Text_Lambda([Field] { return OfficerDeliveryText(OfficerState(Field).Order); })
-                    .Visibility_Lambda([Field]
-                    {
-                        return OfficerState(Field).Order.Delivery == ERegimentOrderDelivery::None
-                            ? EVisibility::Collapsed : EVisibility::HitTestInvisible;
-                    })
-                    .ToolTipText_Lambda([Field] { return OfficerDeliveryText(OfficerState(Field).Order); })
-                    .ColorAndOpacity(Brass).Font(FCoreStyle::GetDefaultFontStyle("Regular", 13))
-                    .OverflowPolicy(ETextOverflowPolicy::Ellipsis)
                 ]
             ]
         ];
@@ -1132,15 +1174,7 @@ TSharedRef<SWidget> MakeCompactOfficerHud(TWeakObjectPtr<ARegimentBattleField> F
                 ]
                 + SVerticalBox::Slot().AutoHeight().Padding(0, 5, 0, 0)
                 [
-                    SNew(STextBlock)
-                    .Text_Lambda([Field] { return OfficerState(Field).Notice; })
-                    .Visibility_Lambda([Field]
-                    {
-                        return OfficerState(Field).Notice.IsEmpty()
-                            ? EVisibility::Collapsed : EVisibility::HitTestInvisible;
-                    })
-                    .ColorAndOpacity(Brass).Font(FCoreStyle::GetDefaultFontStyle("Regular", 13))
-                    .AutoWrapText(true)
+                    MakeOfficerOrderFeedback(Field, false)
                 ]
             ]
         ];

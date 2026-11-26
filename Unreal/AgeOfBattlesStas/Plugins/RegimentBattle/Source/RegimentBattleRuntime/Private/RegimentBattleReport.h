@@ -25,6 +25,32 @@ struct FRegimentBattleReportRow
     FRegimentBattleCount Count;
 };
 
+enum class ERegimentBattleMomentKind : uint8
+{
+    CrestControl,
+    ReserveContact,
+    Rout,
+    CommandVacant,
+    Panic,
+    Rally,
+    FirstLoss,
+    FirstHit,
+    BattleEnded
+};
+
+struct FRegimentBattleMoment
+{
+    ERegimentBattleMomentKind Kind;
+    battle::Tick Tick;
+    FText Description;
+};
+
+struct FRegimentBattleDebriefMilestones
+{
+    TOptional<battle::Tick> FirstCrestControl;
+    TOptional<battle::Tick> FirstReserveContact;
+};
+
 struct FRegimentBattleReport
 {
     FText Mission;
@@ -32,6 +58,7 @@ struct FRegimentBattleReport
     FText SideNames[2];
     FRegimentBattleCount Sides[2];
     TArray<FRegimentBattleReportRow> Rows;
+    TArray<FRegimentBattleMoment> Moments;
     battle::BattleOutcome Outcome = battle::BattleOutcome::Running;
     int32 Winner = -1;
     uint64 ElapsedSeconds = 0;
@@ -43,11 +70,18 @@ public:
     explicit FRegimentBattleReportAccumulator(const battle::World& World);
 
     void Observe(const battle::World& World);
-    TOptional<FRegimentBattleReport> Finish(const battle::World& World);
+    TOptional<FRegimentBattleReport> Finish(const battle::World& World,
+        const FRegimentBattleDebriefMilestones& Milestones = {});
 
 private:
+    void ObserveOrderMoment(const battle::BattleEvent& Event);
+    void RememberMoment(ERegimentBattleMomentKind Kind, battle::Tick Tick, int32 Row, const FText& Message);
+    void BuildTimeline(const battle::World& World, const FRegimentBattleDebriefMilestones& Milestones);
+
     FRegimentBattleReport Report;
+    TMap<uint64, int32> RowsByRegiment;
     TMap<uint64, int32> RowsByUnit;
+    TOptional<FRegimentBattleMoment> CombatMoments[int32(ERegimentBattleMomentKind::BattleEnded)];
     TSet<uint64> ConfirmedDeaths;
     bool bFinished = false;
 };

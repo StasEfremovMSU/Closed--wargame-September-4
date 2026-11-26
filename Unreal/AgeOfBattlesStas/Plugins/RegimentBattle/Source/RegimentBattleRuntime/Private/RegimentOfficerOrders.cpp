@@ -1,6 +1,7 @@
 #include "RegimentOfficerOrders.h"
 
 #include "RegimentBattleField.h"
+#include "RegimentBattleNotices.h"
 #include "RegimentBattlePlayback.h"
 #include <map>
 #include <tuple>
@@ -152,10 +153,63 @@ bool CanReformHere(const battle::World& World, const battle::RegimentState& Regi
     return battle::FormationRouteSegmentClear(World, Candidate, Candidate.pose);
 }
 
-bool IsPlayerOrder(const battle::Order& Order, battle::RegimentId Recipient, battle::OfficerId Issuer)
+bool IsDirectPlayerOrder(const battle::Order& Order)
 {
-    return Issuer && Order.issuer == Issuer && Order.recipient == Recipient &&
-        Order.priority == battle::PlayerOrderPriority;
+    // Direct orders have a delivery delay. The immediate holds issued by a delivered group task
+    // are its effects on the regiments and should leave the group's delivery status visible.
+    return Order.issuer && Order.priority == battle::PlayerOrderPriority && Order.delivery_tick > Order.created_tick;
+}
+
+FText FormationOrderBlocker(const battle::World& World, const battle::RegimentState& Regiment)
+{
+    if (Regiment.panic)
+        return LOCTEXT("FormationOrderPanic", "Полк паникует. Сначала соберите его.");
+    if (battle::IsDeploying(World, Regiment))
+        return LOCTEXT("FormationOrderDeploying", "Полк ещё развёртывается.");
+    if (Regiment.melee_engaged)
+        return LOCTEXT("FormationOrderMelee", "Полк в рукопашной.");
+    return {};
+}
+
+FText OrderAction(battle::OrderType Type)
+{
+    using battle::OrderType;
+    switch (Type)
+    {
+    case OrderType::Hold: return LOCTEXT("OrderHoldAction", "Удерживать позицию");
+    case OrderType::MoveTo: return LOCTEXT("OrderMoveAction", "Манёвр");
+    case OrderType::Attack: return LOCTEXT("OrderAttackAction", "Атака");
+    case OrderType::Withdraw:
+    case OrderType::FallBack: return LOCTEXT("OrderWithdrawAction", "Отход");
+    case OrderType::Rally: return LOCTEXT("OrderRallyAction", "Сбор");
+    case OrderType::HoldLine: return LOCTEXT("OrderHoldLineAction", "Держать строй");
+    case OrderType::Brace: return LOCTEXT("OrderBraceAction", "Упор");
+    case OrderType::Pursue: return LOCTEXT("OrderPursueAction", "Погоня");
+    }
+    return {};
+}
+
+FText PendingRegimentAction(const battle::Command& Command, battle::UnitId Officer,
+    battle::OfficerId Issuer, battle::RegimentId Regiment)
+{
+    if (Command.unit != Officer)
+        return {};
+    if (Command.kind == battle::CommandKind::IssueOrder)
+        return IsDirectPlayerOrder(Command.order) && Command.order.recipient == Regiment && Command.order.issuer == Issuer
+            ? OrderAction(Command.order.type) : FText{};
+    if (Command.regiment != Regiment)
+        return {};
+    switch (Command.kind)
+    {
+    case battle::CommandKind::ReformRegiment: return LOCTEXT("OrderReformAction", "Перестроение");
+    case battle::CommandKind::SetSkirmishers:
+        return Command.skirmishers_enabled ? LOCTEXT("OrderSkirmisherAction", "Выслать застрельщиков")
+                                          : LOCTEXT("OrderRecallAction", "Отозвать застрельщиков");
+    case battle::CommandKind::SetRegimentFollowing:
+        return Command.follow_enabled ? LOCTEXT("OrderFollowAction", "За мной")
+                                      : LOCTEXT("OrderStopFollowAction", "Прекратить следование");
+    default: return {};
+    }
 }
 
 struct FCourierAddress
@@ -176,6 +230,58 @@ std::optional<FCourierAddress> CourierAddress(const battle::World& World, battle
         !battle::command::UsesStaffCourier(World, Army->id, Leaf->parent))
         return {};
     return FCourierAddress{Army->id, Leaf->parent, General->id};
+}
+
+bool IsPlayerDispatch(const battle::command::CommandTask& Task, const FCourierAddress& Address)
+{
+    return Task.author == Address.General && Task.issuer == Address.Army && Task.recipient == Address.Group &&
+        Task.priority == battle::PlayerOrderPriority && Task.action == battle::command::TaskKind::HoldArea;
+}
+
+void SetCourierRecipient(FRegimentOrderPresentation& Result, const battle::World& World, const FCourierAddress& Address)
+{
+    const auto* Group = battle::command::FindNode(World.command_state->hierarchy, Address.Group);
+    Result.bCourier = true;
+    Result.Recipient = Group && !Group->name.empty() ? FText::AsCultureInvariant(UTF8_TO_TCHAR(Group->name.c_str()))
+        : FText::Format(LOCTEXT("UnnamedCourierGroup", "Группа {0}"), Address.Group.value);
+    Result.Action = OrderAction(battle::OrderType::Hold);
+}
+
+const battle::command::MessageEnvelope* LatestDispatch(const battle::World& World, const FCourierAddress& Address)
+{
+    const battle::command::MessageEnvelope* Latest = nullptr;
+    for (const auto& Message : World.command_state->communications.messages)
+    {
+        const auto* Task = std::get_if<battle::command::CommandTask>(&Message.payload);
+        if (Message.channel == battle::command::DeliveryChannel::Courier && Task && IsPlayerDispatch(*Task, Address) &&
+            (!Latest || Message.id.value > Latest->id.value))
+            Latest = &Message;
+    }
+    return Latest;
+}
+
+void DescribeDispatchPhase(FRegimentOrderPresentation& Result, battle::command::DeliveryStatus Status, bool bPaused)
+{
+    using battle::command::DeliveryStatus;
+    using Delivery = ERegimentOrderDelivery;
+    switch (Status)
+    {
+    case DeliveryStatus::Queued: Result.Delivery = Delivery::AwaitingCourier; break;
+    case DeliveryStatus::InTransit: Result.Delivery = bPaused ? Delivery::Paused : Delivery::InTransit; break;
+    case DeliveryStatus::Delivered: Result.Delivery = Delivery::Delivered; break;
+    case DeliveryStatus::Expired:
+        Result.Delivery = Delivery::Unapplied;
+        Result.OrderDetail = LOCTEXT("CourierExpired", "Срок доставки истёк");
+        break;
+    case DeliveryStatus::Lost:
+        Result.Delivery = Delivery::Unapplied;
+        Result.OrderDetail = LOCTEXT("CourierLost", "Адъютант не доставил приказ");
+        break;
+    case DeliveryStatus::RecipientUnavailable:
+        Result.Delivery = Delivery::Unapplied;
+        Result.OrderDetail = LOCTEXT("CourierNoRecipient", "Командир группы недоступен");
+        break;
+    }
 }
 
 void QueueCourierTask(const battle::World& World, const FCourierAddress& Address,
@@ -225,57 +331,11 @@ std::optional<FText> QueueStaffHold(const battle::World& World, std::span<const 
         int32(Groups.size()));
 }
 
-FText DescribeCourier(const battle::World& World, battle::RegimentId Regiment,
-    std::span<const battle::CommandEnvelope> Pending, bool bPaused)
-{
-    const auto Address = CourierAddress(World, Regiment);
-    if (!Address)
-        return {};
-    const auto IsGroupOrder = [&](const battle::command::CommandTask& Task)
-    {
-        return Task.author == Address->General && Task.recipient == Address->Group &&
-            Task.priority == battle::PlayerOrderPriority;
-    };
-    if (std::ranges::any_of(Pending, [&](const auto& Packet)
-        {
-            return Packet.command.kind == battle::CommandKind::IssueCommandTask &&
-                IsGroupOrder(Packet.command.command_task);
-        }))
-        return bPaused ? LOCTEXT("CourierPausedQueued", "Приказ подготовлен · пауза")
-            : LOCTEXT("CourierIssued", "Приказ подготовлен");
-    const auto& Messages = World.command_state->communications.messages;
-    const auto Latest = std::find_if(Messages.rbegin(), Messages.rend(), [&](const auto& Message)
-    {
-        const auto* Task = std::get_if<battle::command::CommandTask>(&Message.payload);
-        return Message.channel == battle::command::DeliveryChannel::Courier && Task && IsGroupOrder(*Task);
-    });
-    if (Latest == Messages.rend())
-        return {};
-    using battle::command::DeliveryStatus;
-    switch (Latest->status)
-    {
-    case DeliveryStatus::Queued:
-        return LOCTEXT("CourierWaiting", "Приказ ждёт свободного адъютанта");
-    case DeliveryStatus::InTransit:
-        return bPaused ? LOCTEXT("CourierPausedTransit", "Адъютант в пути · пауза")
-            : LOCTEXT("CourierInTransit", "Адъютант в пути");
-    case DeliveryStatus::Delivered:
-        return LOCTEXT("CourierDelivered", "Приказ доставлен командиру группы");
-    case DeliveryStatus::Expired:
-        return LOCTEXT("CourierExpired", "Срок доставки приказа истёк");
-    case DeliveryStatus::Lost:
-        return LOCTEXT("CourierLost", "Адъютант не доставил приказ");
-    case DeliveryStatus::RecipientUnavailable:
-        return LOCTEXT("CourierNoRecipient", "Адъютант не нашёл командира группы");
-    }
-    return {};
-}
-
 void FPlayerOrderJournal::Observe(const battle::World& World)
 {
     const auto Record = [this](const battle::Order& Order)
     {
-        if (!Order.id || !Order.issuer || Order.priority != battle::PlayerOrderPriority)
+        if (!Order.id || !IsDirectPlayerOrder(Order))
             return;
         auto& Latest = Orders.FindOrAdd(Order.issuer.value).FindOrAdd(Order.recipient.value);
         if (Latest.id.value <= Order.id.value)
@@ -299,16 +359,33 @@ FRegimentOrderPresentation DescribeOrder(const battle::World& World, const battl
 {
     FRegimentOrderPresentation Result;
     const auto* Record = OfficerRecord(World, World.controlled);
-    const bool bQueued = std::ranges::any_of(Pending, [&](const battle::CommandEnvelope& Packet)
-    {
-        return Packet.command.unit == World.controlled && Packet.command.regiment == Regiment.id;
-    });
-    const battle::Order* Latest = nullptr;
+    const bool bDeploying = battle::IsDeploying(World, Regiment);
+    const auto Address = Regiment.team == 0 ? CourierAddress(World, Regiment.id) : std::nullopt;
+    using Delivery = ERegimentOrderDelivery;
     if (Record)
+    {
+        for (auto It = Pending.rbegin(); It != Pending.rend(); ++It)
+        {
+            const auto& Command = It->command;
+            if (Address && Command.kind == battle::CommandKind::IssueCommandTask && IsPlayerDispatch(Command.command_task, *Address))
+                SetCourierRecipient(Result, World, *Address);
+            else
+                Result.Action = PendingRegimentAction(Command, World.controlled, Record->id, Regiment.id);
+            if (!Result.Action.IsEmpty())
+            {
+                Result.Delivery = bPaused ? Delivery::Paused : Delivery::Queued;
+                break;
+            }
+        }
+    }
+
+    const battle::Order* Latest = nullptr;
+    if (Record && Result.Delivery == Delivery::None)
     {
         const auto Newest = [&](const battle::Order& Order)
         {
-            if (IsPlayerOrder(Order, Regiment.id, Record->id) && (!Latest || Order.id.value > Latest->id.value))
+            if (IsDirectPlayerOrder(Order) && Order.recipient == Regiment.id && Order.issuer == Record->id &&
+                (!Latest || Order.id.value > Latest->id.value))
                 Latest = &Order;
         };
         if (Regiment.order)
@@ -316,25 +393,49 @@ FRegimentOrderPresentation DescribeOrder(const battle::World& World, const battl
         for (const auto& Order : World.pending_orders)
             Newest(Order);
     }
-    const auto* Previous = Journal && Record ? Journal->Latest(Regiment.id, Record->id) : nullptr;
+    const auto* Previous = Journal && Record && Result.Delivery == Delivery::None
+        ? Journal->Latest(Regiment.id, Record->id) : nullptr;
     const bool bDisappeared = Previous && (!Latest || Previous->id.value > Latest->id.value);
     if (bDisappeared)
         Latest = Previous;
-    if (Latest && !bQueued)
-        Result.OrderId = Latest->id.value;
-    if (bQueued || (Latest && Latest->status == battle::OrderStatus::Pending && !bDisappeared))
-        Result.Delivery = bPaused ? ERegimentOrderDelivery::Paused
-            : bQueued ? ERegimentOrderDelivery::Queued : ERegimentOrderDelivery::InTransit;
+    const auto* Dispatch = Address && Result.Delivery == Delivery::None ? LatestDispatch(World, *Address) : nullptr;
+    if (Dispatch && (!Latest || Dispatch->created_tick > Latest->created_tick))
+    {
+        SetCourierRecipient(Result, World, *Address);
+        DescribeDispatchPhase(Result, Dispatch->status, bPaused);
+    }
     else if (Latest)
     {
         using battle::OrderStatus;
-        if (Latest->status == OrderStatus::Completed)
-            Result.Delivery = ERegimentOrderDelivery::Complete;
+        Result.OrderId = Latest->id.value;
+        Result.Action = OrderAction(Latest->type);
+        if (!bDisappeared && Latest->status == OrderStatus::Pending)
+            Result.Delivery = bPaused ? Delivery::Paused : Delivery::InTransit;
+        else if (Latest->status == OrderStatus::Completed)
+            Result.Delivery = Delivery::Complete;
         else if (!bDisappeared && Latest->status == OrderStatus::Active)
-            Result.Delivery = ERegimentOrderDelivery::Executing;
+        {
+            Result.Delivery = Delivery::Executing;
+            if (Regiment.panic && Latest->type != battle::OrderType::Rally && Latest->type != battle::OrderType::Withdraw)
+            {
+                Result.Delivery = Delivery::Blocked;
+                Result.OrderDetail = LOCTEXT("OrderPausedByPanic", "Полк паникует");
+            }
+            else if (bDeploying && !Regiment.panic)
+            {
+                Result.Delivery = Delivery::Blocked;
+                Result.OrderDetail = LOCTEXT("OrderPausedByDeployment", "Полк развёртывается");
+            }
+            else if (!Regiment.melee_engaged && Regiment.march_lane && Regiment.march_lane->order == Latest->id &&
+                Regiment.march_lane->detour.empty() && Regiment.march_lane->stalled_seconds >= battle::MarchLane::StallSeconds)
+            {
+                Result.Delivery = Delivery::Blocked;
+                Result.OrderDetail = LOCTEXT("OrderPausedByTraffic", "Полк ждёт, когда освободится проход");
+            }
+        }
         else
         {
-            Result.Delivery = ERegimentOrderDelivery::Unapplied;
+            Result.Delivery = Delivery::Unapplied;
             if (Latest->expiry_tick && Latest->expiry_tick <= World.tick &&
                 (Latest->status == OrderStatus::Cancelled || (bDisappeared && Latest->status == OrderStatus::Pending &&
                     Latest->expiry_tick <= Latest->delivery_tick)))
@@ -347,6 +448,8 @@ FRegimentOrderPresentation DescribeOrder(const battle::World& World, const battl
                 Result.OrderDetail = LOCTEXT("PlayerOrderUnconfirmed", "Подтверждение от полка не получено.");
         }
     }
+    if (!Result.bCourier && Result.Delivery != Delivery::None)
+        Result.Recipient = RegimentName(Regiment);
 
     const bool bFollowing = World.controlled && Regiment.following_officer == World.controlled;
     if (Regiment.panic)
@@ -355,7 +458,7 @@ FRegimentOrderPresentation DescribeOrder(const battle::World& World, const battl
         Result.Activity = bFollowing ? LOCTEXT("FollowPanic", "Следование приостановлено · паника")
                                     : LOCTEXT("ActivityPanic", "Паника · отход");
     }
-    else if (battle::IsDeploying(World, Regiment))
+    else if (bDeploying)
     {
         Result.Follow = bFollowing ? ERegimentFollowStatus::Deploying : ERegimentFollowStatus::Off;
         Result.Activity = bFollowing ? LOCTEXT("FollowDeployment", "Следование приостановлено · развёртывание")
@@ -565,7 +668,7 @@ FText QueueOrder(const battle::World& World, const battle::NavigationService&,
     }
     case ERegimentPlayerOrder::Follow:
         if (!bFollowing && (Regiment->panic || Regiment->melee_engaged || bDeploying))
-            return LOCTEXT("FollowUnavailable", "Полк сможет следовать после сбора, развёртывания или выхода из рукопашной.");
+            return FormationOrderBlocker(World, *Regiment);
         SetFollow(!bFollowing);
         return bFollowing ? LOCTEXT("FollowStopped", "Следование отменено.")
                           : LOCTEXT("FollowStarted", "Приказано следовать за офицером.");
@@ -622,38 +725,32 @@ FText QueueOrder(const battle::World& World, const battle::NavigationService&,
     Direct.priority = battle::PlayerOrderPriority;
     Direct.created_tick = World.tick;
     Direct.delivery_tick = World.tick + FRegimentBattlePlayback::StepsPerSecond;
-    FText Notice;
     if (Order == ERegimentPlayerOrder::Attack || Order == ERegimentPlayerOrder::Pursue)
     {
         const auto* Enemy = VisibleEnemy(World, *Officer, Record->id, Cursor, Order == ERegimentPlayerOrder::Pursue);
         if (!Enemy)
-            return LOCTEXT("NoVisibleEnemy", "Офицер не видит ни одного вражеского полка.");
+            return Order == ERegimentPlayerOrder::Pursue
+                ? LOCTEXT("NoVisibleFleeingEnemy", "Офицер не видит отступающего вражеского полка.")
+                : LOCTEXT("NoVisibleEnemy", "Офицер не видит ни одного вражеского полка.");
         Direct.type = Order == ERegimentPlayerOrder::Pursue ? battle::OrderType::Pursue : battle::OrderType::Attack;
         Direct.target_regiment = Enemy->id;
         Direct.point = Enemy->pose.position;
-        Notice = Order == ERegimentPlayerOrder::Pursue ? LOCTEXT("PursuitOrdered", "Приказано преследовать.")
-            : LOCTEXT("AttackOrdered", "Приказано атаковать видимый вражеский полк.");
     }
     else if (Order == ERegimentPlayerOrder::Withdraw)
     {
         Direct.type = Regiment->panic ? battle::OrderType::Rally : battle::OrderType::Withdraw;
         Direct.point = Regiment->rally_point;
-        Notice = Regiment->panic ? LOCTEXT("RallyOrdered", "Приказано собраться в точке сбора.")
-                                 : LOCTEXT("WithdrawOrdered", "Приказано отойти к точке сбора.");
     }
     else
     {
         Direct.type = Order == ERegimentPlayerOrder::Brace ? battle::OrderType::Brace :
             Order == ERegimentPlayerOrder::HoldLine ? battle::OrderType::HoldLine : battle::OrderType::Hold;
         Direct.point = Regiment->pose.position;
-        Notice = Order == ERegimentPlayerOrder::Brace ? LOCTEXT("BraceOrdered", "Приказано приготовиться к атаке конницы.") :
-            Order == ERegimentPlayerOrder::HoldLine ? LOCTEXT("HoldLineOrdered", "Приказано держать линию.") :
-            LOCTEXT("HoldOrdered", "Приказано удерживать позицию.");
     }
     if (bFollowing)
         SetFollow(false);
     Queue(Command);
-    return Notice;
+    return {};
 }
 
 std::vector<FManeuverRoute> PreviewManeuver(const battle::World& World, const battle::NavigationService& Navigation,
@@ -938,7 +1035,16 @@ FText QueueManeuver(const battle::World& World, std::span<const FManeuverRoute> 
         (Routes.size() > 1 && Type != battle::OrderType::MoveTo) ||
         std::ranges::any_of(Routes, [&](const auto& R) { return !R.bReachable ||
             R.Path.size() != Routes.front().Path.size() || !ValidPlottedRoute(World, R); }))
+    {
+        for (const auto& Route : Routes)
+            if (const auto* Regiment = battle::FindRegiment(World, Route.Id))
+            {
+                const auto Reason = FormationOrderBlocker(World, *Regiment);
+                if (!Reason.IsEmpty())
+                    return FText::Format(LOCTEXT("ManeuverBlocker", "{0} · {1}"), RegimentName(*Regiment), Reason);
+            }
         return LOCTEXT("ManeuverBlocked", "Для выбранного строя нет прохода.");
+    }
     const auto* Officer = LivingBlueUnit(World, World.controlled);
     const auto* Record = Officer ? OfficerRecord(World, Officer->id) : nullptr;
     if (!Record || World.outcome != battle::BattleOutcome::Running)

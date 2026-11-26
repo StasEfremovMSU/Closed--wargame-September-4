@@ -5,6 +5,7 @@
 #include "RegimentOfficerOrders.h"
 #include "battle/Control.h"
 #include "battle/Simulation.h"
+#include "battle/command/Services.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentCommandScopeTest, "RegimentBattle.OfficerCommandScope",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
@@ -18,6 +19,7 @@ bool FRegimentCommandScopeTest::RunTest(const FString&)
     if (!TestTrue(TEXT("Mission creates its command hierarchy"), bool(Created) && Created.value.command_state.has_value()))
         return false;
     auto& World = Created.value;
+    const battle::FlatNavigationService Navigation;
     for (const auto& Node : World.command_state->hierarchy.nodes)
     {
         const auto Unit = RegimentOfficerOrders::FindOfficer(World, Node.id.value);
@@ -32,6 +34,13 @@ bool FRegimentCommandScopeTest::RunTest(const FString&)
         const auto Owned = RegimentOfficerOrders::Regiments(World, Unit);
         if (!TestFalse(TEXT("Command node has living recipients"), Owned.empty()))
             return false;
+        std::vector<battle::CommandEnvelope> Direct;
+        uint64 DirectSequence = 1;
+        RegimentOfficerOrders::QueueOrder(World, Navigation, Owned.front(), ERegimentPlayerOrder::Hold, {}, Direct, DirectSequence);
+        const auto Brief = RegimentOfficerOrders::DescribeOrder(World, *battle::FindRegiment(World, Owned.front()), Direct, true);
+        TestTrue(TEXT("At every tier a direct order identifies the regiment and waits on pause"),
+            Brief.Delivery == ERegimentOrderDelivery::Paused && !Brief.bCourier &&
+            !Brief.Recipient.IsEmpty() && !Brief.Action.IsEmpty());
         const auto All = RegimentOfficerOrders::HoldRecipients(World, Owned.front(), false);
         const auto Wing = RegimentOfficerOrders::HoldRecipients(World, Owned.front(), true);
         using battle::command::Level;
@@ -55,7 +64,6 @@ bool FRegimentCommandScopeTest::RunTest(const FString&)
     const auto Wing = RegimentOfficerOrders::HoldRecipients(World, {1}, true);
     std::vector<battle::CommandEnvelope> Commands;
     uint64 Sequence = 1;
-    const battle::FlatNavigationService Navigation;
     for (const auto Id : Wing)
         RegimentOfficerOrders::QueueOrder(World, Navigation, Id, ERegimentPlayerOrder::Hold, {}, Commands, Sequence);
     if (!TestEqual(TEXT("One command per member of selected wing"), Commands.size(), size_t(2)) ||
@@ -83,8 +91,15 @@ bool FRegimentCommandScopeTest::RunTest(const FString&)
         !TestEqual(TEXT("The wing receives a single group-level task"), Commands.size(), size_t(1)))
         return false;
     const auto& SelectedTask = Commands.front().command.command_task;
+    const auto& SelectedRegiment = *battle::FindRegiment(StaffWorld, {1});
+    const auto Queued = RegimentOfficerOrders::DescribeOrder(StaffWorld, SelectedRegiment, Commands, true);
     TestTrue(TEXT("The courier message is visible while playback is paused"),
-        !RegimentOfficerOrders::DescribeCourier(StaffWorld, {1}, Commands, true).IsEmpty());
+        Queued.bCourier && Queued.Delivery == ERegimentOrderDelivery::Paused);
+    const auto* Recipient = battle::command::FindNode(StaffWorld.command_state->hierarchy, SelectedTask.recipient);
+    if (!TestNotNull(TEXT("The courier has a group recipient"), Recipient))
+        return false;
+    TestEqual(TEXT("The courier identifies the group it will actually reach"),
+        Queued.Recipient.ToString(), FString(UTF8_TO_TCHAR(Recipient->name.c_str())));
     TestTrue(TEXT("Preparing the dispatch does not advance simulation time"), StaffWorld.tick == 0);
     if (!TestTrue(TEXT("Resuming submits the group dispatch"), bool(battle::Step(StaffWorld, Commands, {}, Navigation))))
         return false;
@@ -118,6 +133,50 @@ bool FRegimentCommandScopeTest::RunTest(const FString&)
         {
             return Order.priority == battle::PlayerOrderPriority;
         }));
+    auto& RegimentInTransit = *battle::FindRegiment(StaffWorld, {1});
+    const auto Traveling = RegimentOfficerOrders::DescribeOrder(StaffWorld, RegimentInTransit, {}, false);
+    TestTrue(TEXT("The HUD reports courier transit using the same order view as direct orders"),
+        Traveling.bCourier && Traveling.Delivery == ERegimentOrderDelivery::InTransit);
+
+    if (!Dispatch)
+        return false;
+    auto RetryDispatch = *Dispatch;
+    const auto FirstDispatchId = RetryDispatch.id;
+    auto& Messages = StaffWorld.command_state->communications.messages;
+    const auto FirstDispatch = std::ranges::find(Messages, FirstDispatchId, &MessageEnvelope::id);
+    RetryDispatch.id = StaffWorld.command_state->next_message_id;
+    RetryDispatch.created_tick = RetryDispatch.delivery_tick = StaffWorld.tick;
+    RetryDispatch.status = DeliveryStatus::RecipientUnavailable;
+    // An immediate failure can sort before the older dispatch's later arrival time.
+    Messages.insert(FirstDispatch, RetryDispatch);
+    const auto Undelivered = RegimentOfficerOrders::DescribeOrder(StaffWorld, RegimentInTransit, {}, false);
+    TestTrue(TEXT("Courier retry shows the latest dispatch's failure and retains its recipient"),
+        Undelivered.bCourier && Undelivered.Delivery == ERegimentOrderDelivery::Unapplied &&
+        !Undelivered.OrderDetail.IsEmpty() && Undelivered.Recipient.EqualTo(Traveling.Recipient));
+
+    Messages.erase(std::ranges::find(Messages, RetryDispatch.id, &MessageEnvelope::id));
+    const auto DeliveredDispatch = std::ranges::find(Messages, FirstDispatchId, &MessageEnvelope::id);
+    DeliveredDispatch->delivery_tick = StaffWorld.tick;
+    DeliveredDispatch->status = DeliveryStatus::Delivered;
+    RegimentInTransit.order = battle::Order{};
+    auto& DeliveredHold = *RegimentInTransit.order;
+    DeliveredHold.id = {1};
+    DeliveredHold.issuer = SelectedTask.author;
+    DeliveredHold.recipient = RegimentInTransit.id;
+    DeliveredHold.priority = battle::PlayerOrderPriority;
+    DeliveredHold.created_tick = DeliveredHold.delivery_tick = StaffWorld.tick;
+    DeliveredHold.status = battle::OrderStatus::Active;
+    DeliveredHold.player_direct = true;
+    const auto Delivered = RegimentOfficerOrders::DescribeOrder(StaffWorld, RegimentInTransit, {}, false);
+    TestTrue(TEXT("A delivered courier order continues to identify the group that received it"),
+        Delivered.bCourier && Delivered.Delivery == ERegimentOrderDelivery::Delivered &&
+        Delivered.Recipient.EqualTo(Traveling.Recipient));
+
+    Commands.clear();
+    RegimentOfficerOrders::QueueOrder(StaffWorld, Navigation, {1}, ERegimentPlayerOrder::HoldLine, {}, Commands, Sequence);
+    const auto Retry = RegimentOfficerOrders::DescribeOrder(StaffWorld, RegimentInTransit, Commands, true);
+    TestTrue(TEXT("A newer direct order takes precedence over the previous courier dispatch"),
+        !Retry.bCourier && Retry.Delivery == ERegimentOrderDelivery::Paused && !Retry.Recipient.EqualTo(Traveling.Recipient));
     return !HasAnyErrors();
 }
 #endif

@@ -74,13 +74,19 @@ struct FRegimentFieldCard
 };
 
 enum class ERegimentFollowStatus : uint8 { Off, Active, Melee, Panic, Deploying };
-enum class ERegimentOrderDelivery : uint8 { None, Queued, InTransit, Paused, Executing, Complete, Unapplied };
+enum class ERegimentOrderDelivery : uint8
+{
+    None, Queued, InTransit, Paused, Executing, Complete, Unapplied, AwaitingCourier, Delivered, Blocked
+};
 
 struct FRegimentOrderPresentation
 {
     ERegimentFollowStatus Follow = ERegimentFollowStatus::Off;
     ERegimentOrderDelivery Delivery = ERegimentOrderDelivery::None;
     uint64 OrderId = 0;
+    bool bCourier = false;
+    FText Recipient;
+    FText Action;
     FText OrderDetail;
     FText Activity;
 };

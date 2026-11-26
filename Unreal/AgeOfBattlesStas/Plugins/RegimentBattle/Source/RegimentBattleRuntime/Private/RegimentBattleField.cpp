@@ -250,6 +250,8 @@ FText DecisionReason(const std::string& Reason)
         {"No live commander.", TEXT("Командир выбыл.")},
         {"Panic overrides ordinary orders.", TEXT("Полк потерял боевой дух и выходит из боя.")},
         {"Occupy assigned position.", TEXT("Полк выдвигается на назначенную позицию.")},
+        {"reroute around occupied formations", TEXT("Полк обходит занятый проход.")},
+        {"assigned movement route blocked by formations", TEXT("Путь перекрыт строем. Полку нужна доступная позиция.")},
         {"Hold assigned position.", TEXT("Полк достиг назначенной позиции и удерживает её.")},
         {"Attack observed assigned enemy.", TEXT("Назначенная цель обнаружена.")},
         {"Authorized local opportunity.", TEXT("Офицер использует возможность атаковать обнаруженную цель.")},
@@ -3679,11 +3681,6 @@ void ARegimentBattleField::UpdateOfficerCamera(float DeltaSeconds)
     OfficerHudState.bAdditionalRegiments = Regiments.size() > 1;
     OfficerHudState.CommandScope = FText::Format(LOCTEXT("OfficerScope", "{0} · полков в подчинении: {1}"),
         Entry ? Entry->Name : OfficerHudState.Officer, int32(Regiments.size()));
-    const auto Courier = RegimentOfficerOrders::DescribeCourier(World, {SelectedOfficerRegiment},
-        Session->PendingCommands, IsBattlePaused());
-    if (!Courier.IsEmpty())
-        OfficerHudState.CommandScope = FText::Format(LOCTEXT("OfficerCourierScope", "{0}\n{1}"),
-            OfficerHudState.CommandScope, Courier);
     OfficerHudState.Order = Regiment
         ? RegimentOfficerOrders::DescribeOrder(World, *Regiment, Session->PendingCommands, IsBattlePaused(),
             &Session->PlayerOrderJournal)
@@ -3968,7 +3965,8 @@ void ARegimentBattleField::Tick(float DeltaSeconds)
         if (Mission)
         {
             Mission->RecordCampaignOutcome(Simulation.outcome, Simulation.winner_team);
-            Mission->ObserveBattleReport(Simulation);
+            Mission->ObserveBattleReport(Simulation,
+                Session->MissionProgress ? &*Session->MissionProgress : nullptr);
         }
         if (!Session->PendingCommands.empty())
         {

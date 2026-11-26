@@ -50,7 +50,6 @@ FText QueueManeuver(const battle::World&, std::span<const FManeuverRoute>, battl
     battle::MovementPace, std::vector<battle::CommandEnvelope>&, uint64& Sequence, const battle::NavigationService&);
 std::optional<FText> QueueStaffHold(const battle::World&, std::span<const battle::RegimentId> Recipients,
     std::vector<battle::CommandEnvelope>&, uint64& Sequence);
-FText DescribeCourier(const battle::World&, battle::RegimentId, std::span<const battle::CommandEnvelope>, bool bPaused);
 FRegimentOrderPresentation DescribeOrder(const battle::World& World, const battle::RegimentState& Regiment,
     std::span<const battle::CommandEnvelope> Pending, bool bPaused, const FPlayerOrderJournal* Journal = nullptr);
 battle::UnitId FindOfficer(const battle::World& World, uint64 NodeId);

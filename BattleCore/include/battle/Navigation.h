@@ -67,5 +67,6 @@ PathResult FindSupportRoute(const NavigationService &, const World &, const Regi
 PathResult FindFormationRoute(const NavigationService &, const World &, const RegimentState &,
                               Pose goal, bool preserve_facing = false);
 bool FormationRouteSegmentClear(const World &, const RegimentState &, Pose goal);
-bool CanContinueFormationMarch(const World &, const RegimentState &, Pose waypoint);
+bool CanContinueFormationMarch(const World &, const RegimentState &, Pose waypoint,
+                               std::optional<Pose> player_destination = std::nullopt);
 } // namespace battle

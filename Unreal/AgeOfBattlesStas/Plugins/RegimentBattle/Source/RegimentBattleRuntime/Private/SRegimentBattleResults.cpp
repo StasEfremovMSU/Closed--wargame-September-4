@@ -1,4 +1,5 @@
 #include "SRegimentBattleResults.h"
+#include "RegimentBattlePlayback.h"
 #include "RegimentBattleReport.h"
 
 #include "Brushes/SlateColorBrush.h"
@@ -44,6 +45,12 @@ FText Duration(uint64 Seconds)
             FText::AsNumber(Seconds / 3600), FText::AsNumber(Seconds / 60 % 60));
     return FText::Format(LOCTEXT("MinutesSeconds", "{0} мин {1} с"),
         FText::AsNumber(Seconds / 60), FText::AsNumber(Seconds % 60));
+}
+
+FText TimelineTime(battle::Tick Tick)
+{
+    const uint64 Seconds = Tick / FRegimentBattlePlayback::StepsPerSecond;
+    return FText::AsCultureInvariant(FString::Printf(TEXT("%02llu:%02llu"), Seconds / 60, Seconds % 60));
 }
 
 TSharedRef<SWidget> Action(const FText& Label, FSimpleDelegate ActionDelegate, bool bPrimary = false)
@@ -119,6 +126,34 @@ TSharedRef<SWidget> StrengthRow(const FText& Name, const FRegimentBattleCount& C
     return ScoreRow(Name, Values, Background, Color, bBold);
 }
 
+TSharedRef<SWidget> BattleTimeline(const FRegimentBattleReport& Report)
+{
+    auto Timeline = SNew(SVerticalBox);
+    if (Report.Moments.IsEmpty())
+        return Timeline;
+
+    Timeline->AddSlot().AutoHeight().Padding(0, 0, 0, 5.f)
+    [Text(LOCTEXT("BattleMoments", "Ключевые события"), 16, Brass, true)];
+    for (const auto& Moment : Report.Moments)
+    {
+        const bool bOutcome = Moment.Kind == ERegimentBattleMomentKind::BattleEnded;
+        const FText& Description = bOutcome && !Report.ObjectiveResult.IsEmpty()
+            ? Report.ObjectiveResult : Moment.Description;
+        Timeline->AddSlot().AutoHeight().Padding(0, 0, 0, 2.f)
+        [
+            SNew(SBorder).BorderImage(&RowTint).Padding(FMargin(10.f, 4.f))
+            [
+                SNew(SHorizontalBox)
+                + SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+                [SNew(SBox).WidthOverride(64.f)[Text(TimelineTime(Moment.Tick), 14, Muted)]]
+                + SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)
+                [Text(Description, 14, Ink, bOutcome, true)]
+            ]
+        ];
+    }
+    return Timeline;
+}
+
 TSharedRef<SWidget> Statistic(const FText& Label, const FText& Value)
 {
     return SNew(SBorder).BorderImage(&RowTint).Padding(FMargin(15.f, 10.f))
@@ -163,12 +198,12 @@ TSharedRef<SWidget> MakeRegimentBattleDebrief(const FRegimentBattleReport& Repor
             + SHorizontalBox::Slot().FillWidth(1.f)[Text(Result, 19, bDraw ? Brass : (Winner == 0 ? Blue : Orange), true)]
             + SHorizontalBox::Slot().AutoWidth()[Text(Duration(Report.ElapsedSeconds), 16, Muted)]
         ]
-        + SVerticalBox::Slot().AutoHeight().Padding(0, 4, 0, 12)
-        [Text(Report.ObjectiveResult, 14, Muted, false, true)]
+        + SVerticalBox::Slot().AutoHeight().Padding(0, 10, 0, 12)
+        [BattleTimeline(Report)]
         + SVerticalBox::Slot().AutoHeight().Padding(0, 0, 10.f, 2.f)
         [ScoreRow(LOCTEXT("Formation", "Подразделение"), Headings, &RowTint, Muted, true)]
         + SVerticalBox::Slot().AutoHeight()
-        [SNew(SBox).MaxDesiredHeight(356.f)[Score]]
+        [SNew(SBox).MaxDesiredHeight(300.f)[Score]]
         + SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right).Padding(0, 15, 0, 0)
         [
             SNew(SHorizontalBox)

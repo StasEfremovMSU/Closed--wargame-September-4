@@ -13,6 +13,8 @@ class ULocalPlayer;
 class SRegimentMissionHud;
 class SWidget;
 
+class FRegimentMissionProgress;
+
 struct FRegimentMissionRuntime
 {
     FRegimentMissionRuntime(AActor& Owner, bool bSmoke);
@@ -31,7 +33,7 @@ struct FRegimentMissionRuntime
     void RemoveHud();
     void RecordCampaignOutcome(battle::BattleOutcome Outcome, int32 Winner);
     void BeginBattleReport(const battle::World* World);
-    void ObserveBattleReport(const battle::World& World);
+    void ObserveBattleReport(const battle::World& World, const FRegimentMissionProgress* Progress);
     bool IsBattleReportOpen() const { return bDebriefOpen && StatisticsOverlay.IsValid(); }
     const FMissionPreset& GetPreset() const { return Preset; }
 

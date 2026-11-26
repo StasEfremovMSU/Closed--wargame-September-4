@@ -1,4 +1,5 @@
 ﻿#include "RegimentMissionRuntime.h"
+#include "RegimentMissionProgress.h"
 
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
@@ -327,7 +328,7 @@ void FRegimentMissionRuntime::BeginBattleReport(const battle::World* World)
         BattleReport.Emplace(*World);
 }
 
-void FRegimentMissionRuntime::ObserveBattleReport(const battle::World& World)
+void FRegimentMissionRuntime::ObserveBattleReport(const battle::World& World, const FRegimentMissionProgress* Progress)
 {
     if (!BattleReport)
         return;
@@ -336,7 +337,10 @@ void FRegimentMissionRuntime::ObserveBattleReport(const battle::World& World)
         BattleReport->Observe(World);
         return;
     }
-    auto Report = BattleReport->Finish(World);
+    const FRegimentBattleDebriefMilestones Milestones = Progress
+        ? FRegimentBattleDebriefMilestones{Progress->FirstCrestControlTick(), Progress->FirstReserveContactTick()}
+        : FRegimentBattleDebriefMilestones{};
+    auto Report = BattleReport->Finish(World, Milestones);
     BattleReport.Reset();
     if (!Report)
         return;

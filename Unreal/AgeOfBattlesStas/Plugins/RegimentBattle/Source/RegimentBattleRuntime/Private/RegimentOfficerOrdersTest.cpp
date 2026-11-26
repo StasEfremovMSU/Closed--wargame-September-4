@@ -150,8 +150,11 @@ bool FRegimentOfficerOrderPresentationTest::RunTest(const FString&)
     std::vector<battle::CommandEnvelope> Pending;
     uint64 Sequence = 1;
     QueueOrder(World, Navigation, Regiment.id, ERegimentPlayerOrder::Follow, {}, Pending, Sequence);
+    const auto QueuedFollow = DescribeOrder(World, Regiment, Pending, true);
     TestTrue(TEXT("Order awaits simulation resume"),
-        DescribeOrder(World, Regiment, Pending, true).Delivery == ERegimentOrderDelivery::Paused);
+        QueuedFollow.Delivery == ERegimentOrderDelivery::Paused);
+    TestTrue(TEXT("Queued order identifies the action and regiment"),
+        !QueuedFollow.Action.IsEmpty() && QueuedFollow.Recipient.EqualTo(FText::FromString(TEXT("Полк 1"))));
     TestTrue(TEXT("Order belongs to the selected regiment"),
         DescribeOrder(World, *battle::FindRegiment(World, {2}), Pending, true).Delivery ==
             ERegimentOrderDelivery::None);
@@ -184,9 +187,28 @@ bool FRegimentOfficerOrderPresentationTest::RunTest(const FString&)
         Holding.Delivery == ERegimentOrderDelivery::Executing);
     TestTrue(TEXT("The status carries the actual runtime order ID"),
         Regiment.order && Holding.OrderId == Regiment.order->id.value && Holding.OrderId != 0);
+    TestTrue(TEXT("The recipient stays the same after delivery"), Holding.Recipient.EqualTo(QueuedFollow.Recipient));
     TestTrue(TEXT("Activity is reported from the live regiment"), !Holding.Activity.IsEmpty());
     if (!TestTrue(TEXT("The delivered order remains available"), Regiment.order.has_value()))
         return false;
+    Regiment.deployment_ticks = World.tick + 1;
+    const auto Deploying = DescribeOrder(World, Regiment, Pending, false);
+    TestTrue(TEXT("An active order waits while the regiment deploys"),
+        Deploying.Delivery == ERegimentOrderDelivery::Blocked && !Deploying.OrderDetail.IsEmpty());
+    Regiment.deployment_ticks = 0;
+    TestTrue(TEXT("The order resumes when the blocker clears"),
+        DescribeOrder(World, Regiment, Pending, false).Delivery == ERegimentOrderDelivery::Executing);
+    Regiment.order->type = battle::OrderType::MoveTo;
+    Regiment.march_lane.emplace();
+    Regiment.march_lane->order = Regiment.order->id;
+    Regiment.march_lane->stalled_seconds = battle::MarchLane::StallSeconds;
+    const auto WaitingForPassage = DescribeOrder(World, Regiment, Pending, false);
+    TestTrue(TEXT("Ongoing movement reports a documented route stall"),
+        WaitingForPassage.Delivery == ERegimentOrderDelivery::Blocked && !WaitingForPassage.OrderDetail.IsEmpty());
+    Regiment.march_lane->order = {};
+    TestTrue(TEXT("A previous order's stalled lane does not affect a new order"),
+        DescribeOrder(World, Regiment, Pending, false).Delivery == ERegimentOrderDelivery::Executing);
+    Regiment.march_lane.reset();
     Regiment.order->status = battle::OrderStatus::Completed;
     TestTrue(TEXT("A completed order has its own status"),
         DescribeOrder(World, Regiment, Pending, false).Delivery == ERegimentOrderDelivery::Complete);
@@ -212,7 +234,7 @@ bool FRegimentOfficerOrderPresentationTest::RunTest(const FString&)
     TestTrue(TEXT("Expired in-transit command is reported using its own ID"),
         Lost.Delivery == ERegimentOrderDelivery::Unapplied && Lost.OrderId == ExpiringId);
     TestTrue(TEXT("An expired order includes the reason"), Lost.OrderDetail.ToString().Contains(TEXT("срок")));
-    return true;
+    return !HasAnyErrors();
 }
 
 bool FRegimentOfficerOrdersTest::RunTest(const FString& Parameters)

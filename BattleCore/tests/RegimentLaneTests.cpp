@@ -147,3 +147,118 @@ TEST_CASE("navigation.a_temporarily_blocked_turn_keeps_the_ordered_lane") {
     CHECK(marching.pose.yaw == doctest::Approx(*move.facing));
     CHECK(marching.order->status == OrderStatus::Completed);
 }
+
+TEST_CASE("navigation.a_player_march_reaches_the_enemy_that_enters_its_destination") {
+    auto scenario = test::Duel(6);
+    scenario.rules.regiment_tactics = true;
+    scenario.rules.adaptive_battle = true;
+    scenario.regiments[0].pose = {{-14.f, 0.f, 0.f}, 0.f};
+    scenario.regiments[1].pose = {{12.f, 6.f, 0.f}, -Pi / 2.f};
+    for (auto &regiment : scenario.regiments) {
+        regiment.formation = {3, 1.f, .25f};
+        regiment.speed = 3.f;
+    }
+    for (auto &unit : scenario.units) {
+        unit.pose = scenario.regiments[unit.regiment.value - 1].pose;
+        unit.health = 1000.f;
+    }
+
+    auto created = CreateWorld(scenario, 1);
+    REQUIRE(created);
+    auto &world = created.value;
+    const GridNavigationService navigation({}, 1.f, 65, 65, {-32, -32, 0});
+    const auto &marching = world.regiments.front();
+    const auto &blocker = world.regiments.back();
+    Order march;
+    march.recipient = marching.id;
+    march.type = OrderType::MoveTo;
+    march.point = {12.f, 0.f, 0.f};
+    march.facing = 0.f;
+    march.player_direct = true;
+    march.priority = PlayerOrderPriority;
+    REQUIRE(SubmitOrder(world, march) == Status::Ok);
+    REQUIRE(Step(world, {}, {}, navigation));
+    REQUIRE_FALSE(marching.route.empty());
+
+    Order intercept;
+    intercept.recipient = blocker.id;
+    intercept.type = OrderType::MoveTo;
+    intercept.point = march.point;
+    REQUIRE(SubmitOrder(world, intercept) == Status::Ok);
+    for (int tick = 0; tick < 300; ++tick)
+        REQUIRE(Step(world, {}, {}, navigation));
+
+    REQUIRE(marching.order);
+    CAPTURE(marching.pose.position.x);
+    CHECK(Distance(blocker.pose.position, march.point) < .01f);
+    CHECK(marching.pose.position.x > 9.f);
+    CHECK(marching.order->status == OrderStatus::Active);
+    CHECK_FALSE(RectanglesOverlap(marching.pose, Footprint(marching), blocker.pose, Footprint(blocker)));
+
+    intercept.point.y = -6.f;
+    REQUIRE(SubmitOrder(world, intercept) == Status::Ok);
+    for (int tick = 0; tick < 140; ++tick)
+        REQUIRE(Step(world, {}, {}, navigation));
+    CHECK(Distance(marching.pose.position, march.point) < .01f);
+    CHECK(marching.order->status == OrderStatus::Completed);
+}
+
+TEST_CASE("navigation.field_march_resolves_a_lane_blocked_by_a_wide_formation") {
+    auto scenario = test::Duel(18);
+    scenario.rules.regiment_tactics = true;
+    scenario.rules.adaptive_battle = true;
+    scenario.field_bounds = TerrainFieldBounds{32.f, 32.f};
+    scenario.regiments[0].pose.position = {-12.f, 0.f, 0.f};
+    scenario.regiments[0].formation = {6, 1.f, .25f};
+    scenario.regiments[1].pose = {};
+    scenario.regiments[1].formation = {18, 1.f, .25f};
+    scenario.regiments[1].team = 0;
+    for (auto &unit : scenario.units)
+        unit.pose = scenario.regiments[unit.regiment.value - 1].pose;
+
+    bool passage_available = true;
+    SUBCASE("there is room outside the local detour") {}
+    SUBCASE("passage is closed by the ally and both walls") {
+        passage_available = false;
+        scenario.obstacles = {{-32.f, -32.f, 32.f, -9.f}, {-32.f, 9.f, 32.f, 32.f}};
+    }
+
+    auto created = CreateWorld(scenario, 2);
+    REQUIRE(created);
+    auto &world = created.value;
+    const GridNavigationService navigation(scenario.obstacles, 1.f, 65, 65, {-32, -32, 0});
+    const auto &marching = world.regiments.front();
+    const auto &blocking = world.regiments.back();
+    Order march;
+    march.recipient = marching.id;
+    march.type = OrderType::MoveTo;
+    march.point = {12.f, 0.f, 0.f};
+    REQUIRE(SubmitOrder(world, march) == Status::Ok);
+
+    bool diagnosed_block = false;
+    float max_lateral_position = 0.f;
+    for (int tick = 0; tick < 900; ++tick) {
+        REQUIRE(Step(world, {}, {}, navigation));
+        CHECK_FALSE(RectanglesOverlap(marching.pose, Footprint(marching), blocking.pose, Footprint(blocking)));
+        max_lateral_position = std::max(max_lateral_position, std::abs(marching.pose.position.y));
+        for (const auto &event : world.events)
+            diagnosed_block |= event.regiment == marching.id && event.kind == EventKind::DecisionTrace &&
+                event.reason == "assigned movement route blocked by formations";
+        if (marching.order && (marching.order->status == OrderStatus::Completed ||
+                              marching.order->status == OrderStatus::Failed))
+            break;
+    }
+
+    REQUIRE(marching.order);
+    CAPTURE(max_lateral_position);
+    CAPTURE(marching.pose.position.x);
+    if (passage_available) {
+        CHECK(max_lateral_position > 8.f);
+        CHECK(Distance(marching.pose.position, march.point) < .01f);
+        CHECK(marching.order->status == OrderStatus::Completed);
+    } else {
+        CHECK(marching.pose.position.x < 0.f);
+        CHECK(marching.order->status == OrderStatus::Failed);
+        CHECK(diagnosed_block);
+    }
+}
