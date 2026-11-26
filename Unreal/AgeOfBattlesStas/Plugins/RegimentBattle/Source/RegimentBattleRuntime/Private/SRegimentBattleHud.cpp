@@ -1561,10 +1561,10 @@ TSharedRef<SWidget> MakeOfficerCommandHint(TWeakObjectPtr<ARegimentBattleField> 
         ];
 }
 
-class SRegimentTutorialMarker final : public SLeafWidget
+class SRegimentMissionMarker final : public SLeafWidget
 {
 public:
-    SLATE_BEGIN_ARGS(SRegimentTutorialMarker) {}
+    SLATE_BEGIN_ARGS(SRegimentMissionMarker) {}
         SLATE_ARGUMENT(TWeakObjectPtr<ARegimentBattleField>, Field)
     SLATE_END_ARGS()
 
@@ -1581,9 +1581,10 @@ public:
         int32 Layer, const FWidgetStyle&, bool) const override
     {
         FVector Center;
-        float Radius = 0.f;
+        TArray<FVector> Outline;
+        FLinearColor Tint;
         const auto* Battle = Field.Get();
-        if (!Battle || !Battle->GetTutorialMarker(Center, Radius))
+        if (!Battle || !Battle->GetMissionMarker(Center, Outline, Tint))
             return Layer;
         const auto* World = Battle->GetWorld();
         const auto* Controller = World ? World->GetFirstPlayerController() : nullptr;
@@ -1607,25 +1608,24 @@ public:
             FSlateDrawElement::MakeLines(Elements, Layer, Geometry.ToPaintGeometry(), Points,
                 ESlateDrawEffect::None, FLinearColor(.04f, .027f, .013f, .9f), true, Weight + 2.f);
             FSlateDrawElement::MakeLines(Elements, Layer + 1, Geometry.ToPaintGeometry(), Points,
-                ESlateDrawEffect::None, Brass, true, Weight);
+                ESlateDrawEffect::None, Tint, true, Weight);
         };
 
-        constexpr int32 Sides = 32;
         TArray<FVector2D> Ring;
-        Ring.Reserve(Sides + 1);
-        for (int32 Side = 0; Side <= Sides; ++Side)
+        Ring.Reserve(Outline.Num());
+        for (const auto& Point : Outline)
         {
-            const double Angle = UE_DOUBLE_TWO_PI * Side / Sides;
-            const FVector Point = Center + FVector(FMath::Cos(Angle) * Radius, FMath::Sin(Angle) * Radius, 9);
             FVector2D Projected;
-            if (!Project(Point, Projected))
+            if (Project(Point, Projected))
+                Ring.Add(Projected);
+            else
             {
+                if (Ring.Num() > 1)
+                    Stroke(Ring, 2.f);
                 Ring.Reset();
-                break;
             }
-            Ring.Add(Projected);
         }
-        if (Ring.Num() > 2)
+        if (Ring.Num() > 1)
             Stroke(Ring, 2.f);
 
         FVector2D Pin;
@@ -1770,7 +1770,7 @@ void SRegimentBattleHud::Construct(const FArguments& InArgs)
         ]
         + SOverlay::Slot()
         [
-            SNew(SRegimentTutorialMarker).Field(Field)
+            SNew(SRegimentMissionMarker).Field(Field)
         ]
         + SOverlay::Slot()
         [
@@ -1938,7 +1938,7 @@ void SRegimentBattleHud::Construct(const FArguments& InArgs)
                             .Visibility_Lambda([Field]
                             {
                                 const auto* Battle = Field.Get();
-                                return Battle && !Battle->GetMissionReport().IsEmpty()
+                                return Battle && Battle->HasMissionReserve()
                                     ? EVisibility::SelfHitTestInvisible : EVisibility::Collapsed;
                             })
                             [

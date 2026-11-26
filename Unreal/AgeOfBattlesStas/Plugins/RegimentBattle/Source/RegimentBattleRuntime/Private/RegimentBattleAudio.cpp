@@ -291,7 +291,7 @@ void FRegimentBattleAudio::SetPaused(bool bInPaused)
             Component->SetPaused(bPaused);
 }
 
-void FRegimentBattleAudio::UpdateLoop(UWorld& World, FLoop& Loop, float TargetGain, const FVector* Position)
+void FRegimentBattleAudio::UpdateLoop(UWorld& World, FLoop& Loop, float TargetGain, const FVector* Position, int32 Range)
 {
     if (!Loop.Sample.IsValid() || bPaused)
         return;
@@ -308,7 +308,7 @@ void FRegimentBattleAudio::UpdateLoop(UWorld& World, FLoop& Loop, float TargetGa
     if (!Component || !Component->IsPlaying())
     {
         Component = Position ? UGameplayStatics::SpawnSoundAtLocation(&World, Loop.Sample.Get(), *Position,
-            FRotator::ZeroRotator, Loop.Gain, 1.f, 0.f, GetAttenuation(World, Water))
+            FRotator::ZeroRotator, Loop.Gain, 1.f, 0.f, GetAttenuation(World, Range))
             : UGameplayStatics::SpawnSound2D(&World, Loop.Sample.Get(), Loop.Gain);
         Loop.Component = Component;
         if (Component && ShouldProbe())
@@ -323,8 +323,8 @@ void FRegimentBattleAudio::UpdateLoop(UWorld& World, FLoop& Loop, float TargetGa
     }
 }
 
-void FRegimentBattleAudio::UpdateAmbience(UWorld& World, const TOptional<FVector>& WaterPosition, bool bMelee,
-    bool bGunpowder)
+void FRegimentBattleAudio::UpdateAmbience(UWorld& World, const TOptional<FVector>& WaterPosition,
+    const TOptional<FVector>& MeleePosition, bool bGunpowder)
 {
     if (!CanPlay(World))
         return;
@@ -348,8 +348,9 @@ void FRegimentBattleAudio::UpdateAmbience(UWorld& World, const TOptional<FVector
     }
     const float Gain = GetVolume(EBus::Ambience) * (bCommand ? .48f : 1.f);
     UpdateLoop(World, Wind, .15f * Gain);
-    UpdateLoop(World, River, WaterPosition ? .24f * Gain : 0.f, WaterPosition ? &WaterPosition.GetValue() : nullptr);
-    UpdateLoop(World, DistantMelee, bMelee && !bGunpowder ? .16f * Gain : 0.f);
+    UpdateLoop(World, River, WaterPosition ? .24f * Gain : 0.f, WaterPosition ? &WaterPosition.GetValue() : nullptr, Water);
+    UpdateLoop(World, DistantMelee, MeleePosition ? .29f * Gain : 0.f,
+        MeleePosition ? &MeleePosition.GetValue() : nullptr, Distant);
     UpdateLoop(World, DistantGunpowder, bGunpowder ? .18f * Gain : 0.f);
 }
 

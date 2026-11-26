@@ -95,7 +95,7 @@ TOptional<FMissionAuthoringPreview> BuildMissionAuthoringPreview(const FMissionP
             Preview.Terrain.Add(Area);
         Preview.Hill = World.scenario.hill;
         Preview.Objective = World.scenario.objective;
-        if (Preset.Objective.Goal == EMissionGoal::HillHold && Preview.Hill)
+        if (IsCrestObjective(Preset.Objective.Goal) && Preview.Hill)
             Preview.Crest = battle::HillObjectiveCrest(*Preview.Hill);
         for (const auto& Company : Opening)
         {

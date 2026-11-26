@@ -140,7 +140,8 @@ bool FRegimentRecordedCombatSeparationTest::RunTest(const FString&)
         TestNotNull(FString(Example.Asset) + TEXT(" plays a separate positional recording"), Active);
     }
 
-    Audio.UpdateAmbience(*World, Listener + FVector(125., -530., 0.), true, false);
+    const FVector MeleePosition = Listener + FVector(-300., 420., 0.);
+    Audio.UpdateAmbience(*World, Listener + FVector(125., -530., 0.), MeleePosition, false);
     bool bWater = false;
     bool bMelee = false;
     bool bPowder = false;
@@ -150,11 +151,12 @@ bool FRegimentRecordedCombatSeparationTest::RunTest(const FString&)
             const FString Name = Voice->GetSound()->GetName();
             bWater |= Name == TEXT("Brook_Loop") &&
                 Voice->GetComponentLocation().Equals(Listener + FVector(125., -530., 0.), .1);
-            bMelee |= Name == TEXT("Distant_Melee_Battle_Loop");
+            bMelee |= Name == TEXT("Distant_Melee_Battle_Loop") &&
+                Voice->GetComponentLocation().Equals(MeleePosition, .1);
             bPowder |= Name == TEXT("Distant_BlackPowder_Battle");
         }
     TestTrue(TEXT("River is a positional ambience source"), bWater);
-    TestTrue(TEXT("Melee plays a distant battle bed"), bMelee);
+    TestTrue(TEXT("The melee bed is anchored to the active contact"), bMelee);
     TestFalse(TEXT("A battle with no shots plays no powder bed"), bPowder);
     return !HasAnyErrors();
 }

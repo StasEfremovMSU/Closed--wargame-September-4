@@ -21,5 +21,5 @@ battle::Scenario BuildMissionBattle(const FMissionRoster&, std::span<const battl
     EMissionDeployment DeploymentMode = EMissionDeployment::MarchContact,
     bool bRegimentTactics = false, battle::MarchField Field = {}, int32 FigureTarget = 0,
     bool bLinearInfantry = false, bool bArmyStaff = false,
-    std::span<const FRegimentEraInfantryProfile* const> InfantryProfiles = {});
+    std::span<const FRegimentEraInfantryProfile* const> InfantryProfiles = {}, bool bReverseFacing = false);
 battle::Scenario BuildPresetBattle(const FMissionPreset&, std::span<const battle::MarchRegiment>, EMissionDeployment);

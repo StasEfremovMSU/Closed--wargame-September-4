@@ -361,4 +361,89 @@ bool FRegimentHillHoldRouteTest::RunTest(const FString&)
     return !HasAnyErrors();
 }
 
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentSenlacDefenseTest, "RegimentBattle.MissionObjectives.SenlacDefense",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+
+bool FRegimentSenlacDefenseTest::RunTest(const FString&)
+{
+    FMissionPreset Preset;
+    const FGuid Defense(0xB1CED0D3, 0xC76848B1, 0xB8AAEEA9, 0x1E6E501A);
+    if (!TestTrue(TEXT("The Hastings defense is available in the scenario catalogue"),
+        RegimentMissionPresets::LoadBuiltIn(Defense, Preset)))
+        return false;
+    TestEqual(TEXT("The English are the player side"), Preset.Era.BlueFaction, FString(TEXT("anglo_saxons")));
+    const auto Opening = MakeMissionOpening(Preset);
+    auto Created = battle::CreateWorld(BuildPresetBattle(Preset, Opening, EMissionDeployment::AuthoredStart), 42);
+    if (!TestTrue(TEXT("The defensive battle deploys"), bool(Created) && Created.value.scenario.hill.has_value()))
+        return false;
+    auto& World = Created.value;
+    FRegimentMissionProgress Progress(Preset, World);
+    TestTrue(TEXT("The player begins in the commander of the reserve group"),
+        Progress.StartsPossessed() && Progress.InitialCommander() != 0);
+    TestTrue(TEXT("The designated reserve awaits orders at the rear"), Progress.AwaitsReserveRelease({4}));
+    TestTrue(TEXT("The player can introduce the reserve"), Progress.CanReleaseReserve(World));
+    if (TestTrue(TEXT("The crest has a defending side"), World.scenario.objective.has_value()))
+        TestEqual(TEXT("Blue defends the crest"), World.scenario.objective->defending_team, 0);
+    const auto* Lead = battle::FindRegiment(World, battle::RegimentId{1});
+    if (TestNotNull(TEXT("The line regiment exists"), Lead))
+        TestTrue(TEXT("The English line faces the Normans on the west side"), battle::Forward(Lead->pose.yaw).x < -.9f);
+    Progress.ReleaseReserve(World);
+    TestFalse(TEXT("The reserve command cannot be repeated in transit"), Progress.CanReleaseReserve(World));
+
+    const auto* Rear = battle::FindRegiment(World, battle::RegimentId{4});
+    if (!TestNotNull(TEXT("The reserve exists"), Rear))
+        return false;
+    const auto RearStart = Rear->pose.position;
+    const auto Navigation = MakeMissionNavigation(World.scenario.obstacles, Preset.Field);
+    bool bArrived = false;
+    for (int32 Frame = 0; Frame < 550 && World.outcome == battle::BattleOutcome::Running; ++Frame)
+    {
+        if (!battle::Step(World, {}, {}, Navigation))
+        {
+            AddError(TEXT("The simulation failed while the reserve was moving"));
+            return false;
+        }
+        Progress.Update(World);
+        if (Rear->order && Rear->order->type == battle::OrderType::MoveTo &&
+            Rear->order->status == battle::OrderStatus::Completed)
+        {
+            bArrived = true;
+            break;
+        }
+    }
+    TestTrue(TEXT("The reserve physically moves toward the line after delivery"),
+        Rear->pose.position.x < RearStart.x - 12.f);
+    TestTrue(TEXT("The reserve completes the route to the crest"), bArrived);
+    if (!bArrived)
+        AddInfo(FString::Printf(TEXT("tick=%llu reserve=(%.1f, %.1f) lead=(%.1f, %.1f) order=%d/%d route=%llu/%llu "
+            "engaged=%d disordered=%d panic=%d size=%.1fx%.1f"),
+            static_cast<unsigned long long>(World.tick), Rear->pose.position.x, Rear->pose.position.y,
+            Lead ? Lead->pose.position.x : 0.f, Lead ? Lead->pose.position.y : 0.f,
+            Rear->order ? int32(Rear->order->type) : -1, Rear->order ? int32(Rear->order->status) : -1,
+            static_cast<unsigned long long>(Rear->waypoint), static_cast<unsigned long long>(Rear->route.size()),
+            Rear->melee_engaged, Rear->disordered, Rear->panic, battle::Footprint(*Rear).width_m, battle::Footprint(*Rear).depth_m));
+
+    auto Loss = battle::CreateWorld(BuildPresetBattle(Preset, Opening, EMissionDeployment::AuthoredStart), 42);
+    if (!TestTrue(TEXT("A fresh defense can be started"), bool(Loss)))
+        return false;
+    FRegimentMissionProgress Contest(Preset, Loss.value);
+    const auto Crest = battle::HillObjectiveCrest(*Loss.value.scenario.hill);
+    for (const auto& Regiment : Loss.value.regiments)
+        for (const auto Fighter : Regiment.units)
+            if (auto* Unit = battle::FindUnit(Loss.value, Fighter))
+                Unit->pose.position = Regiment.team == 1 ? Crest->center : battle::Vec3{250.f, 0.f, 0.f};
+    while (Loss.value.tick < 399)
+    {
+        ++Loss.value.tick;
+        Contest.Update(Loss.value);
+    }
+    TestEqual(TEXT("A recapture is possible before twenty uninterrupted seconds"),
+        Loss.value.outcome, battle::BattleOutcome::Running);
+    ++Loss.value.tick;
+    Contest.Update(Loss.value);
+    TestEqual(TEXT("The attackers win after twenty seconds in sole control"), Loss.value.winner_team, 1);
+    return !HasAnyErrors();
+}
+
 #endif

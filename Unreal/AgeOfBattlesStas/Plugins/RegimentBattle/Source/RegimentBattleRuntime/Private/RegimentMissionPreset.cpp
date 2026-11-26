@@ -99,6 +99,7 @@ constexpr FPresetGoal PresetGoals[] =
     {EMissionGoal::Crossing, TEXT("Crossing")},
     {EMissionGoal::ReserveExercise, TEXT("ReserveExercise")},
     {EMissionGoal::HillHold, TEXT("HillHold")},
+    {EMissionGoal::HillDefense, TEXT("HillDefense")},
     {EMissionGoal::Breakthrough, TEXT("Breakthrough")},
 };
 
@@ -769,7 +770,7 @@ bool RegimentMissionPresets::Validate(const FMissionPreset& Preset, FText& OutEr
             return false;
         }
     }
-    if (Objective.Goal == EMissionGoal::HillHold)
+    if (IsCrestObjective(Objective.Goal))
     {
         const auto Hill = battle::MarchHill(Preset.Terrain, Preset.Field);
         if (!Hill || !battle::HillObjectiveCrest(*Hill))
@@ -784,7 +785,8 @@ bool RegimentMissionPresets::Validate(const FMissionPreset& Preset, FText& OutEr
             return false;
         }
     }
-    if (Objective.Goal == EMissionGoal::ReserveExercise && !Algo::FindByPredicate(BlueGroups, [](int32 GroupSize)
+    if ((Objective.Goal == EMissionGoal::ReserveExercise || Objective.Goal == EMissionGoal::HillDefense) &&
+        !Algo::FindByPredicate(BlueGroups, [](int32 GroupSize)
         { return GroupSize >= 2; }))
     {
         OutError = LOCTEXT("NotEnoughReserveRegiments", "Для учения включите хотя бы два синих полка в одной группе.");

@@ -214,6 +214,7 @@ const FHistoricalBattle HistoricalBattles[] = {
     {FGuid(0x03BAE43F, 0x906A4969, 0xAD2D5FE8, 0x5C976925), Scipio, Hannibal},
     {FGuid(0x0C79AE21, 0xF7BC42D8, 0x91DE32A5, 0x598C19E9), Wallace, Warenne},
     {FGuid(0xE9487555, 0x480B53DD, 0xB55F05CE, 0xE1885F45), WilliamNormandy, Harold},
+    {FGuid(0xB1CED0D3, 0xC76848B1, 0xB8AAEEA9, 0x1E6E501A), Harold, WilliamNormandy},
     {FGuid(0x22E674A1, 0x6632562B, 0x9E4F1718, 0xE52E2859), HenryTudor, RichardIII},
     {FGuid(0x655310A0, 0x48854A4A, 0xBDE3DE48, 0x9EE8DA84), CharlesXII, PeterI},
     {FGuid(0x845BCC52, 0xB6655AA6, 0xA8E31464, 0x0A1E99B2), CharlesXII, Croy},

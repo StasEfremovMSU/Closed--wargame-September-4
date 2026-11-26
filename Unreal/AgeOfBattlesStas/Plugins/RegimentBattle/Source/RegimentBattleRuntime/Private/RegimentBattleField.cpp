@@ -1016,6 +1016,7 @@ struct FRegimentBattleSession
     double OfficerStepDistance = 0.0;
     uint32 OfficerStepCount = 0;
     double NextAmbientUpdate = 0.0;
+    TSet<uint64> AudibleMeleeContacts;
     TOptional<battle::Tick> LastMeleeAudioTick;
     TOptional<battle::Tick> LastGunpowderAudioTick;
     FRegimentSmokePresentation Smoke;
@@ -1513,8 +1514,24 @@ struct FRegimentBattleSession
         {
             return bRunning && Played && Simulation.tick >= *Played && Simulation.tick - *Played <= Window;
         };
-        Audio.UpdateAmbience(World, Water, HeardRecently(LastMeleeAudioTick, 140),
-            HeardRecently(LastGunpowderAudioTick, 160));
+        TOptional<FVector> Melee;
+        if (HeardRecently(LastMeleeAudioTick, 140))
+        {
+            double Closest = TNumericLimits<double>::Max();
+            for (const auto& Regiment : Simulation.regiments)
+            {
+                if (!Regiment.melee_engaged || Regiment.units.empty())
+                    continue;
+                const auto Location = WorldLocation(Regiment.pose.position, Origin);
+                const double Distance = FVector::DistSquared(Listener, Location);
+                if (Distance < Closest)
+                {
+                    Melee = Location;
+                    Closest = Distance;
+                }
+            }
+        }
+        Audio.UpdateAmbience(World, Water, Melee, HeardRecently(LastGunpowderAudioTick, 160));
     }
 
     void PlayBattleSounds(UWorld& World, const FVector& Origin)
@@ -1638,6 +1655,20 @@ struct FRegimentBattleSession
                         (uint64(1) << 63) | Unit->id.value;
                 Audio.Play(World, Sound, WorldLocation(Unit ? Unit->pose.position : Regiment->pose.position, Origin),
                     Source, Event.tick, bPersonal);
+            }
+        }
+        for (const auto& Company : Simulation.regiments)
+        {
+            if (!Company.melee_engaged || Company.units.empty())
+            {
+                AudibleMeleeContacts.Remove(Company.id.value);
+                continue;
+            }
+            if (!AudibleMeleeContacts.Contains(Company.id.value))
+            {
+                AudibleMeleeContacts.Add(Company.id.value);
+                Audio.Play(World, ERegimentSound::ChargeShout, WorldLocation(Company.pose.position, Origin),
+                    Company.id.value, Simulation.tick);
             }
         }
         PlayMovementSounds(World, Origin);
@@ -2224,6 +2255,11 @@ bool ARegimentBattleField::CanReturnToMissionSetup() const
     return Mission && Mission->TacticalScenario.has_value();
 }
 
+bool ARegimentBattleField::HasMissionReserve() const
+{
+    return Session && Session->MissionProgress && Session->MissionProgress->HasReserve();
+}
+
 bool ARegimentBattleField::CanIntroduceReserve() const
 {
     return Session && Session->MissionProgress && Session->MissionProgress->CanReleaseReserve(Session->Simulation);
@@ -2245,15 +2281,38 @@ FText ARegimentBattleField::GetMissionReport() const
     return Session && Session->MissionProgress ? Session->MissionProgress->Report() : FText::GetEmpty();
 }
 
-bool ARegimentBattleField::GetTutorialMarker(FVector& Center, float& Radius) const
+bool ARegimentBattleField::GetMissionMarker(FVector& Center, TArray<FVector>& Outline, FLinearColor& Tint) const
 {
     if (!Session || !Session->MissionProgress)
         return false;
-    const auto Marker = Session->MissionProgress->TutorialMarker();
-    if (!Marker)
+    const auto& Progress = *Session->MissionProgress;
+    std::optional<battle::TerrainCrest> Zone;
+    if (const auto Marker = Progress.TutorialMarker())
+    {
+        Zone = battle::TerrainCrest{Marker->center, Marker->radius_m, Marker->radius_m};
+        Tint = FLinearColor(1.f, .73f, .32f);
+    }
+    else if (Progress.ShowsCrest() && Session->Simulation.scenario.hill)
+    {
+        Zone = battle::HillObjectiveCrest(*Session->Simulation.scenario.hill);
+        Tint = Progress.CrestTint();
+    }
+    if (!Zone)
         return false;
-    Center = Session->WorldLocation(Marker->center, GetBattleOrigin());
-    Radius = Marker->radius_m * CentimetersPerMeter;
+
+    constexpr int32 Sides = 32;
+    const auto Origin = GetBattleOrigin();
+    auto GroundCenter = Zone->center;
+    GroundCenter.z = 0.f;
+    Center = Session->WorldLocation(GroundCenter, Origin);
+    Outline.Reserve(Sides + 1);
+    for (int32 Side = 0; Side <= Sides; ++Side)
+    {
+        const float Angle = 2.f * battle::Pi * float(Side) / Sides;
+        const battle::Vec3 GroundPoint = GroundCenter +
+            battle::Vec3{FMath::Cos(Angle) * Zone->radius_x_m, FMath::Sin(Angle) * Zone->radius_y_m, 0.f};
+        Outline.Add(Session->WorldLocation(GroundPoint, Origin) + FVector(0, 0, 9));
+    }
     return true;
 }
 
@@ -3785,10 +3844,14 @@ void ARegimentBattleField::Tick(float DeltaSeconds)
         }
     }
 
-    if (Session->bQueueInitialPossession && GetWorld()->GetFirstPlayerController() && CanPossessOfficer(0))
+    if (Session->bQueueInitialPossession && GetWorld()->GetFirstPlayerController())
     {
-        PossessOfficer();
-        Session->bQueueInitialPossession = false;
+        const uint64 Commander = Session->MissionProgress ? Session->MissionProgress->InitialCommander() : 0;
+        if (CanPossessOfficer(Commander))
+        {
+            PossessOfficer(Commander);
+            Session->bQueueInitialPossession = false;
+        }
     }
 
     if (!PresentedTick.IsSet())

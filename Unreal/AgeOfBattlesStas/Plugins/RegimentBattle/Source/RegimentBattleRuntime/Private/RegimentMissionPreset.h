@@ -10,7 +10,7 @@ THIRD_PARTY_INCLUDES_START
 #include "battle/MarchMission.h"
 THIRD_PARTY_INCLUDES_END
 
-enum class EMissionGoal : uint8 { Eliminate, Crossing, ReserveExercise, HillHold, Breakthrough };
+enum class EMissionGoal : uint8 { Eliminate, Crossing, ReserveExercise, HillHold, Breakthrough, HillDefense };
 enum class ERegimentTutorial : uint8 { None, Infantry, Cavalry, Artillery, Command };
 inline constexpr float MissionStartMaxX = battle::MarchHalfWidth - 4.f;
 inline constexpr float MissionStartMaxY = battle::MarchHalfHeight - 4.f;
@@ -24,6 +24,8 @@ inline constexpr int32 MissionMaxFieldHeight = 700;
 inline constexpr int32 MissionStandardFigureTarget = 5000;
 inline constexpr int32 MissionMaxFigureTarget = 10000;
 inline const FGuid MissionSmokeExerciseId(0x8A5DF38B, 0x7650418A, 0x96349670, 0x0BAFEC20);
+
+inline bool IsCrestObjective(EMissionGoal Goal) { return Goal == EMissionGoal::HillHold || Goal == EMissionGoal::HillDefense; }
 
 struct FMissionBreakthrough
 {

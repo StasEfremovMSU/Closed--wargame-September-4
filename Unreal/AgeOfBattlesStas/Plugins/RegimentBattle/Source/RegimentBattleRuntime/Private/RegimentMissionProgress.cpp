@@ -22,6 +22,36 @@ FText SideName(battle::MarchTerrain Terrain, int32 Side)
     return Side == 0 ? LOCTEXT("Blue", "Синие") : LOCTEXT("Orange", "Оранжевые");
 }
 
+std::optional<battle::Pose> ReservePosition(const battle::World& World, const battle::RegimentState& Regiment)
+{
+    if (!World.scenario.hill)
+        return std::nullopt;
+    const auto Crest = battle::HillObjectiveCrest(*World.scenario.hill);
+    if (!Crest)
+        return std::nullopt;
+
+    const float Rearward = Regiment.pose.position.x < Crest->center.x ? -1.f : 1.f;
+    const auto Size = battle::Footprint(Regiment);
+    for (const float Lateral : {0.f, -.44f, .44f})
+    {
+        const battle::Pose Position{{Crest->center.x + Rearward * .82f * Crest->radius_x_m,
+            Crest->center.y + Lateral * Crest->radius_y_m, 0.f}, Rearward > 0.f ? battle::Pi : 0.f};
+        const bool Used = std::ranges::any_of(World.regiments, [&](const auto& Other)
+        {
+            return Other.id != Regiment.id && !Other.units.empty() &&
+                battle::RectanglesOverlap(Position, Size, Other.pose, battle::Footprint(Other));
+        });
+        const bool Blocked = std::ranges::any_of(World.scenario.obstacles, [&](const auto& Area)
+        {
+            return battle::TerrainBlocksMovement(Area) &&
+                battle::TerrainAreaOverlaps(Area, Position, Size.depth_m * .5f, Size.width_m * .5f);
+        });
+        if (!Used && !Blocked)
+            return Position;
+    }
+    return std::nullopt;
+}
+
 FText EventTime(TOptional<battle::Tick> Tick)
 {
     return Tick ? FText::AsCultureInvariant(FString::Printf(TEXT("%.1f с"),
@@ -47,30 +77,38 @@ FRegimentMissionProgress::FRegimentMissionProgress(const FMissionPreset& Preset,
             if (IsMissionBreakthroughInfantry(Slot, Preset.Roster[Slot], Objective.Breakthrough->Group))
                 BreakthroughInfantry.Add({uint64(Slot + 1)});
     }
-    else if (IsReserveExercise() && World.command_state)
+    else if ((IsReserveExercise() || IsHillDefense()) && World.command_state)
     {
         const auto& Hierarchy = World.command_state->hierarchy;
-        for (const auto& Group : Hierarchy.nodes)
+        const auto PickPair = [&](bool bCenterOnly)
         {
-            if (Group.team != 0 || Group.level != battle::command::Level::Group || Group.children.size() < 2)
-                continue;
-            for (const auto Child : Group.children)
+            for (const auto& Group : Hierarchy.nodes)
             {
-                const auto It = std::find_if(Hierarchy.nodes.begin(), Hierarchy.nodes.end(),
-                    [Child](const auto& Node) { return Node.id == Child; });
-                if (It == Hierarchy.nodes.end() || !It->regiment)
+                if (Group.team != 0 || Group.level != battle::command::Level::Group || Group.children.size() < 2 ||
+                    (bCenterOnly && Group.sector_role != battle::command::SectorRole::Center))
                     continue;
-                if (!Lead)
-                    Lead = It->regiment;
-                else
+                const auto RegimentInGroup = [&](battle::command::NodeId Id) -> const battle::RegimentState*
                 {
-                    Reserve = It->regiment;
-                    break;
-                }
+                    const auto It = std::ranges::find(Hierarchy.nodes, Id, &battle::command::CommandNode::id);
+                    return It == Hierarchy.nodes.end() ? nullptr : battle::FindRegiment(World, It->regiment);
+                };
+                const auto* Front = RegimentInGroup(Group.children[0]);
+                const auto* Rear = RegimentInGroup(Group.children[1]);
+                if (!Front || !Rear)
+                    continue;
+                if (IsHillDefense() && World.scenario.objective &&
+                    battle::Length(Rear->pose.position - World.scenario.objective->center) <
+                    battle::Length(Front->pose.position - World.scenario.objective->center))
+                    std::swap(Front, Rear);
+                Lead = Front->id;
+                Reserve = Rear->id;
+                ReserveCommander = IsHillDefense() ? Group.id.value : 0;
+                return;
             }
-            if (Reserve)
-                break;
-        }
+        };
+        PickPair(IsHillDefense());
+        if (!Reserve)
+            PickPair(false);
         if (const auto* Regiment = battle::FindRegiment(World, Lead))
             LeadInitial = Regiment->initial_count;
         if (const auto* Regiment = battle::FindRegiment(World, Reserve))
@@ -87,8 +125,9 @@ FRegimentMissionProgress::FRegimentMissionProgress(const FMissionPreset& Preset,
 
 bool FRegimentMissionProgress::CanReleaseReserve(const battle::World& World) const
 {
-    const auto* Regiment = IsReserveExercise() ? battle::FindRegiment(World, Reserve) : nullptr;
-    return Regiment && !Regiment->units.empty() && !Issued && Result.IsEmpty() &&
+    const auto* Regiment = battle::FindRegiment(World, Reserve);
+    return Regiment && !Regiment->units.empty() && (!IsHillDefense() || !Regiment->panic) &&
+        (!Issued || bReserveOrderFailed) && Result.IsEmpty() &&
         World.outcome == battle::BattleOutcome::Running;
 }
 
@@ -96,7 +135,7 @@ bool FRegimentMissionProgress::AwaitsReserveRelease(battle::RegimentId Regiment)
 {
     if (Tutorial)
         return Tutorial->AwaitsReserveRelease(Regiment);
-    return Reserve && Regiment == Reserve && !Delivered;
+    return Reserve && Regiment == Reserve && !Delivered && !bReserveOrderFailed;
 }
 
 void FRegimentMissionProgress::ReleaseReserve(battle::World& World)
@@ -107,6 +146,21 @@ void FRegimentMissionProgress::ReleaseReserve(battle::World& World)
     Release.id = { World.next_order_id };
     Release.recipient = Reserve;
     Release.type = battle::OrderType::Attack;
+    if (IsHillDefense())
+    {
+        const auto* Regiment = battle::FindRegiment(World, Reserve);
+        const auto Position = ReservePosition(World, *Regiment);
+        if (!Position)
+        {
+            bReserveOrderFailed = true;
+            return;
+        }
+        Release.type = battle::OrderType::MoveTo;
+        Release.point = Position->position;
+        Release.facing = Position->yaw;
+        Release.player_direct = true;
+        Release.expiry_tick = World.tick + 35 * DeliveryDelay;
+    }
     Release.priority = ReserveOrderPriority;
     Release.created_tick = World.tick;
     Release.delivery_tick = World.tick + DeliveryDelay;
@@ -114,6 +168,8 @@ void FRegimentMissionProgress::ReleaseReserve(battle::World& World)
     {
         Issued = World.tick;
         ReleaseOrder = Release.id;
+        Delivered.Reset();
+        bReserveOrderFailed = false;
     }
 }
 
@@ -140,17 +196,18 @@ void FRegimentMissionProgress::UpdateHillHold(battle::World& World, battle::Tick
 
     if (World.tick > 0 && (!LastHillSample || World.tick != *LastHillSample))
     {
-        bool bBlueOccupiesCrest = false;
+        bBlueOnCrest = false;
         bHillContested = false;
         for (const auto& Regiment : World.regiments)
         {
-            bool& bControlsCrest = Regiment.team == 0 ? bBlueOccupiesCrest : bHillContested;
+            bool& bControlsCrest = Regiment.team == 0 ? bBlueOnCrest : bHillContested;
             if (Regiment.panic || Regiment.disordered || battle::IsDeploying(World, Regiment) ||
                 Regiment.units.empty() || bControlsCrest)
                 continue;
             // Staff in formation count. A possessed or returning officer and detached
             // skirmishers cannot hold or contest the crest on behalf of their formation.
-            const uint64 Required = Regiment.team == 0 ? (Regiment.initial_count + 1) / 2 : 1;
+            const uint64 Required = IsHillDefense() ? (Regiment.units.size() + 1) / 2
+                : Regiment.team == 0 ? (Regiment.initial_count + 1) / 2 : 1;
             if (Regiment.units.size() < Required)
                 continue;
             uint64 InCrest = 0;
@@ -167,11 +224,11 @@ void FRegimentMissionProgress::UpdateHillHold(battle::World& World, battle::Tick
                     break;
                 }
             }
-            if (bBlueOccupiesCrest && bHillContested)
+            if (bBlueOnCrest && bHillContested)
                 break;
         }
 
-        if (bBlueOccupiesCrest && !bHillContested)
+        if (bBlueOnCrest && !bHillContested)
         {
             HillHeldTicks = LastHillSample && World.tick - 1 == *LastHillSample ? HillHeldTicks + 1 : 1;
             BestHillHeldTicks = FMath::Max(BestHillHeldTicks, HillHeldTicks);
@@ -180,7 +237,28 @@ void FRegimentMissionProgress::UpdateHillHold(battle::World& World, battle::Tick
         }
         else
             HillHeldTicks = 0;
+        if (IsHillDefense())
+        {
+            HillLostTicks = bHillContested && !bBlueOnCrest
+                ? (LastHillSample && World.tick - 1 == *LastHillSample ? HillLostTicks + 1 : 1) : 0;
+        }
         LastHillSample = World.tick;
+    }
+
+    if (IsHillDefense())
+    {
+        if (HillLostTicks >= HillHoldTicks)
+            Finish(World, 1, LOCTEXT("SenlacLost", "Противник закрепился на гребне."));
+        else if (World.tick >= Deadline)
+        {
+            if (bBlueOnCrest)
+                Finish(World, 0, LOCTEXT("SenlacDefended", "Гребень удержан до конца боя."));
+            else
+                Finish(World, 1, LOCTEXT("SenlacAbandoned", "К концу боя на гребне не осталось вашего полка в строю."));
+        }
+        else if (World.outcome == battle::BattleOutcome::Victory)
+            World.outcome = battle::BattleOutcome::Running;
+        return;
     }
 
     if (HillHeldTicks >= HillHoldTicks)
@@ -202,8 +280,10 @@ void FRegimentMissionProgress::Update(battle::World& World, bool bOfficerCommand
     if (!Result.IsEmpty() || Objective.Goal == EMissionGoal::Eliminate)
         return;
     const auto Deadline = battle::Tick(Objective.TimeLimitSeconds) * FRegimentBattlePlayback::StepsPerSecond;
-    if (Objective.Goal == EMissionGoal::HillHold)
+    if (IsCrestObjective(Objective.Goal))
     {
+        if (IsHillDefense())
+            ObserveReserve(World);
         UpdateHillHold(World, Deadline);
         return;
     }
@@ -251,14 +331,10 @@ void FRegimentMissionProgress::Update(battle::World& World, bool bOfficerCommand
         return;
     }
 
+    ObserveReserve(World);
     const auto* Regiment = battle::FindRegiment(World, Reserve);
-    if (ReleaseOrder && Regiment && Regiment->order && Regiment->order->id == ReleaseOrder && !Delivered)
-        Delivered = World.tick > 0 ? World.tick - 1 : 0;
-    if (Regiment && Regiment->melee_engaged && !FirstContact)
+    if (FirstContact)
     {
-        FirstContact = World.tick > 0 ? World.tick - 1 : 0;
-        if (const auto* Main = battle::FindRegiment(World, Lead))
-            LeadAtContact = uint64(Main->units.size());
         if (!Delivered)
             Finish(World, 1, LOCTEXT("TooLate", "Резерв вступил в контакт до доставки приказа."));
         else if (LeadAtContact * 2 < LeadInitial)
@@ -269,6 +345,40 @@ void FRegimentMissionProgress::Update(battle::World& World, bool bOfficerCommand
     else if (!Regiment || Regiment->units.empty() || World.tick >= Deadline ||
              World.outcome != battle::BattleOutcome::Running)
         Finish(World, 1, LOCTEXT("ReserveNotEngaged", "Цель не выполнена. Резерв не вступил в бой вовремя."));
+}
+
+void FRegimentMissionProgress::ObserveReserve(const battle::World& World)
+{
+    const auto* Regiment = battle::FindRegiment(World, Reserve);
+    if (!Regiment)
+        return;
+    const auto At = World.tick > 0 ? World.tick - 1 : 0;
+    if (ReleaseOrder && Regiment->order && Regiment->order->id == ReleaseOrder)
+    {
+        if (!Delivered && (Regiment->order->status == battle::OrderStatus::Active ||
+            Regiment->order->status == battle::OrderStatus::Completed))
+            Delivered = At;
+        bReserveAtLine |= Regiment->order->status == battle::OrderStatus::Completed;
+        bReserveOrderFailed |= IsHillDefense() && (Regiment->order->status == battle::OrderStatus::Failed ||
+            Regiment->order->status == battle::OrderStatus::Cancelled);
+    }
+    if (Regiment->melee_engaged && !FirstContact)
+    {
+        FirstContact = At;
+        if (const auto* Main = battle::FindRegiment(World, Lead))
+            LeadAtContact = uint64(Main->units.size());
+    }
+}
+
+FLinearColor FRegimentMissionProgress::CrestTint() const
+{
+    if (!IsHillDefense())
+        return FLinearColor(1.f, .73f, .32f);
+    if (HillLostTicks > 0)
+        return FLinearColor(1.f, .34f, .22f);
+    if (bHillContested || !bBlueOnCrest)
+        return FLinearColor(1.f, .73f, .32f);
+    return FLinearColor(.38f, .75f, 1.f);
 }
 
 void FRegimentMissionProgress::UpdateBreakthrough(battle::World& World, battle::Tick Deadline)
@@ -336,6 +446,32 @@ FText FRegimentMissionProgress::Status(const battle::World& World) const
             "{0} переправляют полки · {1}/{2}\n{3} удерживают выход · осталось {4} с"),
             SideName(Terrain, Objective.CrossingTeam), Passed.Num(), Objective.RequiredRegiments,
             SideName(Terrain, 1 - Objective.CrossingTeam), Remaining);
+    if (IsHillDefense())
+    {
+        const auto* Line = battle::FindRegiment(World, Lead);
+        const auto* Rear = battle::FindRegiment(World, Reserve);
+        const FText Stage = HillLostTicks ? FText::Format(LOCTEXT("SenlacEnemyProgress", "Враг на гребне · {0}/{1} с"),
+            HillLostTicks / FRegimentBattlePlayback::StepsPerSecond, MissionHillHoldSeconds)
+            : bHillContested ? LOCTEXT("SenlacContested", "Бой на гребне")
+            : bBlueOnCrest ? LOCTEXT("SenlacSecure", "Гребень под вашим контролем")
+            : LOCTEXT("SenlacOpen", "Верните полк на гребень");
+        const int32 Strength = Line && LeadInitial ? int32(100 * Line->units.size() / LeadInitial) : 0;
+        const FText LineStatus = !Line || Line->units.empty() ? LOCTEXT("SenlacLeadLost", "Первая линия разгромлена")
+            : Line->panic ? LOCTEXT("SenlacLeadRout", "Первая линия отступает")
+            : FText::Format(Line->disordered ? LOCTEXT("SenlacLeadDisordered", "Первая линия {0}% · строй нарушен")
+                : LOCTEXT("SenlacLeadStrength", "Первая линия {0}%"), Strength);
+        const FText ReserveStatus = !Rear || Rear->units.empty() ? LOCTEXT("SenlacReserveLost", "резерв разгромлен")
+            : Rear->panic ? LOCTEXT("SenlacReserveRout", "резерв отступает")
+            : FirstContact ? LOCTEXT("SenlacReserveContact", "резерв вступил в бой")
+            : bReserveAtLine ? LOCTEXT("SenlacReserveInPlace", "резерв занял позицию")
+            : bReserveOrderFailed ? LOCTEXT("SenlacReserveBlocked", "путь резерва перекрыт · повторите приказ")
+            : Delivered ? LOCTEXT("SenlacReserveMoving", "приказ получен · резерв идёт на гребень")
+            : Issued ? LOCTEXT("SenlacReserveTransit", "приказ передаётся резерву")
+            : (Strength < 65 || HillLostTicks || (Line && Line->panic)) ? LOCTEXT("SenlacReserveNeeded", "пора ввести резерв · Tab")
+            : LOCTEXT("SenlacReserveWaiting", "резерв ждёт приказа · Tab");
+        return FText::Format(LOCTEXT("SenlacProgress", "{0} · осталось {1} с\n{2} · {3}"),
+            Stage, Remaining, LineStatus, ReserveStatus);
+    }
     if (Objective.Goal == EMissionGoal::HillHold)
     {
         const FText Stage = bHillContested ? LOCTEXT("HillContested", "Противник оспаривает вершину.")
@@ -355,6 +491,9 @@ FText FRegimentMissionProgress::Report() const
     if (Objective.Goal == EMissionGoal::HillHold)
         return FText::Format(LOCTEXT("HillReport", "Первое удержание · {0}\nЛучший непрерывный отрезок · {1}"),
             EventTime(FirstHillControl), EventTime(TOptional<battle::Tick>(BestHillHeldTicks)));
+    if (IsHillDefense())
+        return FText::Format(LOCTEXT("SenlacDebrief", "Приказ резерву · {0}\nДоставлен · {1}\nПервый контакт резерва · {2}"),
+            EventTime(Issued), EventTime(Delivered), EventTime(FirstContact));
     if (!IsReserveExercise())
         return FText::GetEmpty();
     const FText Timeline = FText::Format(LOCTEXT("ReportTimeline",

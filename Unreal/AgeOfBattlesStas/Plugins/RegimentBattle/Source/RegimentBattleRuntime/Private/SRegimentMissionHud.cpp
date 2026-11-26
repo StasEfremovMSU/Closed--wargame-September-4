@@ -27,6 +27,7 @@
 #include "Widgets/Input/SSpinBox.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
+#include "Widgets/Layout/SWrapBox.h"
 #include "Widgets/Layout/SScaleBox.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SWidgetSwitcher.h"
@@ -288,6 +289,8 @@ FText GoalName(EMissionGoal Goal)
             return LOCTEXT("ReserveObjective", "Ввод резерва");
         case EMissionGoal::HillHold:
             return LOCTEXT("HillHoldObjective", "Удержать высоту");
+        case EMissionGoal::HillDefense:
+            return LOCTEXT("HillDefenseObjective", "Оборона гребня");
         case EMissionGoal::Breakthrough:
             return LOCTEXT("BreakthroughObjective", "Прорыв пехоты");
         default:
@@ -307,6 +310,8 @@ FText GoalDescription(EMissionGoal Goal)
             return FText::Format(LOCTEXT("HillHoldDescription",
                 "На карте «Холм» удерживайте вершину {0} секунд подряд. Нужна хотя бы половина исходного состава одного синего полка в строю, включая командный состав. Вражеский боец в строю сбрасывает отсчёт."),
                 MissionHillHoldSeconds);
+        case EMissionGoal::HillDefense:
+            return LOCTEXT("HillDefenseDescription", "Сохраните полк в строю на гребне до конца боя. Введите резерв, если первая линия ослабеет.");
         case EMissionGoal::Breakthrough:
             return LOCTEXT("BreakthroughDescription",
                 "Выведите заданные пехотные полки к рубежу до истечения времени. В зоне должно быть не меньше половины исходного состава каждого полка в строю.");
@@ -1229,14 +1234,14 @@ TSharedRef<SWidget> SRegimentMissionHud::MakeFactionMenu(bool bBlue)
 TSharedRef<SWidget> SRegimentMissionHud::MakeObjectiveControls()
 {
     using namespace MissionHudSlate;
-    const auto Choices = SNew(SHorizontalBox);
+    const auto Choices = SNew(SWrapBox).UseAllottedSize(true).InnerSlotPadding(FVector2D(8.f, 6.f));
     const EMissionGoal Goals[] = {EMissionGoal::Eliminate, EMissionGoal::Crossing,
-        EMissionGoal::ReserveExercise, EMissionGoal::HillHold};
+        EMissionGoal::ReserveExercise, EMissionGoal::HillHold, EMissionGoal::HillDefense};
     for (EMissionGoal Goal : Goals)
     {
-        Choices->AddSlot().AutoWidth().Padding(0, 0, 8, 0)
+        Choices->AddSlot()
         [
-            MakeControl(GoalName(Goal), GoalDescription(Goal), Goal == EMissionGoal::HillHold ? 190.f : 151.f, 35.f,
+            MakeControl(GoalName(Goal), GoalDescription(Goal), IsCrestObjective(Goal) ? 190.f : 151.f, 35.f,
                 TAttribute<FSlateColor>::CreateLambda([this, Goal]
                 {
                     return FSlateColor(Draft.Objective.Goal == Goal ? SelectedTint : ControlTint);
@@ -1244,7 +1249,7 @@ TSharedRef<SWidget> SRegimentMissionHud::MakeObjectiveControls()
                 FOnClicked::CreateLambda([this, Goal]
                 {
                     Draft.Objective.Goal = Goal;
-                    if (Goal == EMissionGoal::HillHold)
+                    if (IsCrestObjective(Goal))
                         Draft.Objective.TimeLimitSeconds = FMath::Max(Draft.Objective.TimeLimitSeconds, MissionHillHoldSeconds);
                     ClearPresetNotice();
                     return FReply::Handled();
@@ -1301,7 +1306,7 @@ TSharedRef<SWidget> SRegimentMissionHud::MakeObjectiveControls()
             [
                 MakeField<int32>(90.f, TAttribute<TOptional<int32>>::CreateLambda([this]() -> TOptional<int32>
                     {
-                        return Draft.Objective.Goal == EMissionGoal::HillHold ? MissionHillHoldSeconds : MissionMinTimeLimit;
+                        return IsCrestObjective(Draft.Objective.Goal) ? MissionHillHoldSeconds : MissionMinTimeLimit;
                     }), MissionMaxTimeLimit, LOCTEXT("ObjectiveTimeHelp", "Отведённое на цель время в секундах"),
                     TAttribute<int32>::CreateLambda([this] { return Draft.Objective.TimeLimitSeconds; }),
                     SSpinBox<int32>::FOnValueChanged::CreateLambda([this](int32 Value)

@@ -187,11 +187,12 @@ public:
     void RequestBattleRestart();
     void RequestMissionSetup();
     bool CanReturnToMissionSetup() const;
+    bool HasMissionReserve() const;
     bool CanIntroduceReserve() const;
     void IntroduceReserve();
     FText GetMissionObjectiveText() const;
     FText GetMissionReport() const;
-    bool GetTutorialMarker(FVector& Center, float& Radius) const;
+    bool GetMissionMarker(FVector& Center, TArray<FVector>& Outline, FLinearColor& Tint) const;
     TConstArrayView<FRegimentDecisionHudEntry> GetDecisionEntries() const;
     bool ProjectCommander(uint64 UnitId, FVector2D& Normalized) const;
     void ToggleSkirmishers(uint64 NodeId);

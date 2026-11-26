@@ -29,7 +29,7 @@ public:
     void Play(UWorld& World, ERegimentSound Sound, const FVector& Position, uint64 Source, uint64 Tick,
         bool bPersonal = false);
     void SetPaused(bool bPaused);
-    void UpdateAmbience(UWorld& World, const TOptional<FVector>& Water, bool bMelee, bool bGunpowder);
+    void UpdateAmbience(UWorld& World, const TOptional<FVector>& Water, const TOptional<FVector>& Melee, bool bGunpowder);
 
 private:
     struct FSourcePlayback
@@ -56,7 +56,7 @@ private:
     };
 
     USoundAttenuation* GetAttenuation(UWorld& World, int32 Range);
-    void UpdateLoop(UWorld& World, FLoop& Loop, float TargetGain, const FVector* Position = nullptr);
+    void UpdateLoop(UWorld& World, FLoop& Loop, float TargetGain, const FVector* Position = nullptr, int32 Range = 0);
 
     static constexpr int32 AttenuationCount = 4;
     TArray<TStrongObjectPtr<USoundWave>> Samples[int32(ERegimentSound::Count)];

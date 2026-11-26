@@ -427,16 +427,31 @@ std::vector<battle::MarchRegiment> MakeMissionOpening(const FMissionPreset& Pres
     const auto* Era = Preset.Era.IsSet() ? RegimentEraCatalog::Find(Preset.Era.Id) : nullptr;
     const auto* Blue = Era ? RegimentEraCatalog::FindFaction(*Era, Preset.Era.BlueFaction) : nullptr;
     const auto* Orange = Era ? RegimentEraCatalog::FindFaction(*Era, Preset.Era.OrangeFaction) : nullptr;
-    return MakeOpening(Preset.Roster, Preset.Terrain, Preset.Field, Preset.FigureTarget, IncludesArmyStaff(Preset, Era),
+    auto Opening = MakeOpening(Preset.Roster, Preset.Terrain, Preset.Field, Preset.FigureTarget, IncludesArmyStaff(Preset, Era),
         MissionInfantryProfiles(Preset.Roster, Blue, Orange));
+    if (Preset.Objective.Goal == EMissionGoal::HillDefense)
+    {
+        double SumX[2] = {};
+        int32 Counts[2] = {};
+        for (const auto& Regiment : Opening)
+        {
+            SumX[Regiment.team] += Regiment.pose.position.x;
+            ++Counts[Regiment.team];
+        }
+        if (Counts[0] && Counts[1] && SumX[0] / Counts[0] > SumX[1] / Counts[1])
+            for (auto& Regiment : Opening)
+                Regiment.pose.yaw = Regiment.team == 0 ? battle::Pi : 0.f;
+    }
+    return Opening;
 }
 
 battle::Scenario BuildMissionBattle(const FMissionRoster& Roster, std::span<const battle::MarchRegiment> March,
     battle::MarchTerrain Terrain, EMissionDeployment DeploymentMode, bool bRegimentTactics, battle::MarchField Field,
     int32 FigureTarget, bool bLinearInfantry, bool bArmyStaff,
-    std::span<const FRegimentEraInfantryProfile* const> InfantryProfiles)
+    std::span<const FRegimentEraInfantryProfile* const> InfantryProfiles, bool bReverseFacing)
 {
     namespace Command = battle::command;
+    const auto FacesEast = [bReverseFacing](int32 Team) { return (Team == 0) != bReverseFacing; };
     const int32 RegimentSlots = MissionRosterExtent(Roster);
     const auto ResolvedRoster = ResolveMissionRoster(Roster, FigureTarget, bArmyStaff);
     uint64 UnitIdStride = MinimumUnitIdStride;
@@ -581,10 +596,10 @@ battle::Scenario BuildMissionBattle(const FMissionRoster& Roster, std::span<cons
                 [&](const auto& Candidate) { return Candidate.id == Leaf.regiment; });
             const auto& Deployment = Deployed[Regiment - Scenario.regiments.begin()];
             auto Position = Regiment->pose;
-            Position.yaw = Group.team == 0 ? 0.f : battle::Pi;
+            Position.yaw = FacesEast(Group.team) ? 0.f : battle::Pi;
             Position.position = Position.position -
                 battle::Forward(Position.yaw) * (Deployment.Size.depth_m * .5f + 3.f);
-            if (!Rear || (Group.team == 0 ? Position.position.x < Rear->position.x
+            if (!Rear || (FacesEast(Group.team) ? Position.position.x < Rear->position.x
                                          : Position.position.x > Rear->position.x))
                 Rear = Position;
         }
@@ -593,7 +608,7 @@ battle::Scenario BuildMissionBattle(const FMissionRoster& Roster, std::span<cons
 
         Group.parent = ArmyId(Group.team, RegimentSlots);
         const int32 Lane = GroupIndex % MissionGroupsPerTeam;
-        const int32 Wing = Group.team == 0 ? Lane : MissionGroupsPerTeam - Lane - 1;
+        const int32 Wing = FacesEast(Group.team) ? Lane : MissionGroupsPerTeam - Lane - 1;
         constexpr std::array Roles = {Command::SectorRole::LeftFlank, Command::SectorRole::Center,
             Command::SectorRole::RightFlank};
         const TCHAR* const Names[] = {TEXT("Левый фланг"), TEXT("Центр"), TEXT("Правый фланг")};
@@ -610,7 +625,7 @@ battle::Scenario BuildMissionBattle(const FMissionRoster& Roster, std::span<cons
         Rear->position.x = FMath::Clamp(Rear->position.x, -Field.HalfWidth() + 1.f, Field.HalfWidth() - 1.f);
         Commander.pose = FindDeployment(*Rear, CommanderSize, Navigation, Deployed, Terrain, Field).value_or(*Rear);
         auto& Rearmost = ArmyRear[Group.team];
-        if (!Rearmost || (Group.team == 0 ? Commander.pose.position.x < Rearmost->position.x
+        if (!Rearmost || (FacesEast(Group.team) ? Commander.pose.position.x < Rearmost->position.x
                                          : Commander.pose.position.x > Rearmost->position.x))
             Rearmost = Commander.pose;
         Commander.troop = bMountedCommander ? battle::UnitTroop::Mounted : battle::UnitTroop::Infantry;
@@ -654,8 +669,8 @@ battle::Scenario BuildMissionBattle(const FMissionRoster& Roster, std::span<cons
         General.speed = 6.4f;
         General.weapon.damage = 3.f;
         auto Rear = *ArmyRear[Team];
-        const float Direction = Team == 0 ? 1.f : -1.f;
-        Rear.yaw = Team == 0 ? 0.f : battle::Pi;
+        const float Direction = FacesEast(Team) ? 1.f : -1.f;
+        Rear.yaw = FacesEast(Team) ? 0.f : battle::Pi;
         Rear.position.x = -Direction * std::clamp(-Direction * Rear.position.x + 6.f,
             battle::MarchRiverHalfWidth + 2.f, Field.HalfWidth() - 2.f);
         Rear.position.y = 0.f;
@@ -734,9 +749,12 @@ battle::Scenario BuildPresetBattle(const FMissionPreset& Preset, std::span<const
     }
 
     const auto InfantryProfiles = MissionInfantryProfiles(Preset.Roster, Factions[0], Factions[1]);
+    const bool bDefendingCrest = Preset.Objective.Goal == EMissionGoal::HillDefense;
+    const auto BlueLead = std::ranges::find(Opening, 0, &battle::MarchRegiment::team);
+    const bool bReverseFacing = bDefendingCrest && BlueLead != Opening.end() && battle::Forward(BlueLead->pose.yaw).x < 0.f;
     auto Scenario = BuildMissionBattle(Preset.Roster, Opening, Preset.Terrain, Deployment,
         Preset.bRegimentTactics, Preset.Field, Preset.FigureTarget,
-        Preset.bRegimentTactics && Era && Era->Rules.linear_infantry, IncludesArmyStaff(Preset, Era), InfantryProfiles);
+        Preset.bRegimentTactics && Era && Era->Rules.linear_infantry, IncludesArmyStaff(Preset, Era), InfantryProfiles, bReverseFacing);
     if (Preset.Objective.Goal == EMissionGoal::Eliminate && Scenario.command_setup)
     {
         // This is a terrain checkpoint. Enemy identity and position come from contact reports in battle.
@@ -749,10 +767,10 @@ battle::Scenario BuildPresetBattle(const FMissionPreset& Preset, std::span<const
             Task.authority.pursuit_limit_m.reset();
         }
     }
-    if (Preset.Objective.Goal == EMissionGoal::HillHold && Scenario.hill)
+    if (IsCrestObjective(Preset.Objective.Goal) && Scenario.hill)
         if (const auto Crest = battle::HillObjectiveCrest(*Scenario.hill))
             Scenario.objective = battle::ScenarioObjective{
-                {Crest->center.x, Crest->center.y, 0.f}, FMath::Min(Crest->radius_x_m, Crest->radius_y_m), 1};
+                {Crest->center.x, Crest->center.y, 0.f}, FMath::Min(Crest->radius_x_m, Crest->radius_y_m), bDefendingCrest ? 0 : 1};
     if (Preset.Objective.Goal == EMissionGoal::Breakthrough && Preset.Objective.Breakthrough)
     {
         const auto& Zone = *Preset.Objective.Breakthrough;
