@@ -1,0 +1,183 @@
+{
+  "schema_version": 5,
+  "name": "Ватерлоо, 1815 · Гребень Мон-Сен-Жан",
+  "terrain": "Waterloo",
+  "era": {
+    "id": "napoleonic",
+    "version": 1,
+    "blue_faction": "france",
+    "orange_faction": "britain"
+  },
+  "regiment_tactics": true,
+  "risky_volley": false,
+  "direct_deployment": true,
+  "objective": {
+    "goal": "HillHold",
+    "time_limit_seconds": 165,
+    "crossing": 1,
+    "required_regiments": 1,
+    "crossing_team": 0
+  },
+  "briefing": "18 июня 1815 года союзная армия Веллингтона заняла гребень Мон-Сен-Жан. В игровом эпизоде французская колонна идёт к гребню от центра. Стрелковые линии на крыльях и артиллерия прикрывают её подход, а британские мушкетёры обороняют гребень в двух эшелонах. Угумон, Ла-Э-Сент и Папелотт перекрывают отдельные подступы. Французам нужно вытеснить защитников и удержать гребень 20 секунд подряд. На гребне должна оставаться хотя бы половина исходного состава одного французского полка в строю. Защитник в строю сбрасывает отсчёт. Участок 560 × 380 м и состав 5 000 игровых фигур условны. Подход прусской армии не разыгрывается.",
+  "sources": [
+    "https://www.nationalarchives.gov.uk/education/resources/significant-events/battle-of-waterloo-1815/",
+    "https://collection.nam.ac.uk/detail.php?acc=1990-08-68-1",
+    "https://collection.nam.ac.uk/detail.php?acc=1950-11-33-34",
+    "https://www.nam.ac.uk/explore/battle-waterloo",
+    "https://waterloo-tourisme.be/en/the-farms-and-monuments-1815/"
+  ],
+  "regiments": [
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -72,
+      "start_y": 12,
+      "swords": 16,
+      "archers": 5,
+      "spearmen": 3,
+      "mounted": 0,
+      "ranged_class": "musket"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -75,
+      "start_y": -95,
+      "swords": 4,
+      "archers": 19,
+      "spearmen": 0,
+      "mounted": 0,
+      "infantry_profile": "fusiliers"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -76,
+      "start_y": 82,
+      "swords": 4,
+      "archers": 19,
+      "spearmen": 0,
+      "mounted": 0,
+      "ranged_class": "musket"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -123,
+      "start_y": 38,
+      "swords": 8,
+      "archers": 14,
+      "spearmen": 0,
+      "mounted": 0,
+      "infantry_profile": "old_guard"
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -113,
+      "start_y": 139,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 12,
+      "mounted_class": "heavy"
+    },
+    {
+      "type": "Platform",
+      "enabled": true,
+      "group": 1,
+      "start_x": -55,
+      "start_y": -36,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 0,
+      "platform": "field_gun",
+      "platform_count": 6
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 87,
+      "start_y": 12,
+      "swords": 4,
+      "archers": 19,
+      "spearmen": 0,
+      "mounted": 0,
+      "ranged_class": "musket"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 97,
+      "start_y": -95,
+      "swords": 4,
+      "archers": 17,
+      "spearmen": 0,
+      "mounted": 0,
+      "infantry_profile": "british_light"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 95,
+      "start_y": 96,
+      "swords": 4,
+      "archers": 17,
+      "spearmen": 0,
+      "mounted": 0,
+      "infantry_profile": "highlanders"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 128,
+      "start_y": 11,
+      "swords": 6,
+      "archers": 15,
+      "spearmen": 0,
+      "mounted": 0,
+      "ranged_class": "musket"
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 133,
+      "start_y": -140,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 11,
+      "mounted_class": "heavy"
+    },
+    {
+      "type": "Platform",
+      "enabled": true,
+      "group": 3,
+      "start_x": 72,
+      "start_y": -47,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 0,
+      "platform": "field_gun",
+      "platform_count": 6
+    }
+  ],
+  "field": {
+    "width_m": 560,
+    "height_m": 380
+  },
+  "figure_target": 5000,
+  "adaptive_battle": true
+}

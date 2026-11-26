@@ -1,0 +1,178 @@
+{
+  "schema_version": 4,
+  "name": "Рокруа, 1643 · Пики в центре",
+  "terrain": "Breitenfeld",
+  "era": {
+    "id": "renaissance",
+    "version": 1,
+    "blue_faction": "france",
+    "orange_faction": "spain"
+  },
+  "regiment_tactics": true,
+  "risky_volley": false,
+  "direct_deployment": true,
+  "adaptive_battle": true,
+  "objective": {
+    "goal": "Eliminate",
+    "time_limit_seconds": 240,
+    "crossing": 1,
+    "required_regiments": 1,
+    "crossing_team": 0
+  },
+  "briefing": "19 мая 1643 года герцог Энгиенский, будущий Великий Конде, пришёл на помощь осаждённому Рокруа и победил армию Франсиско де Мело. Сражение развернулось на равнине перед городом, где действовали и плотные пехотные построения, и конница.\n\nВы командуете французами. Разбейте армию де Мело. Удерживайте контакт пехотой, а более сильное конное крыло выводите к краю испанского строя.\n\nКарта передаёт открытый сектор перед городом без самой крепости. Пики, мушкеты и конница сведены к игровым полкам, расстояния и состав сил сжаты. Игровой участок 560 × 360 м, 5 000 фигур.",
+  "sources": [
+    "https://www.musee-conde.fr/fr/notice/pe-354-les-actions-du-grand-conde-rocroi-1643-75a16b46-3253-4289-8cb5-069ba7a4d422",
+    "https://pop.culture.gouv.fr/notice/joconde/00000077228"
+  ],
+  "regiments": [
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -65,
+      "start_y": 0,
+      "formation_files": 24,
+      "swords": 11,
+      "archers": 19,
+      "spearmen": 25,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -62,
+      "start_y": -76,
+      "formation_files": 17,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 33
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -47,
+      "start_y": 69,
+      "formation_files": 18,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 43
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -114,
+      "start_y": 6,
+      "formation_files": 22,
+      "swords": 10,
+      "archers": 18,
+      "spearmen": 26,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -111,
+      "start_y": -74,
+      "formation_files": 21,
+      "swords": 11,
+      "archers": 18,
+      "spearmen": 21,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -102,
+      "start_y": 115,
+      "formation_files": 15,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 32
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 53,
+      "start_y": -19,
+      "formation_files": 18,
+      "swords": 13,
+      "archers": 18,
+      "spearmen": 32,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 66,
+      "start_y": 31,
+      "formation_files": 18,
+      "swords": 13,
+      "archers": 19,
+      "spearmen": 31,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 72,
+      "start_y": -73,
+      "formation_files": 17,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 36
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 82,
+      "start_y": 84,
+      "formation_files": 17,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 34
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 107,
+      "start_y": 14,
+      "formation_files": 19,
+      "swords": 12,
+      "archers": 18,
+      "spearmen": 28,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 124,
+      "start_y": -65,
+      "formation_files": 18,
+      "swords": 11,
+      "archers": 17,
+      "spearmen": 23,
+      "mounted": 0
+    }
+  ],
+  "field": {
+    "width_m": 560,
+    "height_m": 360
+  },
+  "figure_target": 5000
+}

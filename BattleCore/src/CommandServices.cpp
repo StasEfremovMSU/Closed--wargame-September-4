@@ -16,8 +16,8 @@ bool Eligible(const World &w, const CommandNode &n, OfficerId id) {
     auto *u = FindUnit(w, o->unit);
     if (!u || !u->alive)
         return false;
-    auto *r = FindRegiment(w, u->regiment);
-    return r && r->team == n.team && (n.level != Level::Regiment || r->id == n.regiment);
+    return UnitTeam(w, *u) == n.team &&
+           (n.level != Level::Regiment || u->regiment == n.regiment);
 }
 } // namespace
 StubResult<HierarchyValidation> ValidateHierarchy(const CommandHierarchy &h, const World &w) {
@@ -47,9 +47,9 @@ StubResult<HierarchyValidation> ValidateHierarchy(const CommandHierarchy &h, con
         if (n.level == Level::Army) {
             if (n.parent)
                 issue("Army cannot have a parent.");
-        } else {
+        } else if (!IsCommandRoot(n)) {
             auto *p = FindNode(h, n.parent);
-            if (!p || unsigned(p->level) + 1 != unsigned(n.level) || p->team != n.team ||
+            if (!p || !CanCommandLevel(p->level, n.level) || p->team != n.team ||
                 std::count(p->children.begin(), p->children.end(), n.id) != 1)
                 issue("Invalid command parent, level, team or back-reference.");
         }
@@ -69,10 +69,10 @@ StubResult<HierarchyValidation> ValidateHierarchy(const CommandHierarchy &h, con
         if (n.commander) {
             auto *o = Officer(w, n.commander);
             auto *u = o ? FindUnit(w, o->unit) : nullptr;
-            auto *r = u ? FindRegiment(w, u->regiment) : nullptr;
             if (!commanders.insert(n.commander.value).second || !o ||
-                (o->role != 1 && o->role != 2) || !r || r->team != n.team ||
-                (n.level == Level::Regiment && r->id != n.regiment) || !FindProfile(h, n.commander))
+                (o->role != 1 && o->role != 2) || !u || UnitTeam(w, *u) != n.team ||
+                (n.level == Level::Regiment && u->regiment != n.regiment) ||
+                !FindProfile(h, n.commander))
                 issue("Invalid or duplicate commander.");
         }
         if (auto *p = FindProfile(h, n.commander);
@@ -82,20 +82,29 @@ StubResult<HierarchyValidation> ValidateHierarchy(const CommandHierarchy &h, con
         for (auto candidate : n.succession) {
             auto *o = Officer(w, candidate);
             auto *u = o ? FindUnit(w, o->unit) : nullptr;
-            auto *r = u ? FindRegiment(w, u->regiment) : nullptr;
             if (!candidate || !successors.insert(candidate.value).second || !o ||
-                (o->role != 1 && o->role != 2) || !r || r->team != n.team ||
-                (n.level == Level::Regiment && r->id != n.regiment))
+                (o->role != 1 && o->role != 2) || !u || UnitTeam(w, *u) != n.team ||
+                (n.level == Level::Regiment && u->regiment != n.regiment))
                 issue("Invalid successor.");
         }
     }
+    std::set<OfficerId> army_staff;
     for (const auto &a : h.support) {
-        auto *n = FindNode(h, a.command);
-        auto *o = Officer(w, a.officer);
-        auto *u = o ? FindUnit(w, o->unit) : nullptr;
-        auto *r = u ? FindRegiment(w, u->regiment) : nullptr;
-        if (!n || !r || r->team != n->team || unsigned(a.duty) > unsigned(SupportDuty::Musician))
+        const auto *n = FindNode(h, a.command);
+        const auto *o = Officer(w, a.officer);
+        const auto *u = o ? FindUnit(w, o->unit) : nullptr;
+        if (!n || !u || UnitTeam(w, *u) != n->team || unsigned(a.duty) > unsigned(SupportDuty::Bodyguard)) {
             issue("Invalid support assignment.");
+            continue;
+        }
+        if (o->role == ArmyStaffOfficerRole) {
+            if (n->level != Level::Army || u->regiment || u->troop != UnitTroop::Mounted ||
+                (a.duty != SupportDuty::Adjutant && a.duty != SupportDuty::Bodyguard) ||
+                !army_staff.insert(a.officer).second)
+                issue("Invalid army staff assignment.");
+        } else if (!u->regiment || a.duty == SupportDuty::Bodyguard) {
+            issue("Invalid regiment support assignment.");
+        }
     }
     bool ok = report.issues.empty();
     return {ok ? StubStatus::Ready : StubStatus::InvalidInput, std::move(report),
@@ -141,7 +150,8 @@ StubResult<CommunicationsUpdate> AdvanceCommunications(const CommunicationsState
             unsigned(message.status) > unsigned(DeliveryStatus::RecipientUnavailable) ||
             message.created_tick > message.delivery_tick ||
             (message.expiry_tick && *message.expiry_tick < message.created_tick) ||
-            (message.channel == DeliveryChannel::Courier && !message.courier))
+            (message.channel == DeliveryChannel::Courier && !message.courier &&
+             (message.status == DeliveryStatus::InTransit || message.status == DeliveryStatus::Delivered)))
             return {StubStatus::InvalidInput, std::nullopt, "Invalid or duplicate message."};
         if (auto *task = std::get_if<CommandTask>(&message.payload)) {
             if (!detail::ValidTask(*task) || task->issuer != message.sender ||
@@ -172,7 +182,8 @@ StubResult<CommunicationsUpdate> AdvanceCommunications(const CommunicationsState
             message.status = DeliveryStatus::Expired;
             continue;
         }
-        if (message.delivery_tick > tick)
+        if (message.delivery_tick > tick ||
+            (message.channel == DeliveryChannel::Courier && !message.courier))
             continue;
         message.status = DeliveryStatus::Delivered;
         update.delivered.push_back(message);

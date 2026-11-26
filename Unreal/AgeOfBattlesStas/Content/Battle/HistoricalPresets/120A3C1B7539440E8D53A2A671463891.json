@@ -1,0 +1,171 @@
+{
+  "schema_version": 4,
+  "name": "Херонея, 338 до н. э. · Войско Филиппа II",
+  "terrain": "OpenField",
+  "era": {
+    "id": "ancient",
+    "version": 1,
+    "blue_faction": "macedon",
+    "orange_faction": "greece"
+  },
+  "field": {
+    "width_m": 540,
+    "height_m": 360
+  },
+  "regiment_tactics": true,
+  "risky_volley": false,
+  "direct_deployment": true,
+  "adaptive_battle": true,
+  "objective": {
+    "goal": "Eliminate",
+    "time_limit_seconds": 240,
+    "crossing": 1,
+    "required_regiments": 1,
+    "crossing_team": 0
+  },
+  "briefing": "Филипп II победил союз афинян и фиванцев в Беотии. В войске Филиппа сражался его сын Александр. В игре Македония выводит фалангу в центре и конный отряд на левом крыле, а греческий союз опирается на две линии гоплитов.\n\nПозиции и численность условны. Источники сверены 26.11.2026.",
+  "sources": [
+    "https://www.metmuseum.org/de/essays/the-rise-of-macedonia-and-the-conquests-of-alexander-the-great",
+    "https://resources.metmuseum.org/resources/metpublications/pdf/Pergamon_and_the_Hellenistic_Kingdoms_of_the_Ancient_World.pdf"
+  ],
+  "regiments": [
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -82,
+      "start_y": 0,
+      "swords": 10,
+      "archers": 5,
+      "spearmen": 48,
+      "mounted": 0,
+      "infantry_profile": "sarissa_phalanx"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -86,
+      "start_y": 43,
+      "swords": 13,
+      "archers": 5,
+      "spearmen": 42,
+      "mounted": 0,
+      "infantry_profile": "sarissa_phalanx"
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -101,
+      "start_y": -74,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 39
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -133,
+      "start_y": -28,
+      "swords": 12,
+      "archers": 6,
+      "spearmen": 38,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -134,
+      "start_y": 51,
+      "swords": 11,
+      "archers": 12,
+      "spearmen": 23,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -146,
+      "start_y": 105,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 24
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 65,
+      "start_y": -31,
+      "swords": 14,
+      "archers": 3,
+      "spearmen": 43,
+      "mounted": 0,
+      "infantry_profile": "hoplites"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 64,
+      "start_y": 14,
+      "swords": 13,
+      "archers": 4,
+      "spearmen": 41,
+      "mounted": 0,
+      "infantry_profile": "hoplites"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 66,
+      "start_y": 60,
+      "swords": 14,
+      "archers": 5,
+      "spearmen": 30,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 111,
+      "start_y": -52,
+      "swords": 12,
+      "archers": 7,
+      "spearmen": 30,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 112,
+      "start_y": 45,
+      "swords": 11,
+      "archers": 6,
+      "spearmen": 33,
+      "mounted": 0,
+      "infantry_profile": "loose_bow"
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 88,
+      "start_y": -99,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 22
+    }
+  ],
+  "figure_target": 5000
+}

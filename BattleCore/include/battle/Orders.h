@@ -1,8 +1,20 @@
 #pragma once
 #include "Scenario.h"
 namespace battle {
-enum class OrderType : uint8_t { Hold, MoveTo, Attack, Withdraw, Rally };
+enum class OrderType : uint8_t { Hold, MoveTo, Attack, Withdraw, Rally, HoldLine, FallBack, Brace, Pursue };
 enum class OrderStatus : uint8_t { Pending, Active, Completed, Failed, Cancelled };
+enum class MovementPace : uint8_t { Walk, March, Run };
+
+inline bool IsHolding(OrderType type) {
+    return type == OrderType::Hold || type == OrderType::HoldLine || type == OrderType::Brace;
+}
+inline bool IsAttacking(OrderType type) {
+    return type == OrderType::Attack || type == OrderType::Pursue;
+}
+inline bool IsWithdrawing(OrderType type) {
+    return type == OrderType::Withdraw || type == OrderType::Rally || type == OrderType::FallBack;
+}
+inline constexpr int PlayerOrderPriority = 120;
 struct Order {
     OrderId id{};
     OfficerId issuer{};
@@ -14,6 +26,11 @@ struct Order {
     RegimentId target_regiment{};
     Tick created_tick{}, delivery_tick{}, expiry_tick{};
     OrderStatus status{OrderStatus::Pending};
+    bool player_direct{};
+    MovementPace pace{MovementPace::Walk};
+    std::optional<float> facing;
+    std::optional<uint32_t> move_columns;
+    uint64_t maneuver_group{};
 };
 enum class CommandKind : uint8_t {
     IssueOrder,
@@ -23,7 +40,12 @@ enum class CommandKind : uint8_t {
     MoveControlledUnit,
     AttackControlledUnit,
     ExternalPoseSample,
-    IssueCommandTask
+    IssueCommandTask,
+    SetSkirmishers,
+    FaceControlledUnit,
+    SetRegimentFollowing,
+    JumpControlledUnit,
+    ParryControlledUnit
 };
 // A tagged wire record; only fields belonging to kind are consumed.
 struct Command {
@@ -36,6 +58,7 @@ struct Command {
     Pose pose{};
     Tick sample_tick{};
     command::CommandTask command_task{};
+    bool skirmishers_enabled{}, follow_enabled{};
 };
 struct CommandEnvelope {
     Tick tick{};
@@ -44,4 +67,5 @@ struct CommandEnvelope {
 };
 struct World;
 Status SubmitOrder(World &, const Order &);
+bool ValidOrderShape(const Order &);
 } // namespace battle

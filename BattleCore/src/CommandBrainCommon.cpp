@@ -1,4 +1,5 @@
 #include "CommandBrainCommon.h"
+#include "battle/World.h"
 #include <array>
 #include <map>
 #include <set>
@@ -25,6 +26,8 @@ bool ValidTask(const CommandTask &t) {
         unsigned(t.duration_origin) > unsigned(DurationOrigin::Delivered) ||
         !Finite(t.intent.objective_position) || !std::isfinite(t.intent.objective_radius_m) ||
         t.intent.objective_radius_m < 0 || (t.duration_ticks && *t.duration_ticks > 1000000) ||
+        (t.intent.flank_waypoint && (t.action != TaskKind::Flank || !t.intent.target_regiment ||
+                                    !Finite(*t.intent.flank_waypoint))) ||
         (t.formation_columns && (*t.formation_columns == 0 || *t.formation_columns > 4096)) ||
         (t.formation_spacing_m &&
          (!std::isfinite(*t.formation_spacing_m) || *t.formation_spacing_m <= 0)))
@@ -37,6 +40,14 @@ bool ValidTask(const CommandTask &t) {
          *t.authority.acceptable_loss_fraction < 0 || *t.authority.acceptable_loss_fraction > 1))
         return false;
     return true;
+}
+bool ValidTaskTarget(const World &world, const CommandNode &recipient, const CommandTask &task) {
+    if (!task.intent.target_regiment)
+        return true;
+    const auto *target = FindRegiment(world, task.intent.target_regiment);
+    if (!target || target->id == recipient.regiment)
+        return false;
+    return (target->team == recipient.team) == (task.action == TaskKind::Support);
 }
 StubResult<Prepared> Prepare(const BrainContext &c, Level level) {
     auto invalid = [] {
@@ -63,7 +74,7 @@ StubResult<Prepared> Prepare(const BrainContext &c, Level level) {
     std::set<uint64_t> child_ids;
     for (const auto &n : c.subordinates) {
         if (!n.id || !child_ids.insert(n.id.value).second || n.parent != c.node->id ||
-            n.team != c.node->team || unsigned(n.level) != unsigned(level) + 1 ||
+            n.team != c.node->team || !CanCommandLevel(level, n.level) ||
             std::count(c.node->children.begin(), c.node->children.end(), n.id) != 1)
             return invalid();
         auto found = std::find_if(c.children_status.begin(), c.children_status.end(),
@@ -127,6 +138,41 @@ const KnownContact *Contact(const BrainContext &c, RegimentId id, bool enemy) {
     }
     return best;
 }
+const KnownContact *AttackContact(const BrainContext &c, const Prepared &p) {
+    if (!p.task)
+        return Contact(c);
+    const auto &intent = p.task->intent;
+    const auto &authority = p.task->authority;
+    const auto within_intent = [&](const KnownContact &contact) {
+        return !authority.pursuit_limit_m ||
+               Distance(intent.objective_position, contact.estimated_pose.position) <=
+                   *authority.pursuit_limit_m;
+    };
+    const auto preferred = authority.may_change_target && !p.new_task && p.memory.target
+                               ? p.memory.target : intent.target_regiment;
+    if (const auto *assigned = Contact(c, preferred);
+        assigned && within_intent(*assigned) &&
+        (assigned->source != ObservationSource::Memory || authority.may_pursue))
+        return assigned;
+    if (!authority.may_change_target)
+        return nullptr;
+    const KnownContact *nearest = nullptr;
+    float best = std::numeric_limits<float>::infinity();
+    for (const auto &candidate : c.situation->contacts) {
+        if (!candidate.regiment || candidate.allegiance != Allegiance::Enemy ||
+            candidate.source != ObservationSource::Direct || !within_intent(candidate) ||
+            (candidate.team && *candidate.team == c.node->team) || candidate.confidence <= 0 ||
+            (candidate.estimated_strength && *candidate.estimated_strength <= 0))
+            continue;
+        const float distance = Distance(c.situation->own.pose.position, candidate.estimated_pose.position);
+        if (distance < best || (distance == best && nearest && candidate.regiment < nearest->regiment)) {
+            best = distance;
+            nearest = &candidate;
+        }
+    }
+    return nearest;
+}
+
 bool AttackWorthwhile(const BrainContext &c, const KnownContact &target) {
     if (!c.profile || c.profile->initiative <= 0)
         return false;
@@ -233,7 +279,9 @@ DecisionProposal Finish(const BrainContext &c, Prepared p, FsmState state, TaskS
             order.type = OrderType::Rally;
             break;
         default:
-            order.type = OrderType::Hold;
+            order.type = std::ranges::any_of(c.situation->threats, [](const auto &threat) {
+                return threat.cavalry_approaching && threat.sector == RelativeSector::Front;
+            }) ? OrderType::Brace : OrderType::Hold;
             break;
         }
         out.execution_order = order;

@@ -1,0 +1,179 @@
+{
+  "schema_version": 4,
+  "name": "Гастингс, 1066 · Гребень Сенлак",
+  "terrain": "Crecy",
+  "era": {
+    "id": "high_medieval",
+    "version": 1,
+    "blue_faction": "normans",
+    "orange_faction": "anglo_saxons"
+  },
+  "regiment_tactics": true,
+  "risky_volley": false,
+  "direct_deployment": true,
+  "adaptive_battle": true,
+  "objective": {
+    "goal": "HillHold",
+    "time_limit_seconds": 250,
+    "crossing": 1,
+    "required_regiments": 1,
+    "crossing_team": 0
+  },
+  "briefing": "14 октября 1066 года войско Вильгельма Нормандского встретило армию короля Гарольда на гребне Сенлак. Англичане сражались пешими, прикрываясь щитами. В войске Вильгельма действовали лучники, пехота и конница.\n\nВы командуете нормандцами. Возьмите и удержите отмеченный гребень. Начните с обстрела щитовой стены и поддержите подъём пехоты конницей на обоих крыльях.\n\nТиповой склон передаёт положение английской линии над подступами. Строй, модели воинов и расстояния адаптированы к масштабу боя. Игровой участок 540 × 350 м, 5 000 фигур.",
+  "sources": [
+    "https://historicengland.org.uk/content/docs/listing/battlefields/hastings/",
+    "https://www.english-heritage.org.uk/visit/places/1066-battle-of-hastings-abbey-and-battlefield/history-and-stories/what-happened-battle-hastings/"
+  ],
+  "regiments": [
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -52,
+      "start_y": 0,
+      "formation_files": 21,
+      "swords": 15,
+      "archers": 20,
+      "spearmen": 10,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -57,
+      "start_y": -57,
+      "formation_files": 20,
+      "swords": 16,
+      "archers": 12,
+      "spearmen": 14,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -65,
+      "start_y": 66,
+      "formation_files": 21,
+      "swords": 12,
+      "archers": 18,
+      "spearmen": 12,
+      "mounted": 0,
+      "ranged_class": "crossbow"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -112,
+      "start_y": 1,
+      "formation_files": 19,
+      "swords": 24,
+      "archers": 4,
+      "spearmen": 18,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -106,
+      "start_y": -105,
+      "formation_files": 15,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 37
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -108,
+      "start_y": 107,
+      "formation_files": 16,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 36
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 64,
+      "start_y": 0,
+      "formation_files": 32,
+      "swords": 29,
+      "archers": 2,
+      "spearmen": 25,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 71,
+      "start_y": -66,
+      "formation_files": 29,
+      "swords": 24,
+      "archers": 1,
+      "spearmen": 24,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 70,
+      "start_y": 67,
+      "formation_files": 29,
+      "swords": 22,
+      "archers": 2,
+      "spearmen": 24,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 110,
+      "start_y": 0,
+      "formation_files": 26,
+      "swords": 18,
+      "archers": 2,
+      "spearmen": 23,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 118,
+      "start_y": -65,
+      "formation_files": 22,
+      "swords": 16,
+      "archers": 4,
+      "spearmen": 20,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 119,
+      "start_y": 64,
+      "formation_files": 23,
+      "swords": 16,
+      "archers": 4,
+      "spearmen": 20,
+      "mounted": 0
+    }
+  ],
+  "field": {
+    "width_m": 540,
+    "height_m": 350
+  },
+  "figure_target": 5000
+}

@@ -16,13 +16,18 @@ else()
  target_include_directories(battle_core INTERFACE include)
  target_compile_features(battle_core INTERFACE cxx_std_20)
 endif()
+add_executable(battle_officer_training tools/OfficerTraining.cpp)
+target_link_libraries(battle_officer_training PRIVATE battle_core)
+if(MINGW)
+ target_link_options(battle_officer_training PRIVATE -static)
+endif()
 add_executable(battle_command_demo examples/CommandHierarchyDemo.cpp)
 target_link_libraries(battle_command_demo PRIVATE battle_core)
 if(MINGW)
  target_link_options(battle_command_demo PRIVATE -static)
 endif()
 file(GLOB IO_SOURCES CONFIGURE_DEPENDS tools/*.cpp)
-list(FILTER IO_SOURCES EXCLUDE REGEX "/Main.cpp$")
+list(FILTER IO_SOURCES EXCLUDE REGEX "/(Main|OfficerTraining).cpp$")
 if(IO_SOURCES)
  add_library(battle_io STATIC ${IO_SOURCES})
  target_include_directories(battle_io PUBLIC tools third_party)
@@ -38,6 +43,30 @@ if(IO_SOURCES)
 endif()
 if(BUILD_TESTING)
  add_test(NAME battle.command-demo COMMAND battle_command_demo)
+ add_test(NAME battle.officer_training_collect COMMAND battle_officer_training collect
+          "${CMAKE_CURRENT_BINARY_DIR}/officer-training-smoke" 2 2)
+ add_test(NAME battle.officer_training_evaluate COMMAND battle_officer_training evaluate
+          "${CMAKE_CURRENT_BINARY_DIR}/officer-training-smoke" 1 2
+          "${CMAKE_CURRENT_SOURCE_DIR}/docs/officer-training/group-policy-v2.txt")
+ add_test(NAME battle.officer_training_historical COMMAND ${CMAKE_COMMAND}
+          "-DTRAINING=$<TARGET_FILE:battle_officer_training>"
+          "-DOUT=${CMAKE_CURRENT_BINARY_DIR}/officer-training-historical-test"
+          "-DWEIGHTS=${CMAKE_CURRENT_SOURCE_DIR}/docs/officer-training/group-policy-v2.txt"
+          -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/OfficerTrainingHistorical.cmake")
+ add_test(NAME battle.officer_training_historical_v2 COMMAND ${CMAKE_COMMAND}
+          "-DTRAINING=$<TARGET_FILE:battle_officer_training>"
+          "-DOUT=${CMAKE_CURRENT_BINARY_DIR}/officer-training-historical-v2-test"
+          "-DWEIGHTS=${CMAKE_CURRENT_SOURCE_DIR}/docs/officer-training/group-policy-v2.txt"
+          -DNEXT_ROUND=ON -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/OfficerTrainingHistorical.cmake")
+ add_test(NAME battle.officer_training_historical_v3 COMMAND ${CMAKE_COMMAND}
+          "-DTRAINING=$<TARGET_FILE:battle_officer_training>"
+          "-DOUT=${CMAKE_CURRENT_BINARY_DIR}/officer-training-v3-test"
+          "-DLEGACY_WEIGHTS=${CMAKE_CURRENT_SOURCE_DIR}/docs/officer-training/group-policy-v2.txt"
+          -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/OfficerTrainingCommitment.cmake")
+ add_test(NAME battle.officer_training_historical_v4 COMMAND ${CMAKE_COMMAND}
+          "-DTRAINING=$<TARGET_FILE:battle_officer_training>"
+          "-DOUT=${CMAKE_CURRENT_BINARY_DIR}/officer-training-v4-test"
+          -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/OfficerTrainingFourthRound.cmake")
  file(GLOB TESTS CONFIGURE_DEPENDS tests/*Tests.cpp)
  add_executable(battle_tests tests/TestMain.cpp ${TESTS})
  target_include_directories(battle_tests PRIVATE third_party tools tests)
@@ -54,7 +83,11 @@ if(BUILD_TESTING)
   list(GET parts 0 group)
   list(GET parts 1 file)
   if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/${file}Tests.cpp")
-   add_test(NAME battle.${group} COMMAND battle_tests --test-case=${group}.* --no-skip)
+   set(test_prefix "${group}")
+   if(group STREQUAL "runtime_fsm")
+    set(test_prefix runtime)
+   endif()
+   add_test(NAME battle.${group} COMMAND battle_tests --test-case=${test_prefix}.* --no-skip)
   endif()
  endforeach()
 endif()

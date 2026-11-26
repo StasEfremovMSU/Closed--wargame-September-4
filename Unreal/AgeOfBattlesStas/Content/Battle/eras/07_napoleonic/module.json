@@ -1,0 +1,1034 @@
+{
+  "schema_version": 1,
+  "id": "napoleonic",
+  "name": "Наполеоновские войны",
+  "version": 1,
+  "rules": {
+    "id": "napoleonic",
+    "local_melee": true,
+    "regiment_tactics": true,
+    "linear_infantry": true,
+    "risky_volley": false,
+    "ranged_cohorts": 4,
+    "panic_fraction": 0.5
+  },
+  "archetypes": {
+    "bayonet_line": {
+      "bayonet_musket": true,
+      "name": "Линейная пехота со штыками",
+      "health": 20,
+      "speed": 3.85,
+      "armour": 0,
+      "damage": 3.45,
+      "range": 2.08,
+      "cooldown_ticks": 23,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Поддерживает стрелков в штыковом бою."
+    },
+    "grenadiers": {
+      "bayonet_musket": true,
+      "name": "Гренадеры",
+      "health": 23,
+      "speed": 3.8,
+      "armour": 0,
+      "damage": 3.9,
+      "range": 1.97,
+      "cooldown_ticks": 21,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Отборные роты линейной пехоты. В игре усиливают полк в ближнем бою."
+    },
+    "landwehr": {
+      "bayonet_musket": true,
+      "name": "Прусский ландвер",
+      "health": 18,
+      "speed": 3.7,
+      "armour": 0,
+      "damage": 3.05,
+      "range": 2.1,
+      "cooldown_ticks": 24,
+      "windup_ticks": 5,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Ополчение Пруссии. В игре поддерживает линейные полки в ближнем бою."
+    },
+    "imperial_fusiliers": {
+      "name": "Французские фузилёры",
+      "health": 20,
+      "speed": 3.85,
+      "armour": 0,
+      "damage": 12.3,
+      "range": 81,
+      "cooldown_ticks": 302,
+      "windup_ticks": 10,
+      "projectile_speed_mps": 408,
+      "base_accuracy": 0.56,
+      "description": "Линейная пехота с кремнёвым ружьём образца 1777 года и штыком.",
+      "ranged_weapon": "musket",
+      "ammunition": 8
+    },
+    "voltigeurs": {
+      "name": "Французские вольтижёры",
+      "health": 17,
+      "speed": 4.2,
+      "armour": 0,
+      "damage": 11.9,
+      "range": 86,
+      "cooldown_ticks": 318,
+      "windup_ticks": 9,
+      "projectile_speed_mps": 398,
+      "base_accuracy": 0.63,
+      "description": "Лёгкие роты для прикрытия линии. В игре быстрее передвигаются и точнее стреляют, но несут меньше патронов.",
+      "ranged_weapon": "musket",
+      "ammunition": 7
+    },
+    "russian_line": {
+      "name": "Русская линейная пехота",
+      "health": 21,
+      "speed": 3.65,
+      "armour": 0,
+      "damage": 12.6,
+      "range": 77,
+      "cooldown_ticks": 324,
+      "windup_ticks": 11,
+      "projectile_speed_mps": 401,
+      "base_accuracy": 0.54,
+      "description": "Пехотные полки с кремнёвым ружьём образца 1808 года и штыком.",
+      "ranged_weapon": "musket",
+      "ammunition": 8
+    },
+    "russian_jaegers": {
+      "name": "Русские егеря",
+      "health": 18,
+      "speed": 4.15,
+      "armour": 0,
+      "damage": 11.8,
+      "range": 84,
+      "cooldown_ticks": 324,
+      "windup_ticks": 10,
+      "projectile_speed_mps": 394,
+      "base_accuracy": 0.63,
+      "description": "Лёгкие стрелки с кремнёвыми ружьями. В игре точнее линейной пехоты и быстрее передвигаются.",
+      "ranged_weapon": "musket",
+      "ammunition": 7
+    },
+    "saxon_line": {
+      "name": "Саксонская линейная пехота",
+      "health": 19,
+      "speed": 3.75,
+      "armour": 0,
+      "damage": 12.1,
+      "range": 79,
+      "cooldown_ticks": 312,
+      "windup_ticks": 10,
+      "projectile_speed_mps": 399,
+      "base_accuracy": 0.57,
+      "description": "Саксонские фузилёры с кремнёвыми мушкетами и штыками.",
+      "ranged_weapon": "musket",
+      "ammunition": 8
+    },
+    "vistula_infantry": {
+      "name": "Польские фузилёры",
+      "health": 19,
+      "speed": 3.95,
+      "armour": 0,
+      "damage": 12,
+      "range": 77,
+      "cooldown_ticks": 308,
+      "windup_ticks": 10,
+      "projectile_speed_mps": 401,
+      "base_accuracy": 0.56,
+      "description": "Линейная пехота герцогства Варшавского с кремнёвыми ружьями и штыками.",
+      "ranged_weapon": "musket",
+      "ammunition": 8
+    },
+    "british_line": {
+      "name": "Британская линейная пехота",
+      "health": 20,
+      "speed": 3.75,
+      "armour": 0,
+      "damage": 12.5,
+      "range": 80,
+      "cooldown_ticks": 280,
+      "windup_ticks": 10,
+      "projectile_speed_mps": 402,
+      "base_accuracy": 0.59,
+      "description": "Красномундирная пехота с гладкоствольным мушкетом «Браун-Бесс» и штыком.",
+      "ranged_weapon": "musket",
+      "ammunition": 9
+    },
+    "baker_rifles": {
+      "name": "Стрелки 95-го полка",
+      "health": 18,
+      "speed": 4.2,
+      "armour": 0,
+      "damage": 13,
+      "range": 120,
+      "cooldown_ticks": 440,
+      "windup_ticks": 14,
+      "projectile_speed_mps": 365,
+      "base_accuracy": 0.67,
+      "description": "Стрелки с нарезной винтовкой Бейкера и штыком. Она точнее и дальнобойнее линейного мушкета и медленнее перезаряжается.",
+      "ranged_weapon": "musket",
+      "ammunition": 7
+    },
+    "prussian_line": {
+      "name": "Прусская линейная пехота",
+      "health": 20,
+      "speed": 3.85,
+      "armour": 0,
+      "damage": 12.1,
+      "range": 82,
+      "cooldown_ticks": 306,
+      "windup_ticks": 10,
+      "projectile_speed_mps": 404,
+      "base_accuracy": 0.58,
+      "description": "Регулярная пехота с кремнёвыми мушкетами и штыками.",
+      "ranged_weapon": "musket",
+      "ammunition": 8
+    },
+    "austrian_line": {
+      "name": "Австрийская линейная пехота",
+      "health": 21,
+      "speed": 3.65,
+      "armour": 0,
+      "damage": 12.4,
+      "range": 80,
+      "cooldown_ticks": 316,
+      "windup_ticks": 11,
+      "projectile_speed_mps": 400,
+      "base_accuracy": 0.57,
+      "description": "Фузилёры габсбургской армии с кремнёвыми ружьями и штыками.",
+      "ranged_weapon": "musket",
+      "ammunition": 8
+    },
+    "grenz_infantry": {
+      "name": "Австрийские граничары",
+      "health": 18,
+      "speed": 4.15,
+      "armour": 0,
+      "damage": 11.7,
+      "range": 85,
+      "cooldown_ticks": 329,
+      "windup_ticks": 10,
+      "projectile_speed_mps": 392,
+      "base_accuracy": 0.63,
+      "description": "Лёгкая пехота Военной границы. В игре быстрее линейной пехоты и точнее стреляет.",
+      "ranged_weapon": "musket",
+      "ammunition": 7
+    },
+    "spanish_line": {
+      "name": "Испанская линейная пехота",
+      "health": 19,
+      "speed": 3.8,
+      "armour": 0,
+      "damage": 11.9,
+      "range": 75,
+      "cooldown_ticks": 326,
+      "windup_ticks": 11,
+      "projectile_speed_mps": 390,
+      "base_accuracy": 0.54,
+      "description": "Испанские пехотные полки с гладкоствольными кремнёвыми ружьями и штыками.",
+      "ranged_weapon": "musket",
+      "ammunition": 8
+    },
+    "spanish_cazadores": {
+      "name": "Испанские касадоры",
+      "health": 17,
+      "speed": 4.2,
+      "armour": 0,
+      "damage": 11.5,
+      "range": 81,
+      "cooldown_ticks": 344,
+      "windup_ticks": 10,
+      "projectile_speed_mps": 384,
+      "base_accuracy": 0.61,
+      "description": "Лёгкая пехота с кремнёвыми ружьями. Прикрывает линейные части.",
+      "ranged_weapon": "musket",
+      "ammunition": 7
+    },
+    "portuguese_line": {
+      "name": "Португальская линейная пехота",
+      "health": 19,
+      "speed": 3.8,
+      "armour": 0,
+      "damage": 12,
+      "range": 78,
+      "cooldown_ticks": 315,
+      "windup_ticks": 10,
+      "projectile_speed_mps": 395,
+      "base_accuracy": 0.56,
+      "description": "Регулярная пехота Португалии с кремнёвыми мушкетами и штыками.",
+      "ranged_weapon": "musket",
+      "ammunition": 8
+    },
+    "portuguese_cacadores": {
+      "name": "Португальские касадоры",
+      "health": 18,
+      "speed": 4.25,
+      "armour": 0,
+      "damage": 11.8,
+      "range": 89,
+      "cooldown_ticks": 346,
+      "windup_ticks": 11,
+      "projectile_speed_mps": 385,
+      "base_accuracy": 0.64,
+      "description": "Португальские лёгкие батальоны. В игре мобильнее и точнее линейной пехоты.",
+      "ranged_weapon": "musket",
+      "ammunition": 7
+    },
+    "french_hussars": {
+      "mounted_weapon": "blade",
+      "name": "Французские гусары",
+      "health": 22,
+      "speed": 7.05,
+      "armour": 0.12,
+      "damage": 3.85,
+      "range": 2.1,
+      "cooldown_ticks": 19,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Лёгкая сабельная конница для обхода и преследования.",
+      "cavalry_class": "light"
+    },
+    "french_cuirassiers": {
+      "mounted_weapon": "blade",
+      "name": "Французские кирасиры",
+      "health": 30,
+      "speed": 6.1,
+      "armour": 1.1,
+      "damage": 4.8,
+      "range": 2.35,
+      "cooldown_ticks": 23,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Тяжёлые эскадроны в кирасах, вооружённые палашами.",
+      "cavalry_class": "heavy"
+    },
+    "don_cossacks": {
+      "mounted_weapon": "lance",
+      "name": "Донские казаки",
+      "health": 21,
+      "speed": 7.15,
+      "armour": 0.05,
+      "damage": 3.65,
+      "range": 2.65,
+      "cooldown_ticks": 20,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Быстрая иррегулярная конница с пиками для разведки и преследования.",
+      "cavalry_class": "light"
+    },
+    "russian_cuirassiers": {
+      "mounted_weapon": "blade",
+      "name": "Русские кирасиры",
+      "health": 30,
+      "speed": 6,
+      "armour": 1.05,
+      "damage": 4.65,
+      "range": 2.35,
+      "cooldown_ticks": 23,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Тяжёлая конница с палашами и кирасами для удара сомкнутым строем.",
+      "cavalry_class": "heavy"
+    },
+    "saxon_chevaulegers": {
+      "mounted_weapon": "blade",
+      "name": "Саксонские шеволежеры",
+      "health": 23,
+      "speed": 6.9,
+      "armour": 0.17,
+      "damage": 3.85,
+      "range": 2.15,
+      "cooldown_ticks": 19,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Лёгкие эскадроны с саблями. Быстро меняют фланг.",
+      "cavalry_class": "light"
+    },
+    "garde_du_corps": {
+      "mounted_weapon": "blade",
+      "name": "Саксонские лейб-кирасиры",
+      "health": 30,
+      "speed": 6.05,
+      "armour": 1.05,
+      "damage": 4.7,
+      "range": 2.32,
+      "cooldown_ticks": 22,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Лейб-полк Garde du Corps. Тяжёлая конница для атаки сомкнутым строем.",
+      "cavalry_class": "heavy"
+    },
+    "polish_uhlans": {
+      "mounted_weapon": "lance",
+      "name": "Польские уланы",
+      "health": 23,
+      "speed": 7,
+      "armour": 0.15,
+      "damage": 4.1,
+      "range": 2.75,
+      "cooldown_ticks": 21,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Лёгкая конница герцогства Варшавского. Длинные пики усиливают первый контакт.",
+      "cavalry_class": "light"
+    },
+    "polish_cuirassiers": {
+      "mounted_weapon": "blade",
+      "name": "Польские кирасиры",
+      "health": 29,
+      "speed": 6.1,
+      "armour": 0.95,
+      "damage": 4.55,
+      "range": 2.25,
+      "cooldown_ticks": 22,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Тяжёлая конница герцогства Варшавского с палашами и кирасами.",
+      "cavalry_class": "heavy"
+    },
+    "british_light_dragoons": {
+      "mounted_weapon": "blade",
+      "name": "Британские лёгкие драгуны",
+      "health": 22,
+      "speed": 6.95,
+      "armour": 0.15,
+      "damage": 3.8,
+      "range": 2.1,
+      "cooldown_ticks": 19,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Лёгкие кавалерийские полки с саблями для прикрытия фланга.",
+      "cavalry_class": "light"
+    },
+    "scots_greys": {
+      "mounted_weapon": "blade",
+      "name": "Шотландские серые драгуны",
+      "health": 29,
+      "speed": 6.2,
+      "armour": 0.25,
+      "damage": 4.75,
+      "range": 2.27,
+      "cooldown_ticks": 22,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "2-й драгунский полк британской армии, ударная тяжёлая конница с палашами.",
+      "cavalry_class": "heavy"
+    },
+    "prussian_hussars": {
+      "mounted_weapon": "blade",
+      "name": "Прусские гусары",
+      "health": 22,
+      "speed": 7.1,
+      "armour": 0.12,
+      "damage": 3.8,
+      "range": 2.1,
+      "cooldown_ticks": 19,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Лёгкие конные полки с саблями для разведки и действий на флангах.",
+      "cavalry_class": "light"
+    },
+    "prussian_cuirassiers": {
+      "mounted_weapon": "blade",
+      "name": "Прусские кирасиры",
+      "health": 28,
+      "speed": 6.15,
+      "armour": 0.7,
+      "damage": 4.58,
+      "range": 2.35,
+      "cooldown_ticks": 22,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Тяжёлые кавалерийские полки Пруссии с палашами.",
+      "cavalry_class": "heavy"
+    },
+    "hungarian_hussars": {
+      "mounted_weapon": "blade",
+      "name": "Венгерские гусары",
+      "health": 23,
+      "speed": 7.12,
+      "armour": 0.12,
+      "damage": 3.9,
+      "range": 2.15,
+      "cooldown_ticks": 19,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Лёгкая кавалерия имперской армии с саблями.",
+      "cavalry_class": "light"
+    },
+    "austrian_cuirassiers": {
+      "mounted_weapon": "blade",
+      "name": "Австрийские кирасиры",
+      "health": 30,
+      "speed": 5.95,
+      "armour": 1,
+      "damage": 4.72,
+      "range": 2.3,
+      "cooldown_ticks": 23,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Тяжёлая конница с нагрудными кирасами и палашами.",
+      "cavalry_class": "heavy"
+    },
+    "spanish_horse_cazadores": {
+      "mounted_weapon": "blade",
+      "name": "Испанские конные касадоры",
+      "health": 22,
+      "speed": 6.95,
+      "armour": 0.13,
+      "damage": 3.8,
+      "range": 2.1,
+      "cooldown_ticks": 20,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Лёгкие конные части с саблями, быстрые на флангах.",
+      "cavalry_class": "light"
+    },
+    "spanish_line_horse": {
+      "mounted_weapon": "blade",
+      "name": "Испанская линейная кавалерия",
+      "health": 27,
+      "speed": 6.2,
+      "armour": 0.2,
+      "damage": 4.45,
+      "range": 2.2,
+      "cooldown_ticks": 22,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Линейные кавалерийские полки для удара сомкнутым строем.",
+      "cavalry_class": "heavy"
+    },
+    "chaves_cavalry": {
+      "mounted_weapon": "blade",
+      "name": "Кавалерийский полк Шавиша",
+      "health": 22,
+      "speed": 7,
+      "armour": 0.14,
+      "damage": 3.8,
+      "range": 2.12,
+      "cooldown_ticks": 20,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "9-й португальский кавалерийский полк. В игре действует как лёгкая конница.",
+      "cavalry_class": "light"
+    },
+    "minho_dragoons": {
+      "mounted_weapon": "blade",
+      "name": "Драгуны Энтре-Дору-и-Минью",
+      "health": 27,
+      "speed": 6.3,
+      "armour": 0.22,
+      "damage": 4.5,
+      "range": 2.2,
+      "cooldown_ticks": 21,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "6-й кавалерийский полк Португалии. В игре служит ударной конницей.",
+      "cavalry_class": "heavy"
+    },
+    "field_gun": {
+      "name": "Полевая пушка",
+      "health": 46,
+      "speed": 1.04,
+      "armour": 0.76,
+      "damage": 26,
+      "range": 210,
+      "cooldown_ticks": 208,
+      "windup_ticks": 14,
+      "projectile_speed_mps": 84,
+      "base_accuracy": 0.6,
+      "description": "Полевая артиллерия с расчётом. Ядро может пройти сквозь несколько шеренг, вблизи картечь поражает несколько целей. Попадания снижают сплочённость и мешают перестроению.",
+      "platform": "field_gun",
+      "ammunition": 10
+    },
+    "french_grenadiers": {
+      "name": "Французские гренадеры",
+      "health": 23,
+      "speed": 3.75,
+      "armour": 0,
+      "damage": 12.3,
+      "range": 81,
+      "cooldown_ticks": 302,
+      "windup_ticks": 10,
+      "projectile_speed_mps": 408,
+      "base_accuracy": 0.56,
+      "description": "Отборная пехота с красным плюмажем и кремнёвым ружьём.",
+      "ranged_weapon": "musket",
+      "ammunition": 8
+    },
+    "french_chasseurs": {
+      "name": "Французские пешие егеря",
+      "health": 18,
+      "speed": 4.2,
+      "armour": 0,
+      "damage": 11.9,
+      "range": 86,
+      "cooldown_ticks": 318,
+      "windup_ticks": 9,
+      "projectile_speed_mps": 398,
+      "base_accuracy": 0.63,
+      "description": "Лёгкая пехота в киверах с зелёным отличительным плюмажем.",
+      "ranged_weapon": "musket",
+      "ammunition": 7
+    },
+    "imperial_old_guard": {
+      "name": "Гренадеры Старой гвардии",
+      "health": 26,
+      "speed": 3.7,
+      "armour": 0.05,
+      "damage": 12.3,
+      "range": 81,
+      "cooldown_ticks": 302,
+      "windup_ticks": 10,
+      "projectile_speed_mps": 408,
+      "base_accuracy": 0.61,
+      "description": "Ветераны Императорской гвардии в высоких медвежьих шапках.",
+      "ranged_weapon": "musket",
+      "ammunition": 8
+    },
+    "imperial_young_guard": {
+      "name": "Тиральеры Молодой гвардии",
+      "health": 21,
+      "speed": 4.03,
+      "armour": 0,
+      "damage": 12.3,
+      "range": 81,
+      "cooldown_ticks": 302,
+      "windup_ticks": 10,
+      "projectile_speed_mps": 408,
+      "base_accuracy": 0.56,
+      "description": "Подвижная пехота Молодой гвардии. По силуэту кивера отличается от ветеранов.",
+      "ranged_weapon": "musket",
+      "ammunition": 8
+    },
+    "russian_grenadiers": {
+      "name": "Русские гренадеры",
+      "health": 24,
+      "speed": 3.75,
+      "armour": 0,
+      "damage": 12.6,
+      "range": 77,
+      "cooldown_ticks": 324,
+      "windup_ticks": 11,
+      "projectile_speed_mps": 401,
+      "base_accuracy": 0.54,
+      "description": "Тяжёлая пехота с высоким чёрным султаном и свёрнутой через плечо шинелью.",
+      "ranged_weapon": "musket",
+      "ammunition": 8
+    },
+    "british_grenadiers": {
+      "name": "Британские гренадеры",
+      "health": 23,
+      "speed": 3.75,
+      "armour": 0,
+      "damage": 12.5,
+      "range": 80,
+      "cooldown_ticks": 280,
+      "windup_ticks": 10,
+      "projectile_speed_mps": 402,
+      "base_accuracy": 0.59,
+      "description": "Гренадерские роты в красных мундирах с белым отделением плюмажа.",
+      "ranged_weapon": "musket",
+      "ammunition": 9
+    },
+    "scottish_highlanders": {
+      "name": "Шотландские горцы",
+      "health": 22,
+      "speed": 3.75,
+      "armour": 0,
+      "damage": 12.5,
+      "range": 80,
+      "cooldown_ticks": 280,
+      "windup_ticks": 10,
+      "projectile_speed_mps": 402,
+      "base_accuracy": 0.59,
+      "description": "Горская пехота в красной куртке, клетчатом килте и перьевой шапке.",
+      "ranged_weapon": "musket",
+      "ammunition": 9
+    }
+  },
+  "factions": [
+    {
+      "id": "france",
+      "name": "Франция",
+      "shield": "round",
+      "heraldry": "395A8F",
+      "visual": "shako",
+      "troops": {
+        "swords": "grenadiers",
+        "archers": "imperial_fusiliers",
+        "spearmen": "bayonet_line",
+        "mounted": "french_cuirassiers"
+      },
+      "mounted_variants": {
+        "light": "french_hussars",
+        "heavy": "french_cuirassiers"
+      },
+      "ranged_variants": {
+        "musket": "voltigeurs"
+      },
+      "platforms": {
+        "field_gun": "field_gun"
+      },
+      "infantry_profiles": {
+        "fusiliers": {
+          "archetype": "imperial_fusiliers",
+          "role": "archers"
+        },
+        "grenadiers": {
+          "archetype": "french_grenadiers",
+          "role": "archers"
+        },
+        "chasseurs": {
+          "archetype": "french_chasseurs",
+          "role": "archers"
+        },
+        "old_guard": {
+          "archetype": "imperial_old_guard",
+          "role": "archers"
+        },
+        "young_guard": {
+          "archetype": "imperial_young_guard",
+          "role": "archers"
+        }
+      }
+    },
+    {
+      "id": "russia",
+      "name": "Россия",
+      "shield": "round",
+      "heraldry": "456A51",
+      "visual": "shako",
+      "troops": {
+        "swords": "grenadiers",
+        "archers": "russian_line",
+        "spearmen": "bayonet_line",
+        "mounted": "russian_cuirassiers"
+      },
+      "mounted_variants": {
+        "light": "don_cossacks",
+        "heavy": "russian_cuirassiers"
+      },
+      "ranged_variants": {
+        "musket": "russian_jaegers"
+      },
+      "platforms": {
+        "field_gun": "field_gun"
+      },
+      "infantry_profiles": {
+        "russian_line": {
+          "archetype": "russian_line",
+          "role": "archers"
+        },
+        "russian_grenadiers": {
+          "archetype": "russian_grenadiers",
+          "role": "archers"
+        },
+        "russian_jaegers": {
+          "archetype": "russian_jaegers",
+          "role": "archers"
+        }
+      }
+    },
+    {
+      "id": "saxony",
+      "name": "Саксония",
+      "shield": "round",
+      "heraldry": "D0C198",
+      "visual": "shako",
+      "troops": {
+        "swords": "grenadiers",
+        "archers": "saxon_line",
+        "spearmen": "bayonet_line",
+        "mounted": "saxon_chevaulegers"
+      },
+      "mounted_variants": {
+        "light": "saxon_chevaulegers",
+        "heavy": "garde_du_corps"
+      },
+      "platforms": {
+        "field_gun": "field_gun"
+      }
+    },
+    {
+      "id": "poland",
+      "name": "Польша (герцогство Варшавское)",
+      "shield": "round",
+      "heraldry": "6C5C96",
+      "visual": "shako",
+      "troops": {
+        "swords": "grenadiers",
+        "archers": "vistula_infantry",
+        "spearmen": "bayonet_line",
+        "mounted": "polish_uhlans"
+      },
+      "mounted_variants": {
+        "light": "polish_uhlans",
+        "heavy": "polish_cuirassiers"
+      },
+      "platforms": {
+        "field_gun": "field_gun"
+      }
+    },
+    {
+      "id": "britain",
+      "name": "Великобритания",
+      "shield": "round",
+      "heraldry": "AC3C46",
+      "visual": "shako",
+      "troops": {
+        "swords": "grenadiers",
+        "archers": "british_line",
+        "spearmen": "bayonet_line",
+        "mounted": "british_light_dragoons"
+      },
+      "mounted_variants": {
+        "light": "british_light_dragoons",
+        "heavy": "scots_greys"
+      },
+      "ranged_variants": {
+        "musket": "baker_rifles"
+      },
+      "platforms": {
+        "field_gun": "field_gun"
+      },
+      "infantry_profiles": {
+        "british_line": {
+          "archetype": "british_line",
+          "role": "archers"
+        },
+        "british_grenadiers": {
+          "archetype": "british_grenadiers",
+          "role": "archers"
+        },
+        "british_light": {
+          "archetype": "baker_rifles",
+          "role": "archers"
+        },
+        "highlanders": {
+          "archetype": "scottish_highlanders",
+          "role": "archers"
+        }
+      }
+    },
+    {
+      "id": "prussia",
+      "name": "Пруссия",
+      "shield": "round",
+      "heraldry": "384354",
+      "visual": "shako",
+      "troops": {
+        "swords": "grenadiers",
+        "archers": "prussian_line",
+        "spearmen": "landwehr",
+        "mounted": "prussian_hussars"
+      },
+      "mounted_variants": {
+        "light": "prussian_hussars",
+        "heavy": "prussian_cuirassiers"
+      },
+      "platforms": {
+        "field_gun": "field_gun"
+      }
+    },
+    {
+      "id": "austria",
+      "name": "Австрия",
+      "shield": "round",
+      "heraldry": "DDD2B1",
+      "visual": "shako",
+      "troops": {
+        "swords": "grenadiers",
+        "archers": "austrian_line",
+        "spearmen": "bayonet_line",
+        "mounted": "hungarian_hussars"
+      },
+      "mounted_variants": {
+        "light": "hungarian_hussars",
+        "heavy": "austrian_cuirassiers"
+      },
+      "ranged_variants": {
+        "musket": "grenz_infantry"
+      },
+      "platforms": {
+        "field_gun": "field_gun"
+      }
+    },
+    {
+      "id": "spain",
+      "name": "Испания",
+      "shield": "round",
+      "heraldry": "B69350",
+      "visual": "shako",
+      "troops": {
+        "swords": "grenadiers",
+        "archers": "spanish_line",
+        "spearmen": "bayonet_line",
+        "mounted": "spanish_horse_cazadores"
+      },
+      "mounted_variants": {
+        "light": "spanish_horse_cazadores",
+        "heavy": "spanish_line_horse"
+      },
+      "ranged_variants": {
+        "musket": "spanish_cazadores"
+      },
+      "platforms": {
+        "field_gun": "field_gun"
+      }
+    },
+    {
+      "id": "portugal",
+      "name": "Португалия",
+      "shield": "round",
+      "heraldry": "42577A",
+      "visual": "shako",
+      "troops": {
+        "swords": "grenadiers",
+        "archers": "portuguese_line",
+        "spearmen": "bayonet_line",
+        "mounted": "chaves_cavalry"
+      },
+      "mounted_variants": {
+        "light": "chaves_cavalry",
+        "heavy": "minho_dragoons"
+      },
+      "ranged_variants": {
+        "musket": "portuguese_cacadores"
+      },
+      "platforms": {
+        "field_gun": "field_gun"
+      }
+    }
+  ],
+  "mission": {
+    "id": "98f60026-1a70-4fb6-b54e-87f8c1c085b9",
+    "name": "Наполеоновские войны · Франция и Австрия",
+    "briefing": "Французская пехота наступает в центре. Штурмовой полк сближается колонной, мушкетёры разворачиваются в линию и ведут огонь с места. Кирасиры и венгерские гусары стоят на флангах. В редакторе можно выбрать вольтижёров или граничаров. У каждой стороны по два полевых орудия с расчётами.",
+    "terrain": "OpenField",
+    "blue_faction": "france",
+    "orange_faction": "austria",
+    "blue": [
+      {
+        "swords": 9,
+        "archers": 12,
+        "spearmen": 10,
+        "mounted": 0,
+        "x": -37,
+        "y": 0,
+        "group": 2
+      },
+      {
+        "swords": 4,
+        "archers": 17,
+        "spearmen": 4,
+        "mounted": 0,
+        "x": -42,
+        "y": -20,
+        "group": 1
+      },
+      {
+        "swords": 5,
+        "archers": 18,
+        "spearmen": 4,
+        "mounted": 0,
+        "x": -44,
+        "y": 16,
+        "group": 3
+      },
+      {
+        "swords": 0,
+        "archers": 0,
+        "spearmen": 0,
+        "mounted": 17,
+        "x": -48,
+        "y": 28,
+        "group": 3
+      },
+      {
+        "swords": 0,
+        "archers": 0,
+        "spearmen": 0,
+        "mounted": 0,
+        "platform": "field_gun",
+        "platform_count": 2,
+        "x": -26,
+        "y": -28,
+        "group": 1
+      }
+    ],
+    "orange": [
+      {
+        "swords": 5,
+        "archers": 20,
+        "spearmen": 6,
+        "mounted": 0,
+        "x": 38,
+        "y": 0,
+        "group": 2
+      },
+      {
+        "swords": 5,
+        "archers": 20,
+        "spearmen": 5,
+        "mounted": 0,
+        "x": 40,
+        "y": -18,
+        "group": 1
+      },
+      {
+        "swords": 4,
+        "archers": 16,
+        "spearmen": 4,
+        "mounted": 0,
+        "x": 43,
+        "y": 17,
+        "group": 3
+      },
+      {
+        "swords": 0,
+        "archers": 0,
+        "spearmen": 0,
+        "mounted": 17,
+        "x": 43,
+        "y": 30,
+        "group": 3
+      },
+      {
+        "swords": 0,
+        "archers": 0,
+        "spearmen": 0,
+        "mounted": 0,
+        "platform": "field_gun",
+        "platform_count": 2,
+        "x": 29,
+        "y": -30,
+        "group": 1
+      }
+    ]
+  }
+}

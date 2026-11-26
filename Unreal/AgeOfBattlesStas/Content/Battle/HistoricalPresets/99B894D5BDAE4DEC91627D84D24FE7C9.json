@@ -1,0 +1,182 @@
+{
+  "schema_version": 5,
+  "name": "Маренго, 1800 · Возвращение французов",
+  "terrain": "OpenField",
+  "era": {
+    "id": "napoleonic",
+    "version": 1,
+    "blue_faction": "france",
+    "orange_faction": "austria"
+  },
+  "regiment_tactics": true,
+  "risky_volley": false,
+  "direct_deployment": true,
+  "adaptive_battle": true,
+  "objective": {
+    "goal": "Eliminate",
+    "time_limit_seconds": 255,
+    "crossing": 1,
+    "required_regiments": 1,
+    "crossing_team": 0
+  },
+  "briefing": "14 июня 1800 года у Маренго австрийская армия Михаэля фон Меласа вынудила французов отступить. Подход дивизии Луи Дезе позволил войску первого консула Бонапарта вернуться в бой и победить. Сценарий начинается с подхода французского резерва, который стоит позади центра.\n\nПозиции и численность условны. Источник сверён 26.11.2026.",
+  "sources": [
+    "https://www.musee-armee.fr/expoNapoleonStratege/docs/MA-livret-napoleon-strategeEN.pdf",
+    "https://collections.musee-armee.fr/trompette-dhonneur-decernee-au-citoyen-norberg-pour-sa-conduite-a-la-bataille-de-marengo-14-juin-1800/"
+  ],
+  "regiments": [
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -65,
+      "start_y": 0,
+      "formation_files": 21,
+      "swords": 8,
+      "archers": 14,
+      "spearmen": 11,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -78,
+      "start_y": -80,
+      "formation_files": 35,
+      "swords": 4,
+      "archers": 20,
+      "spearmen": 7,
+      "mounted": 0,
+      "infantry_profile": "fusiliers"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -86,
+      "start_y": 70,
+      "formation_files": 33,
+      "swords": 4,
+      "archers": 20,
+      "spearmen": 7,
+      "mounted": 0,
+      "infantry_profile": "grenadiers"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -145,
+      "start_y": 1,
+      "formation_files": 19,
+      "swords": 7,
+      "archers": 15,
+      "spearmen": 10,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -117,
+      "start_y": -113,
+      "formation_files": 18,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 23
+    },
+    {
+      "type": "Platform",
+      "platform": "field_gun",
+      "platform_count": 4,
+      "enabled": true,
+      "group": 3,
+      "start_x": -93,
+      "start_y": 42,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 58,
+      "start_y": 0,
+      "formation_files": 28,
+      "swords": 7,
+      "archers": 17,
+      "spearmen": 11,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 68,
+      "start_y": -70,
+      "formation_files": 34,
+      "swords": 5,
+      "archers": 19,
+      "spearmen": 7,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 72,
+      "start_y": 75,
+      "formation_files": 31,
+      "swords": 5,
+      "archers": 19,
+      "spearmen": 7,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 120,
+      "start_y": 4,
+      "formation_files": 25,
+      "swords": 7,
+      "archers": 17,
+      "spearmen": 9,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 122,
+      "start_y": -118,
+      "formation_files": 18,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 26
+    },
+    {
+      "type": "Platform",
+      "platform": "field_gun",
+      "platform_count": 4,
+      "enabled": true,
+      "group": 3,
+      "start_x": 104,
+      "start_y": 43,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 0
+    }
+  ],
+  "field": {
+    "width_m": 560,
+    "height_m": 360
+  },
+  "figure_target": 5000
+}

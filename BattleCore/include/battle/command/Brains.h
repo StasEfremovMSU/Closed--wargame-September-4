@@ -1,6 +1,7 @@
 #pragma once
 #include "Messages.h"
 #include "battle/Orders.h"
+#include <functional>
 
 namespace battle::command {
 enum class BrainStage : uint8_t {
@@ -32,6 +33,7 @@ struct TacticalOption {
     RegimentId target_regiment{};
     Vec3 destination{};
     std::string rationale;
+    bool keep_current_order{}; // Evaluation option only. Never sent as a new task.
 };
 struct ActionScore {
     uint32_t option_index{};
@@ -45,6 +47,7 @@ struct EvaluationRequest {
     uint32_t feature_schema{}; // Zero means no agreed feature encoding.
     std::span<const float> features;
     std::span<const TacticalOption> options;
+    uint32_t baseline_option{}; // Option the built-in FSM would select.
 };
 class ITacticalEvaluator {
   public:
@@ -103,6 +106,14 @@ struct ChildStatus {
     bool panic{};
     FsmState state{FsmState::Idle};
     TaskStatus task_status{TaskStatus::Draft};
+    bool melee_engaged{};
+    RegimentId attack_target{};
+    std::optional<Vec3> formation_center;
+};
+struct ChildOrderObservation {
+    bool pending{}, executing{};
+    std::optional<Tick> delivered_tick;
+    float progress{}; // Friendly execution cue in [0, 1].
 };
 // Borrowed, read-only views valid for the duration of Think. No World access here.
 struct BrainContext {
@@ -118,6 +129,17 @@ struct BrainContext {
     std::span<const ChildStatus> children_status;
     std::optional<FormationSpec> current_formation;
     bool formation_ready{true};
+    std::function<std::optional<Pose>(NodeId, RegimentId, const KnownContact &, const CommandTask &)> choose_flank;
+    std::function<bool(RegimentId)> in_melee_with;
+    std::span<const CommandTask> previous_subordinate_tasks;
+    std::function<bool(NodeId, const KnownContact &)> can_approach;
+    std::function<bool(NodeId, Vec3)> can_stage;
+    std::function<std::optional<Pose>(NodeId, const KnownContact &, const CommandTask &)> choose_group_flank;
+    std::function<std::optional<Vec3>(NodeId, NodeId, const KnownContact &)> choose_group_support;
+    std::optional<Level> parent_level;
+    const ITacticalEvaluator *group_policy{};
+    bool group_order_commitment{};
+    std::function<std::optional<ChildOrderObservation>(const CommandTask &)> observe_order;
 };
 
 enum class FireDiscipline : uint8_t { HoldFire, Volley, AtWill, Conserve };

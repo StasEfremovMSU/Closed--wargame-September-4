@@ -1,0 +1,178 @@
+{
+  "schema_version": 4,
+  "name": "Босворт, 1485 · Последний бой Ричарда III",
+  "terrain": "Kalka",
+  "era": {
+    "id": "late_medieval",
+    "version": 1,
+    "blue_faction": "lancaster",
+    "orange_faction": "york"
+  },
+  "regiment_tactics": true,
+  "risky_volley": false,
+  "direct_deployment": true,
+  "adaptive_battle": true,
+  "objective": {
+    "goal": "Eliminate",
+    "time_limit_seconds": 240,
+    "crossing": 1,
+    "required_regiments": 1,
+    "crossing_team": 0
+  },
+  "briefing": "22 августа 1485 года при Босворте Генрих Тюдор сразился с войском Ричарда III. Ричард пошёл в конную атаку к знамени Генриха. В решающий момент люди Уильяма Стэнли выступили на стороне Тюдора.\n\nВы командуете войском Генриха. Разбейте йоркистов. Свяжите их пехоту в центре, а конный резерв на крыле сохраните до того момента, когда всадники Ричарда оторвутся от пехоты.\n\nЗаболоченные края передают характер местности условно. Точное расположение войск остаётся спорным. Отряд Стэнли с самого начала включён в армию Генриха, а две стороны используют общий набор английских моделей. Игровой участок 560 × 360 м, 5 000 фигур.",
+  "sources": [
+    "https://www.nationalarchives.gov.uk/explore-the-collection/stories/richard-iii/",
+    "https://historicengland.org.uk/listing/heritage-gateway/results/record/0d636742-8028-4a8c-8b7c-e1f9aaf2d338/d5f1de59-fdf5-4da3-84d8-da11f60c8700"
+  ],
+  "regiments": [
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -58,
+      "start_y": -10,
+      "formation_files": 24,
+      "swords": 19,
+      "archers": 20,
+      "spearmen": 13,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -75,
+      "start_y": -68,
+      "formation_files": 20,
+      "swords": 22,
+      "archers": 16,
+      "spearmen": 15,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -72,
+      "start_y": 70,
+      "formation_files": 20,
+      "swords": 17,
+      "archers": 18,
+      "spearmen": 15,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -112,
+      "start_y": -8,
+      "formation_files": 21,
+      "swords": 21,
+      "archers": 15,
+      "spearmen": 15,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -121,
+      "start_y": -68,
+      "formation_files": 15,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 29
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -131,
+      "start_y": 98,
+      "formation_files": 16,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 35
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 60,
+      "start_y": -4,
+      "formation_files": 25,
+      "swords": 22,
+      "archers": 20,
+      "spearmen": 15,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 68,
+      "start_y": -69,
+      "formation_files": 21,
+      "swords": 23,
+      "archers": 19,
+      "spearmen": 14,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 76,
+      "start_y": 62,
+      "formation_files": 18,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 40
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 110,
+      "start_y": -4,
+      "formation_files": 22,
+      "swords": 24,
+      "archers": 17,
+      "spearmen": 16,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 117,
+      "start_y": -90,
+      "formation_files": 17,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 39
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 126,
+      "start_y": 64,
+      "formation_files": 19,
+      "swords": 22,
+      "archers": 16,
+      "spearmen": 15,
+      "mounted": 0
+    }
+  ],
+  "field": {
+    "width_m": 560,
+    "height_m": 360
+  },
+  "figure_target": 5000
+}

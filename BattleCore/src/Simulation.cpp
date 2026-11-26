@@ -3,6 +3,9 @@
 #include "battle/Control.h"
 #include "battle/Formation.h"
 #include "battle/Officers.h"
+#include "LocalMelee.h"
+#include "RegimentDiscipline.h"
+#include "FieldCombat.h"
 #include <chrono>
 #include <map>
 namespace battle {
@@ -31,7 +34,9 @@ Result<TickResult> Step(World &w, std::span<const CommandEnvelope> input,
     std::map<std::pair<Tick, uint64_t>, unsigned> movement_sources;
     auto inspect = [&](const CommandEnvelope &e) {
         auto kind = e.command.kind;
-        if (kind == CommandKind::MoveControlledUnit)
+        if (kind == CommandKind::MoveControlledUnit || kind == CommandKind::FaceControlledUnit ||
+            kind == CommandKind::JumpControlledUnit ||
+            kind == CommandKind::ParryControlledUnit)
             movement_sources[{e.tick, e.command.unit.value}] |= 1;
         if (kind == CommandKind::ExternalPoseSample)
             movement_sources[{e.tick, e.command.unit.value}] |= 2;
@@ -42,8 +47,8 @@ Result<TickResult> Step(World &w, std::span<const CommandEnvelope> input,
         if (seen(e.sequence))
             continue;
         if (!e.sequence || !Finite(e.command.pose) || !Finite(e.command.velocity) ||
-            !Finite(e.command.order.point) || e.tick < w.tick ||
-            uint8_t(e.command.kind) > uint8_t(CommandKind::IssueCommandTask) ||
+            !ValidOrderShape(e.command.order) || e.tick < w.tick ||
+            uint8_t(e.command.kind) > uint8_t(CommandKind::ParryControlledUnit) ||
             (e.command.kind == CommandKind::IssueCommandTask &&
              !command::ValidTaskRequest(e.command.command_task)) ||
             (e.command.kind == CommandKind::ExternalPoseSample && e.command.sample_tick != e.tick))
@@ -54,6 +59,10 @@ Result<TickResult> Step(World &w, std::span<const CommandEnvelope> input,
         if (entry.second == 3)
             return {
                 Status::Conflict, {}, {{"commands", 0, "local and external movement conflict"}}};
+    std::vector<std::pair<UnitId, Pose>> siege_before_movement;
+    for (const auto &unit : w.units)
+        if (unit.alive && IsSiegeEngine(unit.platform))
+            siege_before_movement.emplace_back(unit.id, unit.pose);
     w.events.clear();
     for (auto e : input) {
         auto i =
@@ -73,10 +82,28 @@ Result<TickResult> Step(World &w, std::span<const CommandEnvelope> input,
             continue;
         }
         Status status = Status::NotFound;
-        if (e.command.kind == CommandKind::IssueOrder)
-            status = SubmitOrder(w, e.command.order);
-        else if (e.command.kind == CommandKind::ReformRegiment)
+        if (e.command.kind == CommandKind::IssueOrder) {
+            auto order = e.command.order;
+            order.player_direct = false;
+            if (order.priority == PlayerOrderPriority && w.controlled) {
+                const auto issuer = std::ranges::find(w.officers, order.issuer, &OfficerSpec::id);
+                order.player_direct = issuer != w.officers.end() && issuer->unit == w.controlled &&
+                                      CanCommandRegiment(w, w.controlled, order.recipient);
+            }
+            status = SubmitOrder(w, order);
+        } else if (e.command.kind == CommandKind::ReformRegiment) {
             status = ReformRegiment(w, e.command.regiment, e.command.formation);
+            if (status == Status::Ok) {
+                auto &regiment = *FindRegiment(w, e.command.regiment);
+                if (UsesLinearInfantry(w, regiment)) {
+                    regiment.manual_frontage = true;
+                    regiment.decision_tick = 0;
+                    regiment.route.clear();
+                    regiment.waypoint = 0;
+                }
+            }
+        } else if (e.command.kind == CommandKind::SetSkirmishers)
+            status = SetSkirmishers(w, e.command.regiment, e.command.skirmishers_enabled);
         else if (e.command.kind == CommandKind::IssueCommandTask) {
             auto submitted = command::SubmitTask(w, e.command.command_task);
             status =
@@ -94,20 +121,46 @@ Result<TickResult> Step(World &w, std::span<const CommandEnvelope> input,
                                 "unavailable or invalid command target"});
     }
     w.commands = std::move(future);
-    UpdateMorale(w);
-    auto command = command::UpdateCommand(w, nav);
+    if (!w.scenario.rules.regiment_tactics)
+        UpdateMorale(w);
+    auto command = command::UpdateCommand(w, nav, o.group_policy, o.group_order_commitment);
     if (command.status != command::StubStatus::Ready)
         return {Status::InvalidInput, {}, {{"command.runtime", 0, "command update rejected"}}};
+    UpdateFieldPosture(w);
     UpdateOfficers(w, nav);
     mark(&StepProfile::orders_ms);
-    AdvanceFormations(w, .05f);
+    std::optional<LocalMelee> contact;
+    if (w.scenario.rules.local_melee) {
+        UpdateSkirmishers(w);
+        contact.emplace(w, .05f);
+    }
+    AdvanceFormations(w, .05f, contact ? &*contact : nullptr);
+    auto *controlled = FindUnit(w, w.controlled);
+    const bool jumping = controlled && controlled->jump_started_tick;
     AdvanceControlled(w, .05f);
+    if (contact) {
+        if (controlled && controlled->alive) {
+            const Vec3 destination = controlled->pose.position;
+            controlled->pose.position = contact->Constrain(*controlled, destination);
+            if (jumping)
+                controlled->pose.position.z = destination.z;
+        }
+        contact->ApplyShoves(w);
+        contact->Refresh(w);
+    }
     mark(&StepProfile::movement_ms);
+    std::vector<UnitId> moving_siege;
+    for (const auto &[id, pose] : siege_before_movement)
+        if (FindUnit(w, id)->pose != pose)
+            moving_siege.push_back(id);
     std::vector<BattleEvent> attacks;
-    BuildCombatEvents(w, attacks, &w.neighbor_checks);
+    BuildCombatEvents(w, attacks, &w.neighbor_checks, contact ? &*contact : nullptr, moving_siege);
     mark(&StepProfile::targeting_ms);
-    CommitCombatEvents(w, attacks);
+    CommitCombatEvents(w, attacks, contact ? &*contact : nullptr);
+    if (w.scenario.rules.regiment_tactics)
+        UpdateRegimentDiscipline(w);
     ++w.tick;
+    CompleteDeployments(w);
     mark(&StepProfile::commit_ms);
     return {Status::Ok, {w.tick, w.events}, {}};
 }

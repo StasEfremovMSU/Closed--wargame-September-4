@@ -1,0 +1,185 @@
+{
+  "schema_version": 4,
+  "name": "Алезия, 52 до н. э. · Внешний вал",
+  "terrain": "Narva",
+  "era": {
+    "id": "ancient",
+    "version": 1,
+    "blue_faction": "gauls",
+    "orange_faction": "rome"
+  },
+  "regiment_tactics": true,
+  "risky_volley": false,
+  "direct_deployment": true,
+  "adaptive_battle": true,
+  "objective": {
+    "goal": "Breakthrough",
+    "time_limit_seconds": 240,
+    "crossing": 1,
+    "required_regiments": 2,
+    "crossing_team": 0,
+    "breakthrough": {
+      "x_m": 117,
+      "y_m": 0,
+      "radius_m": 28,
+      "group": 2
+    }
+  },
+  "briefing": "В 52 году до н. э. Цезарь окружил войско Верцингеторига в Алезии двумя линиями укреплений. Когда подошла галльская армия помощи, осаждённые атаковали изнутри, а пришедшие на выручку — снаружи.\n\nВы командуете галльской армией помощи. Доведите два пехотных полка второй группы через разрывы в валу до отмеченного участка за ним. Конница на крыльях отвлекает римлян от проходов.\n\nНа карте показан условный отрезок внешнего укрепления. Второе кольцо, плато с городом и вылазка из Алезии остаются за пределами поля. Численность приведена к игровому масштабу. Игровой участок 560 × 360 м, 5 000 фигур.",
+  "sources": [
+    "https://musee-archeologienationale.fr/en/node/1592"
+  ],
+  "regiments": [
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -63,
+      "start_y": 0,
+      "formation_files": 15,
+      "swords": 26,
+      "archers": 4,
+      "spearmen": 23,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -68,
+      "start_y": -71,
+      "formation_files": 15,
+      "swords": 24,
+      "archers": 6,
+      "spearmen": 16,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -78,
+      "start_y": 69,
+      "formation_files": 16,
+      "swords": 21,
+      "archers": 5,
+      "spearmen": 19,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -111,
+      "start_y": 0,
+      "formation_files": 15,
+      "swords": 22,
+      "archers": 4,
+      "spearmen": 26,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -127,
+      "start_y": -102,
+      "formation_files": 15,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 28
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -135,
+      "start_y": 102,
+      "formation_files": 15,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 29
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 47,
+      "start_y": 0,
+      "formation_files": 22,
+      "swords": 24,
+      "archers": 5,
+      "spearmen": 19,
+      "mounted": 0,
+      "infantry_profile": "legionaries"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 49,
+      "start_y": -68,
+      "formation_files": 19,
+      "swords": 25,
+      "archers": 6,
+      "spearmen": 16,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 48,
+      "start_y": 67,
+      "formation_files": 20,
+      "swords": 25,
+      "archers": 6,
+      "spearmen": 17,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 100,
+      "start_y": 0,
+      "formation_files": 21,
+      "swords": 23,
+      "archers": 5,
+      "spearmen": 20,
+      "mounted": 0,
+      "infantry_profile": "auxilia"
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 107,
+      "start_y": -98,
+      "formation_files": 16,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 25
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 105,
+      "start_y": 101,
+      "formation_files": 18,
+      "swords": 23,
+      "archers": 6,
+      "spearmen": 17,
+      "mounted": 0
+    }
+  ],
+  "field": {
+    "width_m": 560,
+    "height_m": 360
+  },
+  "figure_target": 5000
+}

@@ -1,3 +1,4 @@
+#include "BattleTrace.h"
 #include "Benchmark.h"
 #include "JsonBindings.h"
 #include "LegacyImport.h"
@@ -14,6 +15,13 @@
 #include <thread>
 using namespace battle;
 namespace {
+std::string CompilerVersion() {
+#if defined(_MSC_VER)
+    return "MSVC " + std::to_string(_MSC_FULL_VER);
+#else
+    return __VERSION__;
+#endif
+}
 uint64_t Counter(const std::string &token, uint64_t max = std::numeric_limits<uint64_t>::max()) {
     uint64_t value{};
     auto end = token.data() + token.size();
@@ -31,7 +39,7 @@ template <class T> bool Report(const Result<T> &r) {
 int main(int argc, char **argv) {
     try {
         if (argc < 2) {
-            std::cout << "battle_cli import-legacy|run|replay; --scenario FILE --ticks N --seed N "
+            std::cout << "battle_cli import-legacy|run|replay|trace-replay; --scenario FILE --ticks N --seed N "
                          "--out DIR\n";
             return 2;
         }
@@ -55,6 +63,15 @@ int main(int argc, char **argv) {
         if (args.contains("--resume") && args.contains("--replay-out"))
             throw std::invalid_argument("--resume with --replay-out is unsupported; continue using "
                                         "snapshots or replay the original command log");
+        if (mode == "trace-replay") {
+            const auto replay = io::ReplayBattleTrace(required("--trace"));
+            if (!Report(replay))
+                return 2;
+            std::cout << "tick=" << replay.value.tick << " hash=" << replay.value.hash
+                      << " stall_samples=" << replay.value.stall_samples
+                      << " complete=" << replay.value.complete << "\n";
+            return 0;
+        }
         if (mode == "import-legacy") {
             auto r = io::ImportLegacy(required("--source"), {required("--map"), 1});
             if (!Report(r))
@@ -138,7 +155,7 @@ int main(int argc, char **argv) {
                             {"max_launches_per_tick", r.max_launches_per_tick},
                             {"working_set_bytes", r.working_set_bytes},
                             {"process_peak_bytes", r.peak_working_set_bytes},
-                            {"compiler", __VERSION__},
+                            {"compiler", CompilerVersion()},
                             {"hardware_threads", std::thread::hardware_concurrency()}};
                         summary << j.dump() << "\n";
                         summary.flush();

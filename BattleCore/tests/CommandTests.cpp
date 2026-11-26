@@ -1,4 +1,5 @@
 #include "CommandSupport.h"
+#include "battle/Combat.h"
 #include "battle/Snapshot.h"
 #include "doctest.h"
 #include <limits>
@@ -53,6 +54,29 @@ TEST_CASE("command.observation_respects_range_and_obstacles") {
     CHECK(result.value->contacts.empty());
     CHECK(c::BuildSituation(f.world, f.hierarchy, {999}, 0).status == c::StubStatus::InvalidInput);
 }
+TEST_CASE("command.incoming_fire_is_known_without_revealing_the_shooter") {
+    test::CommandFixture f;
+    f.world.scenario.rules.regiment_tactics = true;
+    f.world.scenario.obstacles.push_back({-1, -10, 1, 10, true});
+    BattleEvent launch;
+    launch.id = {1};
+    launch.kind = EventKind::AttackLaunched;
+    launch.source = {5};
+    launch.target = {1};
+    launch.projectile = true;
+    launch.due_tick = 1;
+    CommitCombatEvents(f.world, {&launch, 1});
+    ++f.world.tick;
+    auto result = c::BuildSituation(f.world, f.hierarchy, {4}, f.world.tick);
+    REQUIRE(result.value);
+    CHECK(result.value->own.under_ranged_fire);
+    CHECK(result.value->contacts.empty());
+    f.world.tick += 40;
+    result = c::BuildSituation(f.world, f.hierarchy, {4}, f.world.tick);
+    REQUIRE(result.value);
+    CHECK_FALSE(result.value->own.under_ranged_fire);
+}
+
 TEST_CASE("command.successor_and_schedule") {
     test::CommandFixture f;
     auto node = f.hierarchy.nodes[0];

@@ -1,4 +1,5 @@
 #include "battle/World.h"
+#include "FieldCombat.h"
 #include "battle/command/Services.h"
 #include <set>
 namespace battle::command {
@@ -65,6 +66,8 @@ bool HasLineOfSight(Vec3 a, Vec3 b, std::span<const Obstacle> obstacles) {
     if (!Finite(a) || !Finite(b))
         return false;
     for (const auto &box : obstacles) {
+        if (!TerrainBlocksMovement(box))
+            continue;
         float enter = 0, leave = 1;
         bool intersect = true;
         for (unsigned axis = 0; axis < 2; ++axis) {
@@ -96,18 +99,33 @@ StubResult<LocalSituation> BuildSituation(const World &w, const CommandHierarchy
     LocalSituation p;
     p.observer = id;
     p.tick = tick;
+    const bool report_discipline = w.scenario.rules.regiment_tactics;
+    double morale = 0, cohesion = 0, fatigue = 0;
     float weight = 0;
     uint64_t panicked = 0;
+    uint64_t ammunition = 0, remaining = 0;
+    constexpr Tick RecentFireTicks = 40;
     for (auto reg : OwnedRegiments(h, id))
         if (auto *r = FindRegiment(w, reg)) {
             uint32_t living = 0;
             for (auto unit : r->units)
-                if (auto *u = FindUnit(w, unit); u && u->alive)
+                if (auto *u = FindUnit(w, unit); u && u->alive) {
                     ++living;
+                    ammunition += u->ammunition;
+                    remaining += u->ammunition_remaining;
+                }
             p.own.living += living;
             p.own.initial += uint32_t(r->initial_count);
+            const auto last_shot = r->last_hostile_shot_tick;
+            p.own.under_ranged_fire |= last_shot && last_shot <= tick &&
+                                       tick - last_shot < RecentFireTicks;
             if (r->panic)
                 panicked += living;
+            if (report_discipline) {
+                morale += double(r->morale) * living;
+                cohesion += double(r->cohesion) * living;
+                fatigue += double(r->fatigue) * living;
+            }
             p.own.pose.position = p.own.pose.position + r->pose.position * float(living);
             p.rally_point = p.rally_point + r->rally_point * float(living);
             if (!weight)
@@ -118,6 +136,13 @@ StubResult<LocalSituation> BuildSituation(const World &w, const CommandHierarchy
         p.own.pose.position = p.own.pose.position * (1 / weight);
         p.rally_point = p.rally_point * (1 / weight);
     }
+    if (report_discipline && p.own.living) {
+        p.own.morale = float(morale / p.own.living);
+        p.own.cohesion = float(cohesion / p.own.living);
+        p.own.fatigue = float(fatigue / p.own.living);
+    }
+    if (ammunition)
+        p.own.ammunition_fraction = float(double(remaining) / double(ammunition));
     p.own.panic = panicked * 2 > p.own.living;
     auto eye = NodePose(w, h, id);
     float radius = 60;
@@ -125,24 +150,29 @@ StubResult<LocalSituation> BuildSituation(const World &w, const CommandHierarchy
         radius = *profile->command_radius_m;
     if (eye && node->commander)
         for (const auto &r : w.regiments) {
-            if (r.team == node->team)
+            if (r.id == node->regiment)
                 continue;
             uint32_t strength = 0;
             for (auto unit : r.units)
                 if (auto *u = FindUnit(w, unit); u && u->alive)
                     ++strength;
             if (!strength || Distance(eye->position, r.pose.position) > radius ||
-                !HasLineOfSight(eye->position, r.pose.position, w.scenario.obstacles))
+                !HasLineOfSight(eye->position, r.pose.position, w.scenario.obstacles) ||
+                SmokeObscures(w, eye->position, r.pose.position) ||
+                (w.scenario.hill && !HillHasLineOfSight(*w.scenario.hill, eye->position, r.pose.position)))
                 continue;
             KnownContact contact;
             contact.regiment = r.id;
             contact.team = r.team;
-            contact.allegiance = Allegiance::Enemy;
+            const bool friendly = r.team == node->team;
+            contact.allegiance = friendly ? Allegiance::Friendly : Allegiance::Enemy;
             contact.estimated_pose = r.pose;
             contact.estimated_strength = float(strength);
             contact.observed_tick = tick;
             contact.confidence = 1;
             p.contacts.push_back(contact);
+            if (friendly)
+                continue;
             const auto delta = r.pose.position - p.own.pose.position;
             float front = Dot(delta, Forward(p.own.pose.yaw)),
                   side = Dot(delta, Right(p.own.pose.yaw));
@@ -152,6 +182,7 @@ StubResult<LocalSituation> BuildSituation(const World &w, const CommandHierarchy
                                 : (side >= 0 ? RelativeSector::Right : RelativeSector::Left);
             threat.strength = float(strength);
             threat.confidence = 1;
+            threat.cavalry_approaching = r.cavalry_phase == CavalryPhase::Approach;
             p.threats.push_back(threat);
         }
     std::sort(p.contacts.begin(), p.contacts.end(), [&](const auto &a, const auto &b) {
@@ -163,7 +194,7 @@ StubResult<LocalSituation> BuildSituation(const World &w, const CommandHierarchy
     terrain.position = p.own.pose.position;
     terrain.passability = 1;
     for (const auto &b : w.scenario.obstacles)
-        if (terrain.position.x >= b.min_x && terrain.position.x <= b.max_x &&
+        if (TerrainBlocksMovement(b) && terrain.position.x >= b.min_x && terrain.position.x <= b.max_x &&
             terrain.position.y >= b.min_y && terrain.position.y <= b.max_y)
             terrain.passability = 0;
     p.terrain.push_back(terrain);

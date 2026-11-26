@@ -2,8 +2,78 @@
 #include "ReplayIo.h"
 #include "TestSupport.h"
 #include "battle/Control.h"
+#include "battle/command/Services.h"
 #include "doctest.h"
 using namespace battle;
+
+TEST_CASE("replay.hill_roundtrips_without_changing_flat_scenario_data") {
+    auto scenario = test::Duel();
+    const nlohmann::json flat_json = scenario;
+    CHECK_FALSE(flat_json.contains("hill"));
+    CHECK_FALSE(flat_json.get<Scenario>().hill);
+    const auto flat = CreateWorld(scenario, 42);
+    REQUIRE(flat);
+    scenario.hill = TerrainHill{31.f, 25.f, 9.f, .4f};
+    const auto hill = CreateWorld(scenario, 42);
+    REQUIRE(hill);
+    CHECK(StateHash(hill.value) != StateHash(flat.value));
+    test::TempDir temp;
+    const auto path = temp.path / "hill.json";
+    REQUIRE(io::SaveSnapshot(path, Capture(hill.value)));
+    const auto restored = io::LoadSnapshot(path);
+    REQUIRE(restored);
+    CHECK(restored.value.state.scenario.hill == scenario.hill);
+    CHECK(StateHash(hill.value) == StateHash(restored.value.state));
+    scenario.hill->crest_fraction = 1.f;
+    CHECK_FALSE(CreateWorld(scenario, 42));
+}
+
+TEST_CASE("replay.adaptive_battle_roundtrips_and_legacy_stays_disabled") {
+    auto scenario = test::Duel();
+    nlohmann::json legacy = scenario.rules;
+    CHECK_FALSE(legacy.contains("adaptive_battle"));
+    CHECK_FALSE(legacy.get<Rules>().adaptive_battle);
+    const auto baseline = CreateWorld(scenario, 42);
+    REQUIRE(baseline);
+
+    scenario.rules.adaptive_battle = true;
+    const auto adaptive = CreateWorld(scenario, 42);
+    REQUIRE(adaptive);
+    CHECK(StateHash(adaptive.value) != StateHash(baseline.value));
+    test::TempDir temp;
+    const auto file = temp.path / "adaptive.json";
+    REQUIRE(io::SaveSnapshot(file, Capture(adaptive.value)));
+    const auto reloaded = io::LoadSnapshot(file);
+    REQUIRE(reloaded);
+    CHECK(reloaded.value.state.scenario.rules.adaptive_battle);
+    CHECK(StateHash(adaptive.value) == StateHash(reloaded.value.state));
+}
+
+TEST_CASE("replay.troop_kinds_roundtrip_and_legacy_units_default_to_infantry") {
+    auto scenario = test::Duel();
+    scenario.units[0].troop = UnitTroop::Spearman;
+    scenario.units[1].troop = UnitTroop::Mounted;
+    const auto created = CreateWorld(scenario, 42);
+    REQUIRE(created);
+    const auto before = StateHash(created.value);
+    test::TempDir temp;
+    const auto path = temp.path / "troops.json";
+    REQUIRE(io::SaveSnapshot(path, Capture(created.value)));
+    const auto loaded = io::LoadSnapshot(path);
+    REQUIRE(loaded);
+    CHECK(StateHash(loaded.value.state) == before);
+    CHECK(loaded.value.state.units[0].troop == UnitTroop::Spearman);
+    CHECK(loaded.value.state.units[1].troop == UnitTroop::Mounted);
+
+    nlohmann::json legacy = scenario.units[0];
+    legacy.erase("troop");
+    CHECK(legacy.get<UnitSpec>().troop == UnitTroop::Infantry);
+    legacy["troop"] = 256;
+    CHECK_THROWS(legacy.get<UnitSpec>());
+    scenario.units[0].troop = static_cast<UnitTroop>(127);
+    CHECK_FALSE(CreateWorld(scenario, 42));
+}
+
 namespace command = battle::command;
 
 namespace {
@@ -45,6 +115,36 @@ Scenario CommandScenario() {
     return scenario;
 }
 } // namespace
+
+TEST_CASE("replay.ongoing_fire_pressure_survives_json_roundtrip") {
+    auto scenario = CommandScenario();
+    scenario.rules.regiment_tactics = true;
+    scenario.units[4].archer = true;
+    scenario.units[4].weapon.range = 40.f;
+    auto made = CreateWorld(scenario, 42);
+    REQUIRE(made);
+    auto &world = made.value;
+    const FlatNavigationService nav;
+    REQUIRE(Step(world, {}, {}, nav));
+    const auto &hierarchy = world.command_state->hierarchy;
+    const auto observed = command::BuildSituation(world, hierarchy, {4}, world.tick);
+    REQUIRE(observed.value);
+    REQUIRE(observed.value->own.under_ranged_fire);
+    const nlohmann::json report = *observed.value;
+    CHECK(report.get<command::LocalSituation>() == *observed.value);
+    const nlohmann::json legacy = command::OwnForceSummary{};
+    CHECK_FALSE(legacy.contains("under_ranged_fire"));
+
+    test::TempDir temp;
+    const auto path = temp.path / "incoming-fire.json";
+    REQUIRE(io::SaveSnapshot(path, Capture(world)));
+    auto loaded = io::LoadSnapshot(path);
+    REQUIRE(loaded);
+    CHECK(StateHash(loaded.value.state) == StateHash(world));
+    REQUIRE(Step(world, {}, {}, nav));
+    REQUIRE(Step(loaded.value.state, {}, {}, nav));
+    CHECK(StateHash(loaded.value.state) == StateHash(world));
+}
 
 TEST_CASE("replay.command_runtime_roundtrips_mid_message_and_hashes_every_part") {
     auto made = CreateWorld(CommandScenario(), 42);
@@ -430,4 +530,146 @@ TEST_CASE("replay.ranged_mid_cycle_resume") {
     r["schema_version"] = 1;
     test::Write(dir.path / "v1-replay.json", r.dump());
     CHECK_FALSE(io::LoadReplay(dir.path / "v1-replay.json"));
+}
+
+TEST_CASE("replay.follow_and_facing_roundtrip_with_a_queued_stop_and_active_route") {
+    auto scenario = test::Duel(2);
+    scenario.officers.push_back({{10}, {1}, 2});
+    auto created = CreateWorld(scenario, 42);
+    REQUIRE(created);
+    World &world = created.value;
+    FlatNavigationService nav;
+    Command acquire;
+    acquire.kind = CommandKind::AcquireControl;
+    acquire.unit = {1};
+    Command begin;
+    begin.kind = CommandKind::SetRegimentFollowing;
+    begin.unit = acquire.unit;
+    begin.regiment = {1};
+    begin.follow_enabled = true;
+    Command face;
+    face.kind = CommandKind::FaceControlledUnit;
+    face.unit = acquire.unit;
+    face.pose.yaw = Pi / 2;
+    auto stop = begin;
+    stop.follow_enabled = false;
+    std::vector<CommandEnvelope> commands{{0, 1, acquire}, {0, 2, begin}, {0, 3, face},
+                                           {16, 4, stop}};
+    test::TempDir dir;
+    REQUIRE(io::WriteReplay(dir.path / "follow-replay.json", scenario, 42, commands));
+    const auto replay = io::LoadReplay(dir.path / "follow-replay.json");
+    REQUIRE(replay);
+    REQUIRE(Step(world, commands, {}, nav));
+    CHECK(FindUnit(world, {1})->pose.yaw == doctest::Approx(Pi / 2));
+    CHECK_FALSE(FindRegiment(world, {1})->route.empty());
+    REQUIRE(io::SaveSnapshot(dir.path / "follow-save.json", Capture(world)));
+    auto loaded = io::LoadSnapshot(dir.path / "follow-save.json");
+    REQUIRE(loaded);
+    CHECK(StateHash(loaded.value.state) == StateHash(world));
+    auto replayed = CreateWorld(scenario, 42);
+    REQUIRE(replayed);
+    REQUIRE(Step(replayed.value, replay.value.commands, {}, nav));
+    for (int i = 0; i < 32; ++i) {
+        REQUIRE(Step(world, {}, {}, nav));
+        REQUIRE(Step(loaded.value.state, {}, {}, nav));
+        REQUIRE(Step(replayed.value, {}, {}, nav));
+    }
+    CHECK(StateHash(loaded.value.state) == StateHash(world));
+    CHECK(StateHash(replayed.value) == StateHash(world));
+}
+
+TEST_CASE("replay.field_order_roundtrip_and_legacy_defaults") {
+    auto world = CreateWorld(test::Duel(), 42);
+    REQUIRE(world);
+    Order order;
+    order.recipient = {1};
+    order.type = OrderType::MoveTo;
+    order.point = {3.f, 8.f, 0.f};
+    order.pace = MovementPace::Run;
+    order.facing = 0.f;
+    order.move_columns = 3;
+    order.maneuver_group = 1234;
+    REQUIRE(SubmitOrder(world.value, order) == Status::Ok);
+    test::TempDir dir;
+    const auto path = dir.path / "field-order.json";
+    REQUIRE(io::SaveSnapshot(path, Capture(world.value)));
+    const auto restored = io::LoadSnapshot(path);
+    REQUIRE(restored);
+    REQUIRE(restored.value.state.pending_orders.size() == 1);
+    const auto& loaded = restored.value.state.pending_orders.front();
+    CHECK(loaded.pace == MovementPace::Run);
+    CHECK(loaded.facing == 0.f);
+    CHECK(loaded.move_columns == 3u);
+    CHECK(loaded.maneuver_group == 1234u);
+    CHECK(StateHash(restored.value.state) == StateHash(world.value));
+
+    const nlohmann::json legacy = Order{};
+    CHECK_FALSE(legacy.contains("pace"));
+    CHECK_FALSE(legacy.contains("facing"));
+    CHECK_FALSE(legacy.contains("move_columns"));
+    CHECK_FALSE(legacy.contains("maneuver_group"));
+    CHECK(legacy.get<Order>().pace == MovementPace::Walk);
+    CHECK_FALSE(legacy.get<Order>().facing);
+    CHECK_FALSE(legacy.get<Order>().move_columns);
+    CHECK(legacy.get<Order>().maneuver_group == 0u);
+
+    for (const auto &bad : {nlohmann::json(-1), nlohmann::json(4294967296ull), nlohmann::json(1.5),
+                            nlohmann::json("1")}) {
+        auto invalid = nlohmann::json(order);
+        invalid["pace"] = bad;
+        CHECK_THROWS(invalid.get<Order>());
+        invalid = order;
+        invalid["move_columns"] = bad;
+        CHECK_THROWS(invalid.get<Order>());
+    }
+    auto invalid = nlohmann::json(order);
+    invalid["move_columns"] = 0;
+    CHECK_THROWS(invalid.get<Order>());
+    invalid["move_columns"] = 3;
+    invalid["type"] = OrderType::Hold;
+    CHECK_THROWS(invalid.get<Order>());
+    invalid = order;
+    invalid["facing"] = "0";
+    CHECK_THROWS(invalid.get<Order>());
+}
+
+TEST_CASE("replay.field_battle_preserves_pending_effects_and_discipline") {
+    auto source = test::Duel();
+    source.units[0].archer = true;
+    source.units[0].ranged_weapon = RangedWeapon::Gunpowder;
+    source.units[0].ammunition = 8;
+    source.units[1].troop = UnitTroop::Mounted;
+    source.units[1].cavalry = CavalryClass::Heavy;
+    auto world = CreateWorld(source, 42);
+    REQUIRE(world);
+    auto &state = world.value;
+    state.units[0].ammunition_remaining = 0;
+    auto &mounted = state.regiments[1];
+    mounted.cavalry_phase = CavalryPhase::Reform;
+    mounted.cavalry_target = {1};
+    mounted.charge_runup_m = 4.f;
+    mounted.cavalry_phase_until = 12;
+    mounted.pursuit_target = {1};
+    mounted.melee_opponent = {1};
+    mounted.rout_direction = {-1.f, 0.f, 0.f};
+    mounted.discipline_window_until = 10;
+    mounted.melee_losses = 1;
+    mounted.rear_checked = true;
+    state.last_launch_id = state.next_event_id++;
+    state.attacks.push_back({{state.last_launch_id}, {2}, {1}, 8, 3.f, true, 1.5f, false, true});
+    state.smoke.push_back({{2.f, 3.f, 0.f}, 4.f, 9});
+    test::TempDir dir;
+    const auto path = dir.path / "field-battle.json";
+    REQUIRE(io::SaveSnapshot(path, Capture(state)));
+    const auto loaded = io::LoadSnapshot(path);
+    REQUIRE(loaded);
+    CHECK(StateHash(state) == StateHash(loaded.value.state));
+    CHECK(loaded.value.state.units[0].ammunition == 8u);
+    CHECK(loaded.value.state.units[0].ammunition_remaining == 0u);
+    CHECK(loaded.value.state.regiments[1].cavalry_phase == CavalryPhase::Reform);
+    CHECK(loaded.value.state.regiments[1].rout_direction == mounted.rout_direction);
+    REQUIRE(loaded.value.state.attacks.size() == 1);
+    CHECK(loaded.value.state.attacks.front().charge);
+    REQUIRE(loaded.value.state.smoke.size() == 1);
+    CHECK(loaded.value.state.smoke.front().expires_tick == 9u);
 }

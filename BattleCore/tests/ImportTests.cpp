@@ -84,3 +84,66 @@ TEST_CASE("import.ranged_rule_json_requires_integer") {
         CHECK(loaded.value.rules.ranged_cohorts == std::stoul(value));
     }
 }
+
+TEST_CASE("import.unit_profiles_and_scenario_objective") {
+    test::TempDir dir;
+    auto file = dir.path / "profiles.json";
+    auto s = test::Duel();
+    s.units[0].archer = true;
+    s.units[0].ranged_weapon = RangedWeapon::Javelin;
+    s.units[0].ammunition = 3;
+    s.units[1].troop = UnitTroop::Mounted;
+    s.units[1].cavalry = CavalryClass::Heavy;
+    s.objective = ScenarioObjective{{2.f, -6.f, 0.f}, 3.f, 1};
+    REQUIRE(io::SaveScenario(file, s));
+    const auto reloaded = io::LoadScenario(file);
+    REQUIRE(reloaded);
+    CHECK(reloaded.value.units == s.units);
+    CHECK(reloaded.value.objective == s.objective);
+
+    s.units[0].archer = false;
+    CHECK_FALSE(ValidateScenario(s));
+    s.units[0].archer = true;
+    s.units[1].troop = UnitTroop::Infantry;
+    CHECK_FALSE(ValidateScenario(s));
+    s.units[1].troop = UnitTroop::Mounted;
+    s.objective->radius_m = 0.f;
+    CHECK_FALSE(ValidateScenario(s));
+
+    for (const std::string value : {"3.5", "-4294967293", "4294967299", "\"3\"", "null"}) {
+        CAPTURE(value);
+        test::Write(file,
+            "{\"schema_version\":1,\"regiments\":[{\"id\":1}],\"units\":[{\"id\":1,\"regiment\":1,"
+            "\"archer\":true,\"ranged_weapon\":4,\"ammunition\":" + value + "}]}");
+        CHECK_FALSE(io::LoadScenario(file));
+    }
+
+    test::Write(file,
+        "{\"schema_version\":1,\"regiments\":[{\"id\":1}],\"units\":[{\"id\":1,\"regiment\":1,\"archer\":true}]}");
+    const auto legacy = io::LoadScenario(file);
+    REQUIRE(legacy);
+    CHECK(legacy.value.units.front().ammunition == 0);
+    CHECK(legacy.value.units.front().ranged_weapon == RangedWeapon::None);
+    CHECK_FALSE(legacy.value.objective);
+}
+
+TEST_CASE("import.scenario_objective_requires_a_valid_team_id") {
+    test::TempDir dir;
+    auto file = dir.path / "objective.json";
+    const auto write = [&](const std::string &team) {
+        test::Write(file, "{\"schema_version\":1,\"units\":[],\"regiments\":[],\"objective\":"
+                          "{\"defending_team\":" + team + "}}");
+    };
+    for (const std::string value : {"3.5", "-2", "4294967296", "\"0\"", "null"}) {
+        CAPTURE(value);
+        write(value);
+        CHECK_FALSE(io::LoadScenario(file));
+    }
+    for (const std::string value : {"-1", "0", "1"}) {
+        write(value);
+        auto objective = io::LoadScenario(file);
+        REQUIRE(objective);
+        REQUIRE(objective.value.objective);
+        CHECK(objective.value.objective->defending_team == std::stoi(value));
+    }
+}

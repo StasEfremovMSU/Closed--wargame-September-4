@@ -1,0 +1,166 @@
+{
+  "schema_version": 4,
+  "name": "Канны · 10 000 фигур",
+  "terrain": "Cannae",
+  "era": {
+    "id": "ancient",
+    "version": 1,
+    "blue_faction": "rome",
+    "orange_faction": "carthage"
+  },
+  "regiment_tactics": true,
+  "risky_volley": false,
+  "direct_deployment": true,
+  "objective": {
+    "goal": "Eliminate",
+    "time_limit_seconds": 90,
+    "crossing": 1,
+    "required_regiments": 1,
+    "crossing_team": 0
+  },
+  "briefing": "Нагрузочный вариант Канн на поле 560 × 360 м. В бою 10 000 фигур с командным составом. Полки используют более широкое развёртывание. Состав в редакторе задаёт пропорции. Начните за офицера и сравните общий вид с камерой у полка.",
+  "sources": [
+    "https://penelope.uchicago.edu/Thayer/E/Roman/Texts/Polybius/3%2A.html#113"
+  ],
+  "regiments": [
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -30,
+      "start_y": 0,
+      "swords": 41,
+      "archers": 4,
+      "spearmen": 9,
+      "mounted": 0,
+      "infantry_profile": "legionaries"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -99,
+      "start_y": -28,
+      "swords": 37,
+      "archers": 3,
+      "spearmen": 13,
+      "mounted": 0,
+      "infantry_profile": "legionaries"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -144,
+      "start_y": 25,
+      "swords": 35,
+      "archers": 2,
+      "spearmen": 14,
+      "mounted": 0,
+      "infantry_profile": "legionaries"
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -70,
+      "start_y": -103,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 15
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -71,
+      "start_y": 103,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 16
+    },
+    {
+      "type": "Infantry",
+      "enabled": false,
+      "group": 2,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 26,
+      "start_y": 0,
+      "swords": 27,
+      "archers": 6,
+      "spearmen": 4,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 95,
+      "start_y": 0,
+      "swords": 17,
+      "archers": 8,
+      "spearmen": 5,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 111,
+      "start_y": -57,
+      "swords": 12,
+      "archers": 2,
+      "spearmen": 25,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 111,
+      "start_y": 57,
+      "swords": 12,
+      "archers": 2,
+      "spearmen": 25,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 65,
+      "start_y": -103,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 26
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 65,
+      "start_y": 103,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 22
+    }
+  ],
+  "field": {
+    "width_m": 560,
+    "height_m": 360
+  },
+  "figure_target": 10000,
+  "adaptive_battle": true
+}

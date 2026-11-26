@@ -1,0 +1,159 @@
+{
+  "schema_version": 4,
+  "name": "Нагасино, 1575 · Ситарагахара",
+  "terrain": "Nagashino",
+  "era": {
+    "id": "sengoku",
+    "version": 1,
+    "blue_faction": "oda",
+    "orange_faction": "takeda"
+  },
+  "regiment_tactics": true,
+  "risky_volley": false,
+  "direct_deployment": true,
+  "objective": {
+    "goal": "Crossing",
+    "time_limit_seconds": 130,
+    "crossing": 1,
+    "required_regiments": 1,
+    "crossing_team": 1
+  },
+  "briefing": "В 1575 году на Ситарагахаре войско Такэда Кацуёри встретилось с союзниками Ода Нобунагой и Токугава Иэясу. Музей Ситарагахары отмечает роль фитильных ружей. На ширме из собрания Музея искусства Токугава показаны ручей Рэнго и стрелки у заграждений. Источники просмотрены 25 ноября 2026 года.\n\nВ игре союзники используют один список войск Ода. Карта показывает условную переправу через Рэнго. Размеры поля, состав полков и позиции заданы для игры. Оранжевые (Такэда) должны за 130 секунд провести один полк через центральный брод или разгромить оборону. Синие (союз Ода и Токугава) удерживают выход из брода. В этом сценарии 5 000 игровых фигур, включая командный состав и орудия.",
+  "sources": [
+    "https://www.city.shinshiro.lg.jp/mokuteki/shisetu/shiryokan/shitaragahara/Shitaragahara_Museum.html",
+    "https://www.tokugawa-art-museum.jp/collections/%E9%95%B7%E7%AF%A0%E5%90%88%E6%88%A6%E5%9B%B3%E5%B1%8F/"
+  ],
+  "regiments": [
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -58,
+      "start_y": 0,
+      "swords": 12,
+      "archers": 20,
+      "spearmen": 24,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -84,
+      "start_y": -46,
+      "swords": 10,
+      "archers": 18,
+      "spearmen": 19,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -78,
+      "start_y": 48,
+      "swords": 11,
+      "archers": 14,
+      "spearmen": 24,
+      "mounted": 0,
+      "ranged_class": "bow"
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -113,
+      "start_y": 73,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 14
+    },
+    {
+      "type": "Infantry",
+      "enabled": false,
+      "group": 2,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": false,
+      "group": 2,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 55,
+      "start_y": 0,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 23
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 96,
+      "start_y": 0,
+      "swords": 16,
+      "archers": 8,
+      "spearmen": 20,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 87,
+      "start_y": -48,
+      "swords": 15,
+      "archers": 13,
+      "spearmen": 15,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 72,
+      "start_y": 53,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 18
+    },
+    {
+      "type": "Infantry",
+      "enabled": false,
+      "group": 2,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": false,
+      "group": 2,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 0
+    }
+  ],
+  "field": {
+    "width_m": 520,
+    "height_m": 340
+  },
+  "figure_target": 5000,
+  "adaptive_battle": true
+}

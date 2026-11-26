@@ -1,0 +1,157 @@
+{
+  "schema_version": 3,
+  "name": "Чудское озеро, 1242",
+  "terrain": "Peipus",
+  "era": {
+    "id": "high_medieval",
+    "version": 1,
+    "blue_faction": "rus",
+    "orange_faction": "livonian_order"
+  },
+  "regiment_tactics": true,
+  "risky_volley": false,
+  "direct_deployment": true,
+  "objective": {
+    "goal": "Eliminate",
+    "time_limit_seconds": 90,
+    "crossing": 1,
+    "required_regiments": 1,
+    "crossing_team": 0
+  },
+  "briefing": "Новгородская первая летопись датирует бой 5 апреля 1242 года и помещает расстановку войск Александра у Узмени, близ Вороньего камня. Источник описывает удар клином и погоню по льду. Игровая версия показывает условный зимний берег и сплошной проходимый лёд. Орден и его союзники представлены одной фракцией. Поле 520 × 340 м, численность и очертания берега заданы для игры. В этом сценарии 5 000 игровых фигур, включая командный состав и орудия.",
+  "sources": [
+    "https://home.uncg.edu/~jwjones/russia/377readings/novgorodchronicle.html"
+  ],
+  "regiments": [
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -31,
+      "start_y": 0,
+      "swords": 18,
+      "archers": 6,
+      "spearmen": 28,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -43,
+      "start_y": -27,
+      "swords": 14,
+      "archers": 12,
+      "spearmen": 12,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -52,
+      "start_y": 21,
+      "swords": 19,
+      "archers": 6,
+      "spearmen": 16,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -47,
+      "start_y": 50,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 23
+    },
+    {
+      "type": "Infantry",
+      "enabled": false,
+      "group": 2,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": false,
+      "group": 2,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 29,
+      "start_y": 0,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 32
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 43,
+      "start_y": -21,
+      "swords": 16,
+      "archers": 6,
+      "spearmen": 19,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 49,
+      "start_y": 21,
+      "swords": 17,
+      "archers": 8,
+      "spearmen": 16,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 63,
+      "start_y": -40,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 13
+    },
+    {
+      "type": "Infantry",
+      "enabled": false,
+      "group": 2,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": false,
+      "group": 2,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 0
+    }
+  ],
+  "field": {
+    "width_m": 520,
+    "height_m": 340
+  },
+  "figure_target": 5000,
+  "adaptive_battle": true
+}

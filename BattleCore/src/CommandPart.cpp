@@ -76,6 +76,17 @@ StubResult<DecisionProposal> PartBrain::Think(const BrainContext &c) const {
         if (child->sector_role != SectorRole::Reserve)
             total_width += status_of(child->id).width_m + 4;
     float offset = -total_width * .5f;
+    const CommandNode *objective_anchor = nullptr;
+    if (p.task && p.task->intent.objective_radius_m > 0.f &&
+        (action == TaskKind::Defend || action == TaskKind::MoveToArea)) {
+        for (const auto *child : children)
+            if (child->sector_role != SectorRole::Reserve && !status_of(child->id).panic) {
+                objective_anchor = child;
+                break;
+            }
+    }
+    float left_edge = objective_anchor ? status_of(objective_anchor->id).width_m * .5f : 0.f;
+    float right_edge = left_edge;
     Vec3 direction = option.destination - c.situation->own.pose.position;
     float yaw =
         Length(direction) > 0 ? std::atan2(direction.y, direction.x) : c.situation->own.pose.yaw;
@@ -101,7 +112,18 @@ StubResult<DecisionProposal> PartBrain::Think(const BrainContext &c) const {
             goal = status_of(supported->id).pose.position;
             target_id = {};
         } else {
-            goal = option.destination + Right(yaw) * (offset + s.width_m * .5f + 2);
+            float lateral = offset + s.width_m * .5f + 2;
+            if (objective_anchor) {
+                if (child == objective_anchor) {
+                    lateral = 0.f;
+                } else {
+                    const bool left = lateral < 0.f;
+                    auto &edge = left ? left_edge : right_edge;
+                    lateral = (edge + s.width_m * .5f + 4.f) * (left ? -1.f : 1.f);
+                    edge += s.width_m + 4.f;
+                }
+            }
+            goal = option.destination + Right(yaw) * lateral;
             offset += s.width_m + 4;
         }
         auto task = ChildTask(c, p, *child, kind, goal, target_id);

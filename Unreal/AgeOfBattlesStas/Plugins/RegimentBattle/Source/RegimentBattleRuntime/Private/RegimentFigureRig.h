@@ -1,0 +1,48 @@
+#pragma once
+
+#include "CoreMinimal.h"
+
+struct FReferenceSkeleton;
+
+float RegimentInitialStridePhase(uint64 UnitId);
+FRotator RegimentStandardFlutter(double Seconds, float Phase, double DistanceSquared);
+
+struct FRegimentFigureMotion
+{
+    float StridePhase = 0.f;
+    float GaitWeight = 0.f;
+    float AttackPhase = 0.f;
+    bool bArcher = false;
+    bool bMounted = false;
+    bool bPolearm = false;
+    bool bAirborne = false;
+    bool bParrying = false;
+    float Windup = 0.f;
+};
+
+class FRegimentFigureRig
+{
+public:
+    explicit FRegimentFigureRig(const FReferenceSkeleton& Skeleton);
+
+    bool IsValid() const { return bValid; }
+    FVector GetMeshForward() const { return Forward; }
+    double GetMeshForwardYaw() const { return FMath::Atan2(Forward.Y, Forward.X); }
+    FTransform Evaluate(const FRegimentFigureMotion& Motion, TArray<FTransform>& LocalPose) const;
+
+private:
+    enum EJoint : uint8
+    {
+        LeftArm, LeftForearm, RightArm, RightForearm, LeftThigh, LeftShin, RightThigh, RightShin, JointCount
+    };
+
+    TArray<FTransform> BindPose;
+    TArray<int32> Parents;
+    TArray<int8> JointByBone;
+    FVector BoneDirection[JointCount] = {};
+    FVector Forward = FVector::ForwardVector;
+    FVector Right = FVector::RightVector;
+    int32 LeftHand = INDEX_NONE;
+    int32 RightHand = INDEX_NONE;
+    bool bValid = false;
+};

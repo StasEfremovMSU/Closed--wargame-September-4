@@ -1,4 +1,5 @@
 #include "battle/Spatial.h"
+#include "battle/command/Services.h"
 namespace battle {
 namespace {
 int64_t Cell(float x, float scale) {
@@ -22,7 +23,9 @@ void SpatialIndex::Rebuild(std::span<const UnitPosition> input) {
         }
 }
 std::optional<NearestEnemy> SpatialIndex::FindNearestEnemy(Vec3 p, float radius, int32_t team,
-                                                           uint64_t *checks) const {
+                                                           uint64_t *checks,
+                                                           std::span<const Obstacle> cover,
+                                                           const TerrainHill *hill) const {
     if (!Finite(p) || !std::isfinite(radius) || radius < 0 || !std::isfinite(cell_m_) ||
         cell_m_ <= 0)
         return {};
@@ -39,7 +42,9 @@ std::optional<NearestEnemy> SpatialIndex::FindNearestEnemy(Vec3 p, float radius,
         if (!(squared <= radius2))
             return;
         float distance = Length(d);
-        if (!result || distance < best || (distance == best && point.id < result->id)) {
+        if ((!result || distance < best || (distance == best && point.id < result->id)) &&
+            (cover.empty() || command::HasLineOfSight(p, point.position, cover)) &&
+            (!hill || HillHasLineOfSight(*hill, p, point.position))) {
             best = distance;
             result = NearestEnemy{point.id, point.payload_index, distance};
         }
@@ -98,6 +103,21 @@ std::vector<UnitId> SpatialIndex::QueryRadius(Vec3 p, float radius) const {
     return out;
 }
 void SpatialIndex::QueryRadiusInto(Vec3 p, float radius, std::vector<UnitId> &out) const {
+    QueryRadiusValuesInto(p, radius, out, [](const UnitPosition &point) { return point.id; });
+}
+void SpatialIndex::QueryRadiusPayloadsInto(Vec3 p, float radius, std::vector<size_t> &out,
+                                           std::optional<int32_t> excluded_team) const {
+    QueryRadiusValuesInto(p, radius, out, [](const UnitPosition &point) { return point.payload_index; },
+                          excluded_team);
+}
+void SpatialIndex::QueryRadiusPayloadsUnorderedInto(Vec3 p, float radius,
+                                                    std::vector<size_t> &out) const {
+    QueryRadiusValuesInto(p, radius, out, [](const UnitPosition &point) { return point.payload_index; },
+                          {}, false);
+}
+template <class Value, class Projection>
+void SpatialIndex::QueryRadiusValuesInto(Vec3 p, float radius, std::vector<Value> &out,
+                                         Projection project, std::optional<int32_t> excluded_team, bool ordered) const {
     out.clear();
     if (!Finite(p) || !std::isfinite(radius) || radius < 0 || !std::isfinite(cell_m_) ||
         cell_m_ <= 0)
@@ -105,9 +125,12 @@ void SpatialIndex::QueryRadiusInto(Vec3 p, float radius, std::vector<UnitId> &ou
     auto x0 = Cell(p.x - radius, cell_m_), x1 = Cell(p.x + radius, cell_m_),
          y0 = Cell(p.y - radius, cell_m_), y1 = Cell(p.y + radius, cell_m_);
     auto test = [&](size_t i) {
-        auto d = all_[i].position - p;
+        const auto &point = all_[i];
+        if (excluded_team && point.team == *excluded_team)
+            return;
+        auto d = point.position - p;
         if (double(d.x) * d.x + double(d.y) * d.y + double(d.z) * d.z <= double(radius) * radius)
-            out.push_back(all_[i].id);
+            out.push_back(project(point));
     };
     if (double(x1 - x0 + 1) * double(y1 - y0 + 1) > 100000) {
         for (size_t i = 0; i < all_.size(); ++i)
@@ -120,7 +143,9 @@ void SpatialIndex::QueryRadiusInto(Vec3 p, float radius, std::vector<UnitId> &ou
                     for (auto n : i->second)
                         test(n);
             }
-    std::sort(out.begin(), out.end());
-    out.erase(std::unique(out.begin(), out.end()), out.end());
+    if (ordered) {
+        std::sort(out.begin(), out.end());
+        out.erase(std::unique(out.begin(), out.end()), out.end());
+    }
 }
 } // namespace battle

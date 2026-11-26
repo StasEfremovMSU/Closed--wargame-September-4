@@ -1,9 +1,13 @@
 #pragma once
 #include "battle/command/Brains.h"
+namespace battle {
+struct World;
+}
 namespace battle::command::detail {
 Tick Later(Tick, Tick);
 std::optional<Tick> TaskExpiry(const CommandTask &, Tick received);
 bool ValidTask(const CommandTask &);
+bool ValidTaskTarget(const World &, const CommandNode &, const CommandTask &);
 struct Prepared {
     BrainMemory memory;
     const CommandTask *task{};
@@ -11,6 +15,7 @@ struct Prepared {
 };
 StubResult<Prepared> Prepare(const BrainContext &, Level);
 const KnownContact *Contact(const BrainContext &, RegimentId = {}, bool enemy = true);
+const KnownContact *AttackContact(const BrainContext &, const Prepared &);
 bool AttackWorthwhile(const BrainContext &, const KnownContact &);
 DecisionProposal Finish(const BrainContext &, Prepared, FsmState, TaskStatus, TacticalOption,
                         std::string);

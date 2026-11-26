@@ -1,0 +1,536 @@
+{
+  "schema_version": 1,
+  "id": "great_northern_war",
+  "name": "Северная война",
+  "version": 1,
+  "rules": {
+    "id": "great_northern_war",
+    "local_melee": true,
+    "regiment_tactics": true,
+    "risky_volley": false,
+    "ranged_cohorts": 4,
+    "panic_fraction": 0.52
+  },
+  "archetypes": {
+    "grenadiers": {
+      "bayonet_musket": true,
+      "name": "Гренадеры",
+      "health": 22,
+      "speed": 3.8,
+      "armour": 0,
+      "damage": 3.7,
+      "range": 1.95,
+      "cooldown_ticks": 21,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Отборная пехота со штыками для ближнего боя."
+    },
+    "bayonet_infantry": {
+      "bayonet_musket": true,
+      "name": "Пехота со штыками",
+      "health": 19,
+      "speed": 3.85,
+      "armour": 0,
+      "damage": 3.25,
+      "range": 2.05,
+      "cooldown_ticks": 22,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Ближняя линия пехоты. Штык удерживает противника на расстоянии."
+    },
+    "carolean_assault": {
+      "bayonet_musket": true,
+      "name": "Каролинская штурмовая пехота",
+      "health": 21,
+      "speed": 4.15,
+      "armour": 0,
+      "damage": 3.55,
+      "range": 1.9,
+      "cooldown_ticks": 20,
+      "windup_ticks": 3,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Шведская пехота со шпагами и штыками для быстрого сближения."
+    },
+    "carolean_pikes": {
+      "name": "Каролинские пикинёры",
+      "health": 19,
+      "speed": 3.65,
+      "armour": 0,
+      "damage": 3.1,
+      "range": 3.1,
+      "cooldown_ticks": 26,
+      "windup_ticks": 5,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Пикинёры Карла XII поддерживают линию мушкетёров в ближнем бою."
+    },
+    "russian_fusiliers": {
+      "name": "Фузилёры Петра I",
+      "health": 19,
+      "speed": 3.65,
+      "armour": 0,
+      "damage": 11.8,
+      "range": 72,
+      "cooldown_ticks": 320,
+      "windup_ticks": 12,
+      "projectile_speed_mps": 390,
+      "base_accuracy": 0.53,
+      "description": "Русская линейная пехота с кремнёвыми фузеями и штыками.",
+      "ranged_weapon": "musket",
+      "ammunition": 7
+    },
+    "carolean_musketeers": {
+      "name": "Каролинские мушкетёры",
+      "health": 20,
+      "speed": 3.95,
+      "armour": 0,
+      "damage": 12.6,
+      "range": 65,
+      "cooldown_ticks": 348,
+      "windup_ticks": 10,
+      "projectile_speed_mps": 385,
+      "base_accuracy": 0.55,
+      "description": "Шведская пехота с кремнёвыми мушкетами. Сильный залп на ближней дистанции и штыковой бой.",
+      "ranged_weapon": "musket",
+      "ammunition": 6
+    },
+    "saxon_musketeers": {
+      "name": "Саксонские мушкетёры",
+      "health": 19,
+      "speed": 3.65,
+      "armour": 0,
+      "damage": 12,
+      "range": 74,
+      "cooldown_ticks": 332,
+      "windup_ticks": 12,
+      "projectile_speed_mps": 395,
+      "base_accuracy": 0.54,
+      "description": "Линейная пехота курфюршества с кремнёвыми ружьями и штыками.",
+      "ranged_weapon": "musket",
+      "ammunition": 7
+    },
+    "danish_musketeers": {
+      "name": "Датские мушкетёры",
+      "health": 19,
+      "speed": 3.7,
+      "armour": 0,
+      "damage": 11.4,
+      "range": 75,
+      "cooldown_ticks": 315,
+      "windup_ticks": 11,
+      "projectile_speed_mps": 395,
+      "base_accuracy": 0.56,
+      "description": "Пехота датско-норвежской короны с кремнёвыми мушкетами и штыками.",
+      "ranged_weapon": "musket",
+      "ammunition": 7
+    },
+    "crown_musketeers": {
+      "name": "Мушкетёры коронной пехоты",
+      "health": 18,
+      "speed": 3.8,
+      "armour": 0,
+      "damage": 11.6,
+      "range": 69,
+      "cooldown_ticks": 340,
+      "windup_ticks": 12,
+      "projectile_speed_mps": 380,
+      "base_accuracy": 0.52,
+      "description": "Коронная пехота Речи Посполитой с кремнёвыми ружьями и штыками.",
+      "ranged_weapon": "musket",
+      "ammunition": 7
+    },
+    "foot_dragoons": {
+      "name": "Спешенные драгуны",
+      "health": 18,
+      "speed": 4.05,
+      "armour": 0,
+      "damage": 10.2,
+      "range": 52,
+      "cooldown_ticks": 300,
+      "windup_ticks": 9,
+      "projectile_speed_mps": 350,
+      "base_accuracy": 0.49,
+      "description": "Пеший отряд с короткими кремнёвыми ружьями. Дальность и боезапас уступают линейной пехоте.",
+      "ranged_weapon": "gunpowder",
+      "ammunition": 5
+    },
+    "don_cossacks": {
+      "name": "Донские казаки",
+      "health": 21,
+      "speed": 7.05,
+      "armour": 0.08,
+      "damage": 3.75,
+      "range": 2.55,
+      "cooldown_ticks": 20,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Лёгкая конница с пиками и саблями для разведки и преследования.",
+      "cavalry_class": "light"
+    },
+    "russian_dragoons": {
+      "name": "Петровские драгуны",
+      "health": 26,
+      "speed": 6.25,
+      "armour": 0.25,
+      "damage": 4.15,
+      "range": 2.15,
+      "cooldown_ticks": 22,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Драгунские эскадроны для удара в конном строю.",
+      "cavalry_class": "heavy"
+    },
+    "swedish_dragoons": {
+      "name": "Шведские драгуны",
+      "health": 22,
+      "speed": 6.85,
+      "armour": 0.1,
+      "damage": 3.75,
+      "range": 2.1,
+      "cooldown_ticks": 19,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Подвижная конница для прикрытия флангов. В бою действует палашами.",
+      "cavalry_class": "light"
+    },
+    "swedish_horse_guards": {
+      "name": "Шведский лейб-регимент конницы",
+      "health": 28,
+      "speed": 6.3,
+      "armour": 0.3,
+      "damage": 4.6,
+      "range": 2.2,
+      "cooldown_ticks": 22,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Шведский полк тяжёлой конницы с палашами для решительной атаки.",
+      "cavalry_class": "heavy"
+    },
+    "saxon_dragoons": {
+      "name": "Саксонские драгуны",
+      "health": 23,
+      "speed": 6.75,
+      "armour": 0.18,
+      "damage": 3.7,
+      "range": 2.15,
+      "cooldown_ticks": 20,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Манёвренные драгунские эскадроны с палашами.",
+      "cavalry_class": "light"
+    },
+    "saxon_cuirassiers": {
+      "name": "Саксонские кирасиры",
+      "health": 29,
+      "speed": 5.95,
+      "armour": 0.95,
+      "damage": 4.6,
+      "range": 2.3,
+      "cooldown_ticks": 23,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Тяжёлая конница в кирасах для удара по строю.",
+      "cavalry_class": "heavy"
+    },
+    "danish_dragoons": {
+      "name": "Датско-норвежские драгуны",
+      "health": 22,
+      "speed": 6.8,
+      "armour": 0.14,
+      "damage": 3.75,
+      "range": 2.1,
+      "cooldown_ticks": 20,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Драгунские эскадроны для прикрытия фланга и преследования.",
+      "cavalry_class": "light"
+    },
+    "danish_horse_guards": {
+      "name": "Датская конная гвардия",
+      "health": 28,
+      "speed": 6.1,
+      "armour": 0.55,
+      "damage": 4.35,
+      "range": 2.25,
+      "cooldown_ticks": 22,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Гвардейская конница короля с палашами для удара сомкнутым строем.",
+      "cavalry_class": "heavy"
+    },
+    "pancerni": {
+      "name": "Панцирные хоругви",
+      "health": 24,
+      "speed": 6.75,
+      "armour": 0.45,
+      "damage": 3.9,
+      "range": 2.45,
+      "cooldown_ticks": 20,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Конница Речи Посполитой с саблями и лёгкими копьями. Подвижнее гусарских хоругвей.",
+      "cavalry_class": "light"
+    },
+    "crown_hussars": {
+      "name": "Коронные гусарские хоругви",
+      "health": 29,
+      "speed": 6.05,
+      "armour": 0.95,
+      "damage": 4.8,
+      "range": 2.85,
+      "cooldown_ticks": 25,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Ударная конница Речи Посполитой с длинными копьями.",
+      "cavalry_class": "heavy"
+    },
+    "regimental_gun": {
+      "name": "Полковая пушка",
+      "health": 42,
+      "speed": 0.92,
+      "armour": 0.65,
+      "damage": 8.1,
+      "range": 82,
+      "cooldown_ticks": 255,
+      "windup_ticks": 12,
+      "projectile_speed_mps": 76,
+      "base_accuracy": 0.58,
+      "description": "Лёгкая полевая пушка с ограниченным боезапасом. Ядро может поражать несколько шеренг, на близкой дистанции применяется картечь.",
+      "platform": "field_gun",
+      "ammunition": 10
+    }
+  },
+  "factions": [
+    {
+      "id": "russia",
+      "name": "Россия",
+      "shield": "round",
+      "heraldry": "496D52",
+      "visual": "tricorn",
+      "troops": {
+        "swords": "grenadiers",
+        "archers": "russian_fusiliers",
+        "spearmen": "bayonet_infantry",
+        "mounted": "russian_dragoons"
+      },
+      "mounted_variants": {
+        "light": "don_cossacks",
+        "heavy": "russian_dragoons"
+      },
+      "ranged_variants": {
+        "gunpowder": "foot_dragoons"
+      },
+      "platforms": {
+        "field_gun": "regimental_gun"
+      }
+    },
+    {
+      "id": "sweden",
+      "name": "Швеция",
+      "shield": "round",
+      "heraldry": "35618D",
+      "visual": "tricorn",
+      "troops": {
+        "swords": "carolean_assault",
+        "archers": "carolean_musketeers",
+        "spearmen": "carolean_pikes",
+        "mounted": "swedish_horse_guards"
+      },
+      "mounted_variants": {
+        "light": "swedish_dragoons",
+        "heavy": "swedish_horse_guards"
+      },
+      "ranged_variants": {
+        "gunpowder": "foot_dragoons"
+      },
+      "platforms": {
+        "field_gun": "regimental_gun"
+      }
+    },
+    {
+      "id": "saxony",
+      "name": "Саксония",
+      "shield": "round",
+      "heraldry": "9B4E46",
+      "visual": "tricorn",
+      "troops": {
+        "swords": "grenadiers",
+        "archers": "saxon_musketeers",
+        "spearmen": "bayonet_infantry",
+        "mounted": "saxon_dragoons"
+      },
+      "mounted_variants": {
+        "light": "saxon_dragoons",
+        "heavy": "saxon_cuirassiers"
+      },
+      "ranged_variants": {
+        "gunpowder": "foot_dragoons"
+      },
+      "platforms": {
+        "field_gun": "regimental_gun"
+      }
+    },
+    {
+      "id": "denmark_norway",
+      "name": "Дания-Норвегия",
+      "shield": "round",
+      "heraldry": "9E3E43",
+      "visual": "tricorn",
+      "troops": {
+        "swords": "grenadiers",
+        "archers": "danish_musketeers",
+        "spearmen": "bayonet_infantry",
+        "mounted": "danish_dragoons"
+      },
+      "mounted_variants": {
+        "light": "danish_dragoons",
+        "heavy": "danish_horse_guards"
+      },
+      "ranged_variants": {
+        "gunpowder": "foot_dragoons"
+      },
+      "platforms": {
+        "field_gun": "regimental_gun"
+      }
+    },
+    {
+      "id": "polish_lithuanian_commonwealth",
+      "name": "Речь Посполитая",
+      "shield": "round",
+      "heraldry": "815C8B",
+      "visual": "tricorn",
+      "troops": {
+        "swords": "grenadiers",
+        "archers": "crown_musketeers",
+        "spearmen": "bayonet_infantry",
+        "mounted": "pancerni"
+      },
+      "mounted_variants": {
+        "light": "pancerni",
+        "heavy": "crown_hussars"
+      },
+      "platforms": {
+        "field_gun": "regimental_gun"
+      }
+    }
+  ],
+  "mission": {
+    "id": "f07f0eb6-4f0a-4dac-8b13-63e954127d72",
+    "name": "Северная война · Столкновение авангардов",
+    "briefing": "Русские фузилёры и каролинские мушкетёры сходятся на открытом поле. У шведов часть пехоты несёт пики. У каждой стороны конница на фланге. Мушкеты дают дым после выстрела, долго перезаряжаются и имеют ограниченный запас патронов. В ближнем бою мушкетёры пользуются штыками. Полковые пушки поддерживают пехоту огнём с флангов.",
+    "terrain": "OpenField",
+    "blue_faction": "russia",
+    "orange_faction": "sweden",
+    "blue": [
+      {
+        "swords": 5,
+        "archers": 20,
+        "spearmen": 4,
+        "mounted": 0,
+        "x": -36,
+        "y": 0,
+        "group": 2
+      },
+      {
+        "swords": 3,
+        "archers": 18,
+        "spearmen": 4,
+        "mounted": 0,
+        "x": -41,
+        "y": -15,
+        "group": 1
+      },
+      {
+        "swords": 4,
+        "archers": 16,
+        "spearmen": 3,
+        "mounted": 0,
+        "x": -43,
+        "y": 16,
+        "group": 3
+      },
+      {
+        "swords": 0,
+        "archers": 0,
+        "spearmen": 0,
+        "mounted": 13,
+        "x": -33,
+        "y": 27,
+        "group": 3
+      },
+      {
+        "swords": 0,
+        "archers": 0,
+        "spearmen": 0,
+        "mounted": 0,
+        "platform": "field_gun",
+        "platform_count": 2,
+        "x": -29,
+        "y": -28,
+        "group": 1
+      }
+    ],
+    "orange": [
+      {
+        "swords": 5,
+        "archers": 18,
+        "spearmen": 7,
+        "mounted": 0,
+        "x": 33,
+        "y": 0,
+        "group": 2
+      },
+      {
+        "swords": 5,
+        "archers": 16,
+        "spearmen": 6,
+        "mounted": 0,
+        "x": 38,
+        "y": 15,
+        "group": 3
+      },
+      {
+        "swords": 5,
+        "archers": 16,
+        "spearmen": 7,
+        "mounted": 0,
+        "x": 42,
+        "y": -16,
+        "group": 1
+      },
+      {
+        "swords": 0,
+        "archers": 0,
+        "spearmen": 0,
+        "mounted": 13,
+        "x": 34,
+        "y": -27,
+        "group": 1
+      },
+      {
+        "swords": 0,
+        "archers": 0,
+        "spearmen": 0,
+        "mounted": 0,
+        "platform": "field_gun",
+        "platform_count": 2,
+        "x": 28,
+        "y": 28,
+        "group": 3
+      }
+    ]
+  }
+}

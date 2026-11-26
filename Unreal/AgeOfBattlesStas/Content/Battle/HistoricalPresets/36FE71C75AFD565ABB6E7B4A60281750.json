@@ -1,0 +1,187 @@
+{
+  "schema_version": 5,
+  "name": "Бородино, 1812 · Батарея Раевского",
+  "terrain": "Borodino",
+  "era": {
+    "id": "napoleonic",
+    "version": 1,
+    "blue_faction": "france",
+    "orange_faction": "russia"
+  },
+  "regiment_tactics": true,
+  "risky_volley": false,
+  "direct_deployment": true,
+  "adaptive_battle": true,
+  "objective": {
+    "goal": "HillHold",
+    "time_limit_seconds": 255,
+    "crossing": 1,
+    "required_regiments": 1,
+    "crossing_team": 0
+  },
+  "briefing": "26 августа (7 сентября) 1812 года у Бородина одним из главных опорных пунктов русской армии была батарея Раевского на Курганной высоте. Французские войска несколько раз шли на укрепление. Севернее этого участка проходит Колоча, которая ограничивает обход.\n\nФранцузским полкам нужно занять высоту и держать её 20 секунд подряд. Отсчёт идёт, пока там в строю остаётся хотя бы половина исходного состава одного синего полка и нет боеспособных оранжевых частей. Русским дан рубеж для обороны с возможностью контратаки. Русская батарея начинает бой в редуте, французские полевые орудия прикрывают подход пехоты. Ров перед валом гасит натиск, а с тыла есть проход. Чтобы занять площадку, направьте туда подходящий по ширине полк приказом «Занять укрытие». Источник замысла — «Сто великих битв».\n\nИгровой участок 580 × 380 м вмещает 5 000 фигур. Численность и расстояния сжаты под масштаб поля.",
+  "sources": [
+    "https://www.prlib.ru/item/732431",
+    "https://www.prlib.ru/history/619518",
+    "https://archaeolog.ru/media/periodicals/agis/AGIS-3/Klochko/fig01.html",
+    "https://www.servicehistorique.sga.defense.gouv.fr/node/489037"
+  ],
+  "regiments": [
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -74,
+      "start_y": 0,
+      "formation_files": 20,
+      "swords": 9,
+      "archers": 14,
+      "spearmen": 13,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -86,
+      "start_y": -70,
+      "formation_files": 30,
+      "swords": 5,
+      "archers": 19,
+      "spearmen": 7,
+      "mounted": 0,
+      "infantry_profile": "fusiliers"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -81,
+      "start_y": 64,
+      "formation_files": 32,
+      "swords": 5,
+      "archers": 20,
+      "spearmen": 6,
+      "mounted": 0,
+      "infantry_profile": "chasseurs"
+    },
+    {
+      "type": "Platform",
+      "platform": "field_gun",
+      "platform_count": 4,
+      "enabled": true,
+      "group": 2,
+      "start_x": -110,
+      "start_y": 39,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -129,
+      "start_y": -82,
+      "formation_files": 18,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 23
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -121,
+      "start_y": 115,
+      "formation_files": 19,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 25
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 56,
+      "start_y": 0,
+      "formation_files": 22,
+      "swords": 8,
+      "archers": 15,
+      "spearmen": 12,
+      "mounted": 0,
+      "infantry_profile": "russian_line"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 66,
+      "start_y": -71,
+      "formation_files": 29,
+      "swords": 5,
+      "archers": 20,
+      "spearmen": 8,
+      "mounted": 0,
+      "infantry_profile": "russian_grenadiers"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 65,
+      "start_y": 66,
+      "formation_files": 30,
+      "swords": 5,
+      "archers": 19,
+      "spearmen": 8,
+      "mounted": 0,
+      "infantry_profile": "russian_jaegers"
+    },
+    {
+      "type": "Platform",
+      "platform": "field_gun",
+      "platform_count": 5,
+      "enabled": true,
+      "group": 2,
+      "start_x": 18,
+      "start_y": 0,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 114,
+      "start_y": -84,
+      "formation_files": 18,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 24
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 113,
+      "start_y": 118,
+      "formation_files": 18,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 26
+    }
+  ],
+  "field": {
+    "width_m": 580,
+    "height_m": 380
+  },
+  "figure_target": 5000
+}

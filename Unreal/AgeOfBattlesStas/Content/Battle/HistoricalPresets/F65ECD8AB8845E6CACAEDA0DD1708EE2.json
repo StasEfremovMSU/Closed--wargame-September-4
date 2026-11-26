@@ -1,0 +1,179 @@
+{
+  "schema_version": 4,
+  "name": "Каванакадзима, 1561 · Утро у Хатиманбара",
+  "terrain": "Kawanakajima",
+  "era": {
+    "id": "sengoku",
+    "version": 1,
+    "blue_faction": "uesugi",
+    "orange_faction": "takeda"
+  },
+  "regiment_tactics": true,
+  "risky_volley": false,
+  "direct_deployment": true,
+  "adaptive_battle": true,
+  "objective": {
+    "goal": "Eliminate",
+    "time_limit_seconds": 240,
+    "crossing": 1,
+    "required_regiments": 1,
+    "crossing_team": 0
+  },
+  "briefing": "На рассвете четвёртой битвы при Каванакадзиме войско Уэсуги Кэнсина подошло к лагерю Такэды Сингэна у Хатиманбара. По местной традиции сближение происходило в тумане. Полоса воды на карте напоминает о пойме между реками Тикума и Саи.\n\nСиние Уэсуги наступают с западного берега, оранжевые Такэда держат восточный. Разбейте противника, проведя копейные полки через броды. Лучники прикрывают подход, а конница может выйти на открытый берег отдельной дорогой. Три брода и стороны начала боя заданы для этого эпизода.\n\nИгровой участок 560 × 360 м вмещает 5 000 фигур. Численность и расстояния сжаты под масштаб поля.",
+  "sources": [
+    "https://kawanakajima.nagano.jp/illusts/4th/",
+    "https://www.city.nagano.nagano.jp/museum/josetsu/jyousetsu2f.html",
+    "https://www.city.nagano.nagano.jp/n150800/contents/p002956.html"
+  ],
+  "regiments": [
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -67,
+      "start_y": 0,
+      "formation_files": 17,
+      "swords": 12,
+      "archers": 10,
+      "spearmen": 29,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -76,
+      "start_y": -68,
+      "formation_files": 17,
+      "swords": 10,
+      "archers": 20,
+      "spearmen": 18,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -77,
+      "start_y": 68,
+      "formation_files": 17,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 38
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -116,
+      "start_y": 4,
+      "formation_files": 19,
+      "swords": 17,
+      "archers": 10,
+      "spearmen": 24,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -124,
+      "start_y": -99,
+      "formation_files": 18,
+      "swords": 11,
+      "archers": 15,
+      "spearmen": 19,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -123,
+      "start_y": 109,
+      "formation_files": 16,
+      "swords": 11,
+      "archers": 18,
+      "spearmen": 14,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 69,
+      "start_y": 0,
+      "formation_files": 18,
+      "swords": 15,
+      "archers": 11,
+      "spearmen": 27,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 78,
+      "start_y": -68,
+      "formation_files": 17,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 37
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 78,
+      "start_y": 68,
+      "formation_files": 17,
+      "swords": 10,
+      "archers": 19,
+      "spearmen": 20,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 105,
+      "start_y": -3,
+      "formation_files": 18,
+      "swords": 19,
+      "archers": 10,
+      "spearmen": 25,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 110,
+      "start_y": -100,
+      "formation_files": 17,
+      "swords": 10,
+      "archers": 14,
+      "spearmen": 23,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 115,
+      "start_y": 108,
+      "formation_files": 17,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 40
+    }
+  ],
+  "field": {
+    "width_m": 560,
+    "height_m": 360
+  },
+  "figure_target": 5000
+}

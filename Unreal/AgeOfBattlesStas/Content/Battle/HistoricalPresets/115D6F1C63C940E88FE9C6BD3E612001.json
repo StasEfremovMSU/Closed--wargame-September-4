@@ -1,0 +1,169 @@
+{
+  "schema_version": 4,
+  "name": "Дорилей, 1097",
+  "terrain": "Dorylaeum",
+  "era": {
+    "id": "high_medieval",
+    "version": 1,
+    "blue_faction": "crusaders",
+    "orange_faction": "saracens"
+  },
+  "field": {
+    "width_m": 520,
+    "height_m": 340
+  },
+  "figure_target": 5000,
+  "regiment_tactics": true,
+  "risky_volley": false,
+  "direct_deployment": true,
+  "adaptive_battle": true,
+  "objective": {
+    "goal": "Eliminate",
+    "time_limit_seconds": 240,
+    "crossing": 1,
+    "required_regiments": 1,
+    "crossing_team": 0
+  },
+  "briefing": "Во время Первого крестового похода войско Боэмунда у Дорилея атаковала сельджукская конница. «Деяния франков» рассказывают о спешившихся рыцарях, обстреле лагеря и приходе второй колонны крестоносцев. Передовой отряд синих развёрнут у заболоченного ручья, подкрепление начинается дальше в тылу. Сельджуков представляют профили восточной конницы и стрелков. Места бродов подобраны для игры.\n\nНа игровом участке 520 × 340 м размещены 5 000 фигур, включая командный состав. Масштаб и позиции условны. Источники сверены 26.11.2026.",
+  "sources": [
+    "https://sourcebooks.web.fordham.edu/source/gesta-cde.asp",
+    "https://dcc.dickinson.edu/gesta-francorum/3-9-3%E2%80%934",
+    "https://uwspace.uwaterloo.ca/items/b54c886d-8535-4c3c-b6e0-133a3bab39a7"
+  ],
+  "regiments": [
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -62,
+      "start_y": 0,
+      "swords": 26,
+      "archers": 9,
+      "spearmen": 27,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -75,
+      "start_y": -45,
+      "swords": 19,
+      "archers": 16,
+      "spearmen": 25,
+      "mounted": 0,
+      "ranged_class": "crossbow"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -75,
+      "start_y": 45,
+      "swords": 21,
+      "archers": 9,
+      "spearmen": 27,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -139,
+      "start_y": -77,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 33
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -139,
+      "start_y": 77,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 27
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -143,
+      "start_y": 0,
+      "swords": 22,
+      "archers": 8,
+      "spearmen": 31,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 78,
+      "start_y": -83,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 39
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 78,
+      "start_y": 83,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 40
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 63,
+      "start_y": -29,
+      "swords": 13,
+      "archers": 20,
+      "spearmen": 18,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 63,
+      "start_y": 29,
+      "swords": 12,
+      "archers": 20,
+      "spearmen": 18,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 130,
+      "start_y": -61,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 26
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 130,
+      "start_y": 60,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 32,
+      "mounted_class": "heavy"
+    }
+  ]
+}

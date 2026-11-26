@@ -1,0 +1,174 @@
+{
+  "schema_version": 5,
+  "name": "Зама, 202 до н. э.",
+  "terrain": "Zama",
+  "era": {
+    "id": "ancient",
+    "version": 1,
+    "blue_faction": "rome",
+    "orange_faction": "carthage"
+  },
+  "field": {
+    "width_m": 520,
+    "height_m": 340
+  },
+  "figure_target": 5000,
+  "regiment_tactics": true,
+  "risky_volley": false,
+  "direct_deployment": true,
+  "adaptive_battle": true,
+  "objective": {
+    "goal": "Eliminate",
+    "time_limit_seconds": 240,
+    "crossing": 1,
+    "required_regiments": 1,
+    "crossing_team": 0
+  },
+  "briefing": "Сципион и Ганнибал сошлись в последней крупной битве Второй Пунической войны. По Полибию, римляне оставили прямые проходы между манипулами для слонов, а велиты начали бой перед линией. В этом сценарии проходы образуют две пехотные колонны, по краям стоят конные отряды римлян и их нумидийских союзников. Карфаген выставил слонов перед пехотой. Сухая равнина с пологими подъёмами передаёт характер открытого поля.\n\nНа игровом участке 520 × 340 м размещены 5 000 фигур, включая командный состав. Масштаб и позиции условны. Источники сверены 26.11.2026.",
+  "sources": [
+    "https://penelope.uchicago.edu/Thayer/E/Roman/Texts/Polybius/15%2A.html#9"
+  ],
+  "regiments": [
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -88,
+      "start_y": -38,
+      "swords": 30,
+      "archers": 16,
+      "spearmen": 16,
+      "mounted": 0,
+      "infantry_profile": "legionaries"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -88,
+      "start_y": 38,
+      "swords": 31,
+      "archers": 15,
+      "spearmen": 16,
+      "mounted": 0,
+      "infantry_profile": "legionaries"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -135,
+      "start_y": -38,
+      "swords": 41,
+      "archers": 0,
+      "spearmen": 19,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -135,
+      "start_y": 38,
+      "swords": 37,
+      "archers": 2,
+      "spearmen": 21,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -93,
+      "start_y": -105,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 29
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -97,
+      "start_y": 108,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 37
+    },
+    {
+      "type": "Platform",
+      "enabled": true,
+      "group": 1,
+      "start_x": 58,
+      "start_y": -27,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 0,
+      "platform": "african_elephant",
+      "platform_count": 6
+    },
+    {
+      "type": "Platform",
+      "enabled": true,
+      "group": 3,
+      "start_x": 58,
+      "start_y": 27,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 0,
+      "platform": "african_elephant",
+      "platform_count": 6
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 99,
+      "start_y": 0,
+      "swords": 23,
+      "archers": 14,
+      "spearmen": 22,
+      "mounted": 0,
+      "infantry_profile": "loose_sling"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 141,
+      "start_y": 0,
+      "swords": 28,
+      "archers": 9,
+      "spearmen": 26,
+      "mounted": 0,
+      "infantry_profile": "loose_javelin"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 179,
+      "start_y": 0,
+      "swords": 37,
+      "archers": 2,
+      "spearmen": 20,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 116,
+      "start_y": -102,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 28,
+      "mounted_class": "light"
+    }
+  ]
+}

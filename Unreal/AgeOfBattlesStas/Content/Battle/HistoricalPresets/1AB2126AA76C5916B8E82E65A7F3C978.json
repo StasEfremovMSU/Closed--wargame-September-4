@@ -1,0 +1,189 @@
+{
+  "schema_version": 4,
+  "name": "Окэхадзама, 1560 · Лагерь Имагавы",
+  "terrain": "Sekigahara",
+  "era": {
+    "id": "sengoku",
+    "version": 1,
+    "blue_faction": "oda",
+    "orange_faction": "imagawa"
+  },
+  "regiment_tactics": true,
+  "risky_volley": false,
+  "direct_deployment": true,
+  "adaptive_battle": true,
+  "objective": {
+    "goal": "Breakthrough",
+    "time_limit_seconds": 200,
+    "crossing": 1,
+    "required_regiments": 2,
+    "crossing_team": 0,
+    "breakthrough": {
+      "x_m": 140,
+      "y_m": 22,
+      "radius_m": 28,
+      "group": 2
+    }
+  },
+  "briefing": "В 1560 году Ода Нобунага атаковал войско Имагавы Ёсимото в Окэхадзаме. Ёсимото погиб. Точное положение лагеря и ход подхода к нему реконструируют по-разному.\n\nВы командуете Ода. Проведите два пехотных отряда второй группы к отмеченной площадке лагеря. Передовые копейщики уже близко, лучники и второй эшелон подходят с разных направлений.\n\nЛесные склоны и долина образуют условный участок внезапной атаки. Лагерь схематичен, а численность обеих армий приведена к игровому масштабу. Игровой участок 520 × 340 м, 5 000 фигур.",
+  "sources": [
+    "https://www.nagoya-info.jp/en/spot/detail/244/",
+    "https://www.nagoya-info.jp/en/feature/detail/62/"
+  ],
+  "regiments": [
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -38,
+      "start_y": 17,
+      "formation_files": 16,
+      "swords": 16,
+      "archers": 8,
+      "spearmen": 24,
+      "mounted": 0,
+      "ranged_class": "bow"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -72,
+      "start_y": 70,
+      "formation_files": 17,
+      "swords": 12,
+      "archers": 13,
+      "spearmen": 20,
+      "mounted": 0,
+      "ranged_class": "bow"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -91,
+      "start_y": -49,
+      "formation_files": 19,
+      "swords": 12,
+      "archers": 15,
+      "spearmen": 17,
+      "mounted": 0,
+      "ranged_class": "bow"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -89,
+      "start_y": 27,
+      "formation_files": 15,
+      "swords": 15,
+      "archers": 9,
+      "spearmen": 24,
+      "mounted": 0,
+      "ranged_class": "bow"
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -126,
+      "start_y": 107,
+      "formation_files": 15,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 27
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -137,
+      "start_y": -48,
+      "formation_files": 17,
+      "swords": 13,
+      "archers": 13,
+      "spearmen": 21,
+      "mounted": 0,
+      "ranged_class": "bow"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 45,
+      "start_y": 74,
+      "formation_files": 20,
+      "swords": 13,
+      "archers": 14,
+      "spearmen": 21,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 65,
+      "start_y": 23,
+      "formation_files": 21,
+      "swords": 15,
+      "archers": 14,
+      "spearmen": 23,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 81,
+      "start_y": -48,
+      "formation_files": 19,
+      "swords": 16,
+      "archers": 15,
+      "spearmen": 21,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 118,
+      "start_y": 21,
+      "formation_files": 20,
+      "swords": 16,
+      "archers": 15,
+      "spearmen": 24,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 131,
+      "start_y": -54,
+      "formation_files": 19,
+      "swords": 14,
+      "archers": 17,
+      "spearmen": 19,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 139,
+      "start_y": 78,
+      "formation_files": 16,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 37
+    }
+  ],
+  "field": {
+    "width_m": 520,
+    "height_m": 340
+  },
+  "figure_target": 5000
+}

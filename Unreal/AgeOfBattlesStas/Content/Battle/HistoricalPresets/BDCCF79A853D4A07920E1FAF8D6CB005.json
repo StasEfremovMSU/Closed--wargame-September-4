@@ -1,0 +1,168 @@
+{
+  "schema_version": 4,
+  "name": "Калка, 1223",
+  "terrain": "Kalka",
+  "era": {
+    "id": "high_medieval",
+    "version": 1,
+    "blue_faction": "rus",
+    "orange_faction": "mongols"
+  },
+  "field": {
+    "width_m": 540,
+    "height_m": 340
+  },
+  "figure_target": 5000,
+  "regiment_tactics": true,
+  "risky_volley": false,
+  "direct_deployment": true,
+  "adaptive_battle": true,
+  "objective": {
+    "goal": "Eliminate",
+    "time_limit_seconds": 240,
+    "crossing": 1,
+    "required_regiments": 1,
+    "crossing_team": 0
+  },
+  "briefing": "У Калки русские княжества и половцы встретили монгольские войска. В летописном рассказе часть союзного войска переправилась вперёд и вступила в бой, пока другие отряды ещё не успели к ней присоединиться. Синие начинают с передовой дружиной у брода и пехотой позади. Оранжевые выставляют конницу на флангах. Расположение самой переправы спорно. Игровое русло с бродами условно, половецкую конницу представляют профили русских княжеств.\n\nНа игровом участке 540 × 340 м размещены 5 000 фигур, включая командный состав. Масштаб и позиции условны. Источники сверены 26.11.2026.",
+  "sources": [
+    "https://nav.shm.ru/en/exhibits/1726/",
+    "https://journals.rcsi.science/2308-152X/article/view/267577/en_US"
+  ],
+  "regiments": [
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -62,
+      "start_y": -25,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 37,
+      "mounted_class": "heavy"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -100,
+      "start_y": 31,
+      "swords": 24,
+      "archers": 11,
+      "spearmen": 29,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -141,
+      "start_y": 0,
+      "swords": 29,
+      "archers": 10,
+      "spearmen": 30,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -90,
+      "start_y": -92,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 30
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -110,
+      "start_y": 86,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 26
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -153,
+      "start_y": 81,
+      "swords": 18,
+      "archers": 15,
+      "spearmen": 26,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 85,
+      "start_y": -83,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 36
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 81,
+      "start_y": 82,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 37
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 111,
+      "start_y": 0,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 34,
+      "mounted_class": "heavy"
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 133,
+      "start_y": 84,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 30
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 128,
+      "start_y": -23,
+      "swords": 11,
+      "archers": 19,
+      "spearmen": 14,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 142,
+      "start_y": -86,
+      "swords": 11,
+      "archers": 19,
+      "spearmen": 16,
+      "mounted": 0
+    }
+  ]
+}

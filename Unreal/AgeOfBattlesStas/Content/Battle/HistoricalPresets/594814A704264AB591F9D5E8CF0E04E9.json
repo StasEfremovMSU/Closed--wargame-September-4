@@ -1,0 +1,162 @@
+{
+  "schema_version": 4,
+  "name": "Азенкур, 1415",
+  "terrain": "Agincourt",
+  "era": {
+    "id": "late_medieval",
+    "version": 1,
+    "blue_faction": "england",
+    "orange_faction": "france"
+  },
+  "regiment_tactics": true,
+  "risky_volley": false,
+  "direct_deployment": true,
+  "objective": {
+    "goal": "Eliminate",
+    "time_limit_seconds": 120,
+    "crossing": 1,
+    "required_regiments": 1,
+    "crossing_team": 0
+  },
+  "briefing": "25 октября 1415 года английская пехота с лучниками по краям встретила французских латников и конницу. Автор «Деяний Генриха V» описывает узкое поле между рощами, ночной дождь и колья перед лучниками. Держите английский центр и прикрывайте его огнём с двух сторон. Французские пешие латники сильнее в прямом столкновении и могут использовать конницу против лучников. Игровое поле 500 × 300 м. Рощи переданы узкой расстановкой, численность и расстояния условны. Колья и грязь не моделируются. Источники сверены 25.11.2026. В этом сценарии 5 000 игровых фигур, включая командный состав и орудия.",
+  "sources": [
+    "https://generic.wordpress.soton.ac.uk/agincourt600/wp-content/uploads/sites/169/2015/10/New-translation-of-the-Latin-text-in-the-Gesta-Henrici-Quinti.pdf",
+    "https://www.college-of-arms.gov.uk/news-grants/news/item/119-the-battle-of-agincourt"
+  ],
+  "regiments": [
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -38,
+      "start_y": 0,
+      "swords": 18,
+      "archers": 0,
+      "spearmen": 8,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -42,
+      "start_y": -30,
+      "swords": 3,
+      "archers": 20,
+      "spearmen": 0,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -42,
+      "start_y": 30,
+      "swords": 3,
+      "archers": 20,
+      "spearmen": 0,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -68,
+      "start_y": -34,
+      "swords": 0,
+      "archers": 19,
+      "spearmen": 0,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -68,
+      "start_y": 34,
+      "swords": 0,
+      "archers": 19,
+      "spearmen": 0,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": false,
+      "group": 2,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 36,
+      "start_y": 0,
+      "swords": 32,
+      "archers": 0,
+      "spearmen": 12,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 60,
+      "start_y": -22,
+      "swords": 21,
+      "archers": 0,
+      "spearmen": 12,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 62,
+      "start_y": 22,
+      "swords": 18,
+      "archers": 7,
+      "spearmen": 10,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 48,
+      "start_y": -48,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 12
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 48,
+      "start_y": 48,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 12
+    },
+    {
+      "type": "Infantry",
+      "enabled": false,
+      "group": 2,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 0
+    }
+  ],
+  "field": {
+    "width_m": 500,
+    "height_m": 300
+  },
+  "figure_target": 5000,
+  "adaptive_battle": true
+}

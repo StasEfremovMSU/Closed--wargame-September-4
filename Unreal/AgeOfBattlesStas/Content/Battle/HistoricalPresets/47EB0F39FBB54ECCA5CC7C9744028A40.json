@@ -1,0 +1,170 @@
+{
+  "schema_version": 4,
+  "name": "Граник, 334 до н. э. · Начало похода",
+  "terrain": "River",
+  "era": {
+    "id": "ancient",
+    "version": 1,
+    "blue_faction": "macedon",
+    "orange_faction": "persia"
+  },
+  "field": {
+    "width_m": 540,
+    "height_m": 360
+  },
+  "regiment_tactics": true,
+  "risky_volley": false,
+  "direct_deployment": true,
+  "adaptive_battle": true,
+  "objective": {
+    "goal": "Crossing",
+    "time_limit_seconds": 240,
+    "crossing": 1,
+    "required_regiments": 1,
+    "crossing_team": 0
+  },
+  "briefing": "На реке Граник в Малой Азии Александр столкнулся с войском персидских сатрапов. Победа открыла ему путь дальше вглубь Малой Азии. На игровой карте обозначена условная переправа, которую атакует Македония. Проведите через неё один полк или разгромите противника.\n\nПозиции и численность условны. Источники сверены 26.11.2026.",
+  "sources": [
+    "https://beta.perseus.tufts.edu/urn%3Acts%3AgreekLit%3Atlg0099.tlg001.perseus-eng4%3A13.1/",
+    "https://resources.metmuseum.org/resources/metpublications/pdf/Pergamon_and_the_Hellenistic_Kingdoms_of_the_Ancient_World.pdf"
+  ],
+  "regiments": [
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -46,
+      "start_y": 0,
+      "swords": 12,
+      "archers": 8,
+      "spearmen": 42,
+      "mounted": 0,
+      "infantry_profile": "sarissa_phalanx"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -76,
+      "start_y": -46,
+      "swords": 9,
+      "archers": 7,
+      "spearmen": 44,
+      "mounted": 0,
+      "infantry_profile": "sarissa_phalanx"
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -59,
+      "start_y": 69,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 47
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -111,
+      "start_y": 3,
+      "swords": 13,
+      "archers": 5,
+      "spearmen": 41,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -102,
+      "start_y": 51,
+      "swords": 11,
+      "archers": 12,
+      "spearmen": 20,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -78,
+      "start_y": -91,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 38
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 49,
+      "start_y": -29,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 39
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 51,
+      "start_y": 27,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 43
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 73,
+      "start_y": 0,
+      "swords": 22,
+      "archers": 12,
+      "spearmen": 18,
+      "mounted": 0,
+      "infantry_profile": "persian_sparabara"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 104,
+      "start_y": -53,
+      "swords": 16,
+      "archers": 14,
+      "spearmen": 20,
+      "mounted": 0,
+      "infantry_profile": "loose_bow"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 105,
+      "start_y": 46,
+      "swords": 24,
+      "archers": 6,
+      "spearmen": 17,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 91,
+      "start_y": 99,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 31
+    }
+  ],
+  "figure_target": 5000
+}

@@ -1,0 +1,182 @@
+{
+  "schema_version": 4,
+  "name": "Фрауштадт, 1706 · Два конных крыла",
+  "terrain": "Gaugamela",
+  "era": {
+    "id": "great_northern_war",
+    "version": 1,
+    "blue_faction": "sweden",
+    "orange_faction": "saxony"
+  },
+  "regiment_tactics": true,
+  "risky_volley": false,
+  "direct_deployment": true,
+  "adaptive_battle": true,
+  "objective": {
+    "goal": "Eliminate",
+    "time_limit_seconds": 240,
+    "crossing": 1,
+    "required_regiments": 1,
+    "crossing_team": 0
+  },
+  "briefing": "13 февраля 1706 года у Фрауштадта, нынешней Всховы, шведы Карла Густава Реншильда разгромили саксонскую армию Иоганна Маттиаса фон Шуленбурга и приданный ей русский корпус. Шведская конница охватила оба крыла противника.\n\nВы командуете шведами. Разбейте противника, пока пехота занимает его центр. Конные полки начинают на обоих крыльях, напротив концов длинной линии.\n\nОткрытая равнина заменяет зимние поля у Всховы. Саксонский состав включает условный русский контингент, а численность сторон приведена к масштабу поля. Игровой участок 560 × 360 м, 5 000 фигур.",
+  "sources": [
+    "https://muzeum.wschowa.pl/2015/12/07/bitwa-pod-wschowa-1706/",
+    "https://fhs.diva-portal.org/smash/get/diva2%3A427154/FULLTEXT01.pdf"
+  ],
+  "regiments": [
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -56,
+      "start_y": -25,
+      "formation_files": 29,
+      "swords": 11,
+      "archers": 20,
+      "spearmen": 15,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -58,
+      "start_y": 25,
+      "formation_files": 29,
+      "swords": 9,
+      "archers": 20,
+      "spearmen": 16,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -65,
+      "start_y": -94,
+      "formation_files": 16,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 40,
+      "mounted_class": "heavy"
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -69,
+      "start_y": 95,
+      "formation_files": 17,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 40,
+      "mounted_class": "heavy"
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -113,
+      "start_y": -119,
+      "formation_files": 16,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 34,
+      "mounted_class": "light"
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -114,
+      "start_y": 120,
+      "formation_files": 16,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 34,
+      "mounted_class": "light"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 52,
+      "start_y": 0,
+      "formation_files": 32,
+      "swords": 12,
+      "archers": 20,
+      "spearmen": 21,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 54,
+      "start_y": -55,
+      "formation_files": 31,
+      "swords": 11,
+      "archers": 20,
+      "spearmen": 22,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 56,
+      "start_y": 55,
+      "formation_files": 31,
+      "swords": 10,
+      "archers": 20,
+      "spearmen": 22,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 103,
+      "start_y": 0,
+      "formation_files": 26,
+      "swords": 13,
+      "archers": 19,
+      "spearmen": 20,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 108,
+      "start_y": -103,
+      "formation_files": 16,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 36
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 108,
+      "start_y": 105,
+      "formation_files": 16,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 34
+    }
+  ],
+  "field": {
+    "width_m": 560,
+    "height_m": 360
+  },
+  "figure_target": 5000
+}

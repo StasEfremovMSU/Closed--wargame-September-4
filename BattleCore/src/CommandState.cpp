@@ -1,3 +1,4 @@
+#include "CommandBrainCommon.h"
 #include "battle/command/Runtime.h"
 #include "battle/World.h"
 #include "battle/command/Services.h"
@@ -50,19 +51,14 @@ bool ValidTask(const CommandTask &t, const CommandHierarchy &h, const World &w, 
     const auto *issuer = t.issuer ? FindNode(h, t.issuer) : nullptr;
     if (!t.id || !recipient ||
         (t.issuer ? (!issuer || t.issuer != recipient->parent)
-                  : recipient->level != Level::Army) ||
+                  : !IsCommandRoot(*recipient)) ||
         (t.author && !FindProfile(h, t.author)) ||
         !ValidTaskRequest(t) || t.created_tick > now ||
         (t.received_tick && *t.received_tick > now) ||
         (t.parent_task && t.parent_task.value == t.id.value) ||
         (t.intent.target_command && !FindNode(h, t.intent.target_command)))
         return false;
-    if (t.intent.target_regiment) {
-        const auto *target = FindRegiment(w, t.intent.target_regiment);
-        if (!target || target->team == recipient->team)
-            return false;
-    }
-    return true;
+    return detail::ValidTaskTarget(w, *recipient, t);
 }
 bool ValidReport(const SituationReport &r, const CommandHierarchy &h, const World &w,
                  Tick now) {
@@ -126,6 +122,8 @@ struct Hash {
         optional(v.own.cohesion, [&](auto x) { f(x); });
         optional(v.own.fatigue, [&](auto x) { f(x); });
         optional(v.own.ammunition_fraction, [&](auto x) { f(x); }); vec(v.rally_point);
+        if (v.own.under_ranged_fire)
+            text("under_ranged_fire");
         n(v.contacts.size()); for (const auto &x : v.contacts) contact(x);
         n(v.threats.size());
         for (const auto &x : v.threats) {
@@ -142,6 +140,10 @@ struct Hash {
     void intent(const CommandIntent &v) {
         text(v.purpose); vec(v.objective_position); f(v.objective_radius_m);
         id(v.target_command); id(v.target_regiment);
+        if (v.flank_waypoint) {
+            text("flank waypoint");
+            pose(*v.flank_waypoint);
+        }
     }
     void task(const CommandTask &v) {
         id(v.id); id(v.parent_task); id(v.issuer); id(v.recipient); id(v.author);
@@ -312,7 +314,8 @@ Result<bool> ValidateCommandState(const World &world, const CommandState &state)
             message.created_tick > world.tick || message.delivery_tick < message.created_tick ||
             (message.expiry_tick && *message.expiry_tick < message.created_tick) ||
             (message.courier && !FindUnit(world, message.courier)) ||
-            (message.channel == DeliveryChannel::Courier && !message.courier))
+            (message.channel == DeliveryChannel::Courier && !message.courier &&
+             (message.status == DeliveryStatus::InTransit || message.status == DeliveryStatus::Delivered)))
             return bad("invalid communications envelope");
         max_message = std::max(max_message, message.id.value);
         if (const auto *task = std::get_if<CommandTask>(&message.payload)) {

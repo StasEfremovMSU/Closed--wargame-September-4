@@ -1,0 +1,16 @@
+{
+  "FileVersion": 3,
+  "Version": 1,
+  "VersionName": "0.1",
+  "FriendlyName": "Regiment Battle",
+  "Description": "BattleCore simulation and Mass presentation for AgeOfBattlesStas.",
+  "Category": "Gameplay",
+  "EnabledByDefault": true,
+  "CanContainContent": false,
+  "Modules": [
+    { "Name": "RegimentBattleRuntime", "Type": "Runtime", "LoadingPhase": "Default" }
+  ],
+  "Plugins": [
+    { "Name": "MassGameplay", "Enabled": true }
+  ]
+}

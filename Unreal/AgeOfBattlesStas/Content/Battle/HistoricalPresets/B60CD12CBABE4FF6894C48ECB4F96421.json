@@ -1,0 +1,166 @@
+{
+  "schema_version": 4,
+  "name": "Креси, 1346",
+  "terrain": "Crecy",
+  "era": {
+    "id": "late_medieval",
+    "version": 1,
+    "blue_faction": "france",
+    "orange_faction": "england"
+  },
+  "field": {
+    "width_m": 520,
+    "height_m": 340
+  },
+  "figure_target": 5000,
+  "regiment_tactics": true,
+  "risky_volley": false,
+  "direct_deployment": true,
+  "adaptive_battle": true,
+  "objective": {
+    "goal": "Eliminate",
+    "time_limit_seconds": 240,
+    "crossing": 1,
+    "required_regiments": 1,
+    "crossing_team": 0
+  },
+  "briefing": "26 августа 1346 года армия Эдуарда III заняла оборону против войска Филиппа VI. Фруассар описывает английских лучников, спешенных латников и генуэзских арбалетчиков в начале французского наступления. Оранжевые англичане стоят вдоль гребня, лучники прикрывают края. Синие французы выставили арбалетчиков перед конницей. Форма гребня передаёт традиционное прочтение места битвы.\n\nНа игровом участке 520 × 340 м размещены 5 000 фигур, включая командный состав. Масштаб и позиции условны. Источники сверены 26.11.2026.",
+  "sources": [
+    "https://sourcebooks.web.fordham.edu/source/froissart1.asp",
+    "https://www.crecylabataille.com/un-peu-d-histoire/le-site-de-la-bataille/"
+  ],
+  "regiments": [
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -70,
+      "start_y": -20,
+      "swords": 10,
+      "archers": 20,
+      "spearmen": 11,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -70,
+      "start_y": 27,
+      "swords": 13,
+      "archers": 20,
+      "spearmen": 11,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -110,
+      "start_y": -68,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 50
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -119,
+      "start_y": 0,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 58
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -110,
+      "start_y": 69,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 49
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -161,
+      "start_y": 0,
+      "swords": 32,
+      "archers": 8,
+      "spearmen": 18,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 74,
+      "start_y": 0,
+      "swords": 43,
+      "archers": 7,
+      "spearmen": 19,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 76,
+      "start_y": -39,
+      "swords": 12,
+      "archers": 20,
+      "spearmen": 9,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 76,
+      "start_y": 39,
+      "swords": 13,
+      "archers": 20,
+      "spearmen": 8,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 82,
+      "start_y": -81,
+      "swords": 8,
+      "archers": 20,
+      "spearmen": 8,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 82,
+      "start_y": 81,
+      "swords": 8,
+      "archers": 20,
+      "spearmen": 8,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 122,
+      "start_y": 0,
+      "swords": 32,
+      "archers": 9,
+      "spearmen": 17,
+      "mounted": 0
+    }
+  ]
+}

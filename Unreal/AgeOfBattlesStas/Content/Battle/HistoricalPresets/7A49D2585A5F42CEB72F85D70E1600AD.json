@@ -1,0 +1,169 @@
+{
+  "schema_version": 5,
+  "name": "Сэкигахара, 1600 · Долина между высотами",
+  "terrain": "Sekigahara",
+  "era": {
+    "id": "sengoku",
+    "version": 1,
+    "blue_faction": "mori",
+    "orange_faction": "tokugawa"
+  },
+  "regiment_tactics": true,
+  "risky_volley": false,
+  "direct_deployment": true,
+  "adaptive_battle": true,
+  "objective": {
+    "goal": "Eliminate",
+    "time_limit_seconds": 240,
+    "crossing": 1,
+    "required_regiments": 1,
+    "crossing_team": 0
+  },
+  "briefing": "21 октября 1600 года Западная армия Исиды Мицунари и Восточная армия Токугава Иэясу сошлись в долине Сэкигахара. У Сасао и Момокубари обозначены высоты, где находились командные позиции. Полки стоят в нескольких эшелонах. Западная коалиция использует игровые профили Мори. Сражение вмещает 5 000 фигур на сжатом участке 520 × 360 м. Переход Кобаякавы на другую сторону не моделируется.",
+  "sources": [
+    "https://sekigahara.pref.gifu.lg.jp/en/tour/ishida-mitsunari/",
+    "https://sekigahara.pref.gifu.lg.jp/en/tour/course-sekigahara/",
+    "https://www.town.sekigahara.gifu.jp/secure/8373/sasaoyamakihonkeikaku.pdf"
+  ],
+  "regiments": [
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -83,
+      "start_y": 0,
+      "swords": 15,
+      "archers": 8,
+      "spearmen": 27,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -94,
+      "start_y": -78,
+      "swords": 10,
+      "archers": 15,
+      "spearmen": 21,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -96,
+      "start_y": 78,
+      "swords": 13,
+      "archers": 19,
+      "spearmen": 16,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -126,
+      "start_y": 0,
+      "swords": 18,
+      "archers": 5,
+      "spearmen": 21,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -141,
+      "start_y": -69,
+      "swords": 11,
+      "archers": 18,
+      "spearmen": 18,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -128,
+      "start_y": 96,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 17,
+      "mounted_class": "light"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 87,
+      "start_y": 0,
+      "swords": 12,
+      "archers": 17,
+      "spearmen": 23,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 98,
+      "start_y": -78,
+      "swords": 13,
+      "archers": 11,
+      "spearmen": 25,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 93,
+      "start_y": 78,
+      "swords": 13,
+      "archers": 18,
+      "spearmen": 18,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 132,
+      "start_y": 0,
+      "swords": 18,
+      "archers": 8,
+      "spearmen": 22,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 144,
+      "start_y": 68,
+      "swords": 12,
+      "archers": 16,
+      "spearmen": 19,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 133,
+      "start_y": -110,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 19,
+      "mounted_class": "light"
+    }
+  ],
+  "field": {
+    "width_m": 520,
+    "height_m": 360
+  },
+  "figure_target": 5000
+}

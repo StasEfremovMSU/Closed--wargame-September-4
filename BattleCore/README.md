@@ -3,6 +3,8 @@
 Portable C++20 battle simulation, independent of Unity and Unreal Engine.
 Coordinates: metres, X forward, Y right, Z up; yaw in radians. Fixed simulation interval: 50 ms.
 
+The [era module catalog and architecture](docs/era-modules.md) records the eight main eras, their factions and the path from scenario rules to data-driven modules.
+
 ## Build on Windows
 
 Install or locate CMake >=3.25, Ninja and a C++20 compiler. Tools are configured per process; no global PATH change is required.
@@ -61,3 +63,7 @@ A resumed snapshot cannot currently be exported as a new scenario-based replay; 
 ## Current ranged rules
 
 AI archers use four deterministic firing/acquisition phases by default, with at most150ms initial/idle acquisition delay. Exact cooldown completion stays eligible; player-controlled shooting has no added phase delay. Set `rules.ranged_cohorts` to1 in a scenario for synchronous AI release. Snapshots/replay bundles use schema3 and include the full command state; plain schema2 files migrate automatically, while command-enabled schema2 files and schema1 continuation files are rejected. Legacy TXT/scenario authoring import remains supported. See [ranged results and reproduction](docs/ranged-performance.md).
+
+Set `rules.local_melee` to `true` for individual movement during regiment contact. A front fighter closes to weapon range, the ranks behind compress into available space, and fighters on a free edge can continue around the formation with a stable turning direction. The wing of a wider front can turn the edge of a narrower front on passable ground. Stragglers can fight without fixing the whole formation in place. Movement respects body clearance and terrain. A melee strike keeps its target through the windup. At contact, formed archers draw weak, short-range daggers. Formed archers fire at opposing formations only while both formations are free of melee contact.
+
+A positive `RegimentSpec::skirmisher_count` deploys up to that many archers as a screen when the regiment has a commander. Detached archers exit around the flank or rear, then advance beyond the front rank when the terrain permits. They can target other screens or a formed regiment outside melee contact. `CommandKind::SetSkirmishers` recalls or redeploys the screen. Group command positions can be roots with physical commanders outside regiment membership. Standard bearer and musician assignments can improve local morale while the relevant staff are present.

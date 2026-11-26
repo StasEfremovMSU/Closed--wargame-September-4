@@ -30,7 +30,12 @@ struct CommandState {
 bool ValidTaskRequest(const CommandTask &);
 StubResult<bool> InitializeCommand(World &);
 StubResult<TaskId> SubmitTask(World &, CommandTask);
-StubResult<bool> UpdateCommand(World &, const NavigationService &);
+bool UsesStaffCourier(const World &, NodeId sender, NodeId recipient);
+Pose ArmyStaffStation(Pose commander, SupportDuty duty, size_t index);
+StubResult<bool> UpdateCommand(World &, const NavigationService &,
+                               const ITacticalEvaluator *group_policy = nullptr,
+                               bool group_order_commitment = false);
+void WakeCommandForPanicChange(World &, RegimentId);
 battle::Result<bool> ValidateCommandState(const World &, const CommandState &);
 uint64_t CommandStateHash(const CommandState &);
 uint64_t CommandSetupHash(const CommandSetup &);

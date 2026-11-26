@@ -1,0 +1,168 @@
+{
+  "schema_version": 4,
+  "name": "Грюнвальд, 1410",
+  "terrain": "Grunwald",
+  "era": {
+    "id": "late_medieval",
+    "version": 1,
+    "blue_faction": "poland_lithuania",
+    "orange_faction": "teutonic_order"
+  },
+  "field": {
+    "width_m": 540,
+    "height_m": 360
+  },
+  "figure_target": 5000,
+  "regiment_tactics": true,
+  "risky_volley": false,
+  "direct_deployment": true,
+  "adaptive_battle": true,
+  "objective": {
+    "goal": "Eliminate",
+    "time_limit_seconds": 240,
+    "crossing": 1,
+    "required_regiments": 1,
+    "crossing_team": 0
+  },
+  "briefing": "15 июля 1410 года войска Ягайло и Витовта сошлись с Тевтонским орденом Ульриха фон Юнгингена. Поле между Грюнвальдом, Стембарком и Лодвиговом лежит среди пологих холмов и долин. В игре конные хоругви идут по открытому центру между лесными участками. На правом крыле союзников стоят подвижные литовские отряды, тяжёлая конница Ордена имеет второй эшелон.\n\nНа игровом участке 540 × 360 м размещены 5 000 фигур, включая командный состав. Масштаб и позиции условны. Источники сверены 26.11.2026.",
+  "sources": [
+    "https://muzhp.pl/kalendarium/bitwa-pod-grunwaldem",
+    "https://www.powiat.ostroda.pl/en/get-to-know-the-county/county-tourism/617-the-grunwald-battlefield.html"
+  ],
+  "regiments": [
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -89,
+      "start_y": -43,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 52
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -86,
+      "start_y": 3,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 46
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -86,
+      "start_y": 61,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 40,
+      "mounted_class": "light"
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -136,
+      "start_y": 73,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 30,
+      "mounted_class": "light"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -136,
+      "start_y": -59,
+      "swords": 17,
+      "archers": 15,
+      "spearmen": 28,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -142,
+      "start_y": 0,
+      "swords": 24,
+      "archers": 8,
+      "spearmen": 28,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 89,
+      "start_y": -43,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 43
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 85,
+      "start_y": 7,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 46
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 92,
+      "start_y": 59,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 40
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 141,
+      "start_y": 0,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 43
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 136,
+      "start_y": -58,
+      "swords": 20,
+      "archers": 14,
+      "spearmen": 28,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 137,
+      "start_y": 61,
+      "swords": 19,
+      "archers": 16,
+      "spearmen": 28,
+      "mounted": 0
+    }
+  ]
+}

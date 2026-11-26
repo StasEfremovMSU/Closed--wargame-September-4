@@ -1,0 +1,178 @@
+{
+  "schema_version": 4,
+  "name": "Бувин, 1214 · Королевское войско",
+  "terrain": "Breitenfeld",
+  "era": {
+    "id": "high_medieval",
+    "version": 1,
+    "blue_faction": "capetian_france",
+    "orange_faction": "otto_coalition"
+  },
+  "regiment_tactics": true,
+  "risky_volley": false,
+  "direct_deployment": true,
+  "adaptive_battle": true,
+  "objective": {
+    "goal": "Eliminate",
+    "time_limit_seconds": 240,
+    "crossing": 1,
+    "required_regiments": 1,
+    "crossing_team": 0
+  },
+  "briefing": "27 июля 1214 года Филипп II Август развернул войско у Бувина против коалиции императора Оттона IV, графа Фландрии Феррана и графа Булони Рено. Рядом с рыцарями французского короля сражались пешие отряды, присланные городами.\n\nВы командуете французами. Разбейте коалицию. Городская пехота держит середину, пока рыцарские отряды на обоих крыльях ищут свободный подход.\n\nДорога и поля служат ориентирами условного участка у Бувина. Мост на Марке находится за его пределами. Войска коалиции объединены в одну фракцию, численность сторон приведена к игровому масштабу. Игровой участок 560 × 360 м, 5 000 фигур.",
+  "sources": [
+    "https://www.bouvines.fr/tourisme/bataille-de-bouvines",
+    "https://www.bouvines.fr/tourisme/autres-monuments/"
+  ],
+  "regiments": [
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -52,
+      "start_y": -10,
+      "formation_files": 24,
+      "swords": 13,
+      "archers": 9,
+      "spearmen": 28,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -67,
+      "start_y": -71,
+      "formation_files": 16,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 40
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -71,
+      "start_y": 72,
+      "formation_files": 18,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 40
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -105,
+      "start_y": 8,
+      "formation_files": 21,
+      "swords": 19,
+      "archers": 12,
+      "spearmen": 18,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -111,
+      "start_y": -75,
+      "formation_files": 18,
+      "swords": 17,
+      "archers": 11,
+      "spearmen": 16,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -109,
+      "start_y": 113,
+      "formation_files": 15,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 33
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 55,
+      "start_y": 0,
+      "formation_files": 24,
+      "swords": 19,
+      "archers": 7,
+      "spearmen": 27,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 59,
+      "start_y": -75,
+      "formation_files": 17,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 41
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 72,
+      "start_y": 77,
+      "formation_files": 17,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 39
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 104,
+      "start_y": 9,
+      "formation_files": 22,
+      "swords": 24,
+      "archers": 9,
+      "spearmen": 18,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 106,
+      "start_y": -116,
+      "formation_files": 16,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 29
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 121,
+      "start_y": 80,
+      "formation_files": 20,
+      "swords": 17,
+      "archers": 13,
+      "spearmen": 17,
+      "mounted": 0
+    }
+  ],
+  "field": {
+    "width_m": 560,
+    "height_m": 360
+  },
+  "figure_target": 5000
+}

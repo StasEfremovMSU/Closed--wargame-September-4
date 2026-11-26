@@ -1,0 +1,165 @@
+{
+  "schema_version": 4,
+  "name": "Кастийон, 1453 · Французский лагерь",
+  "terrain": "OpenField",
+  "era": {
+    "id": "late_medieval",
+    "version": 1,
+    "blue_faction": "france",
+    "orange_faction": "england"
+  },
+  "field": {
+    "width_m": 540,
+    "height_m": 360
+  },
+  "regiment_tactics": true,
+  "risky_volley": false,
+  "direct_deployment": true,
+  "adaptive_battle": true,
+  "objective": {
+    "goal": "Eliminate",
+    "time_limit_seconds": 240,
+    "crossing": 1,
+    "required_regiments": 1,
+    "crossing_team": 0
+  },
+  "briefing": "17 июля 1453 года французское войско разбило у Кастийона английскую армию Джона Тальбота. Французский укреплённый артиллерийский лагерь сыграл важную роль. Игровой эпизод сосредоточен на столкновении полевых отрядов у лагеря. Укрепления и орудия остались за границей игрового участка.\n\nПозиции и численность условны. Источники сверены 26.11.2026.",
+  "sources": [
+    "https://royalarmouries.org/objects-and-stories/stories/the-hundred-years-war-1337-1453"
+  ],
+  "regiments": [
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -54,
+      "start_y": 0,
+      "swords": 27,
+      "archers": 6,
+      "spearmen": 18,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -55,
+      "start_y": -42,
+      "swords": 12,
+      "archers": 18,
+      "spearmen": 16,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -58,
+      "start_y": 43,
+      "swords": 11,
+      "archers": 19,
+      "spearmen": 19,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -104,
+      "start_y": 0,
+      "swords": 23,
+      "archers": 12,
+      "spearmen": 17,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -100,
+      "start_y": 91,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 34
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -122,
+      "start_y": -76,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 23
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 44,
+      "start_y": 0,
+      "swords": 29,
+      "archers": 10,
+      "spearmen": 16,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 48,
+      "start_y": -49,
+      "swords": 17,
+      "archers": 16,
+      "spearmen": 15,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 50,
+      "start_y": 44,
+      "swords": 19,
+      "archers": 20,
+      "spearmen": 13,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 89,
+      "start_y": 6,
+      "swords": 23,
+      "archers": 13,
+      "spearmen": 16,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 99,
+      "start_y": -87,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 34
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 106,
+      "start_y": 86,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 19
+    }
+  ],
+  "figure_target": 5000
+}

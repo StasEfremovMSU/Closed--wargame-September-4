@@ -3,6 +3,7 @@
 #include "battle/Simulation.h"
 #include <chrono>
 #include <fstream>
+#include <string_view>
 namespace battle::io {
 namespace {
 using Json = nlohmann::json;
@@ -13,23 +14,41 @@ void Keys(const Json &j, std::initializer_list<const char *> keys) {
         if (!j.contains(key))
             throw std::invalid_argument(std::string("missing snapshot field: ") + key);
 }
-// Scenario authoring permits defaults; continuation snapshots must be complete.
-void CompleteFields(const Json &actual, const Json &persisted, const std::string &path) {
+bool OptionalLegacyRegimentField(std::string_view path, std::string_view field) {
+    const bool live_regiment = path.starts_with("snapshot/state/regiments/");
+    const bool scenario_regiment = path.starts_with("snapshot/state/scenario/regiments/") ||
+                                   path.starts_with("replay/scenario/regiments/");
+    if (field == "deployment_ticks" || field == "initial_fatigue")
+        return live_regiment || scenario_regiment;
+    if (field == "morale" || field == "cohesion" || field == "fatigue" || field == "disordered")
+        return live_regiment;
+    return path.starts_with("snapshot/state/events/") && (field == "aspect" || field == "high_arc");
+}
+
+// Continuation snapshots are strict. Pre-tactics saves may omit the fields added by that mode.
+void CompleteFields(const Json &actual, const Json &persisted, const std::string &path,
+                    bool allow_legacy_regiment_fields) {
     if (persisted.is_object()) {
         if (!actual.is_object())
             throw std::invalid_argument("expected snapshot object: " + path);
-        if (actual.size() != persisted.size())
-            throw std::invalid_argument("unexpected snapshot fields: " + path);
+        for (auto it = actual.begin(); it != actual.end(); ++it)
+            if (!persisted.contains(it.key()))
+                throw std::invalid_argument("unexpected snapshot field: " + path + "/" + it.key());
         for (auto it = persisted.begin(); it != persisted.end(); ++it) {
-            if (!actual.contains(it.key()))
+            if (!actual.contains(it.key())) {
+                if (allow_legacy_regiment_fields && OptionalLegacyRegimentField(path, it.key()))
+                    continue;
                 throw std::invalid_argument("missing snapshot field: " + path + "/" + it.key());
-            CompleteFields(actual.at(it.key()), it.value(), path + "/" + it.key());
+            }
+            CompleteFields(actual.at(it.key()), it.value(), path + "/" + it.key(),
+                           allow_legacy_regiment_fields);
         }
     } else if (persisted.is_array()) {
         if (!actual.is_array() || actual.size() != persisted.size())
             throw std::invalid_argument("invalid snapshot array: " + path);
         for (size_t i = 0; i < persisted.size(); ++i)
-            CompleteFields(actual[i], persisted[i], path + "/" + std::to_string(i));
+            CompleteFields(actual[i], persisted[i], path + "/" + std::to_string(i),
+                           allow_legacy_regiment_fields);
     } else if (persisted.is_number_unsigned()) {
         if (!actual.is_number_unsigned())
             throw std::invalid_argument("expected unsigned integer: " + path);
@@ -144,7 +163,8 @@ Result<Snapshot> LoadSnapshot(const std::filesystem::path &p) {
                      "ai_action",
                      "ai_target"});
         Snapshot s = j.get<Snapshot>();
-        CompleteFields(j, version == 2 ? Version2SnapshotShape(s) : Json(s), "snapshot");
+        CompleteFields(j, version == 2 ? Version2SnapshotShape(s) : Json(s), "snapshot",
+                       !s.state.scenario.rules.regiment_tactics);
         auto r = Restore(s);
         if (!r)
             return {r.status, {}, r.diagnostics};
@@ -184,7 +204,7 @@ Result<ReplayRecord> LoadReplay(const std::filesystem::path &p) {
         r.schema_version = 3;
         CompleteFields(j, version == 2 ? Version2ReplayShape(r) :
                        Json{{"schema_version", 3}, {"scenario", r.scenario}, {"seed", r.seed},
-                            {"commands", r.commands}}, "replay");
+                            {"commands", r.commands}}, "replay", !r.scenario.rules.regiment_tactics);
         auto world = CreateWorld(r.scenario, r.seed);
         if (!world)
             return {world.status, {}, world.diagnostics};

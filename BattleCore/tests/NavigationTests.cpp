@@ -29,6 +29,24 @@ TEST_CASE("navigation.footprint_corridor") {
     CHECK(nav.FindPath({{{-100, 0, 0}, 0}, {8, 0, 0}, {.6f, 1}}).status == Status::NoPath);
     CHECK(nav.FindPath({{{-8, 0, 0}, 0}, {0, 3, 0}, {.6f, 1}}).status == Status::NoPath);
 }
+TEST_CASE("navigation.a_disconnected_search_does_not_hide_routes_on_this_or_a_changed_map") {
+    GridNavigationService nav({{-.5f, -44.f, .5f, 44.f}}, 2.f, 41, 41, {-40, -40, 0});
+    const PathRequest far{{{-28.f, 0, 0}, 0}, {23.8f, 0, 0}, {2.f, 2.f}};
+    CHECK(nav.FindPath(far).status == Status::NoPath);
+
+    auto nearby = far;
+    nearby.goal = {-15.7f, .3f, 0};
+    const auto local = nav.FindPath(nearby);
+    REQUIRE(local.status == Status::Ok);
+    REQUIRE_FALSE(local.waypoints.empty());
+    CHECK(local.waypoints.back().position == nearby.goal);
+
+    nav = GridNavigationService({{-.5f, 8.f, .5f, 44.f}}, 2.f, 41, 41, {-40, -40, 0});
+    const auto across = nav.FindPath(far);
+    REQUIRE(across.status == Status::Ok);
+    REQUIRE_FALSE(across.waypoints.empty());
+    CHECK(across.waypoints.back().position == far.goal);
+}
 TEST_CASE("navigation.motion_does_not_cross_wall") {
     auto s = test::Duel();
     s.regiments.resize(1);
@@ -48,6 +66,67 @@ TEST_CASE("navigation.rotation_sweep") {
     CHECK_FALSE(blocked.CanTraverse({{}, 0}, {{}, Pi / 2}, {.6f, 10}));
     GridNavigationService open({}, 1, 30, 30, {-15, -15, 0});
     CHECK(open.CanTraverse({{}, 0}, {{}, Pi / 2}, {.6f, 10}));
+}
+TEST_CASE("navigation.fallback_has_a_swept_route_without_turning_its_back") {
+    const GridNavigationService navigation({{-.4f, -2.f, .4f, 2.f}}, 1, 35, 30, {-17, -15, 0});
+    const Pose start{{9, 0, 0}, .22f};
+    const Vec3 goal{-9, 0, 0};
+    const FormationFootprint footprint{2.f, 2.f};
+    const auto route = navigation.FindPath({start, goal, footprint, start.yaw, {}, true, true});
+    REQUIRE(route.status == Status::Ok);
+    REQUIRE(route.waypoints.size() > 1);
+    auto from = start;
+    for (const auto &pose : route.waypoints) {
+        CHECK(pose.yaw == start.yaw);
+        CHECK(navigation.CanTraverse(from, pose, footprint));
+        from = pose;
+    }
+    CHECK(route.waypoints.back().position == goal);
+}
+TEST_CASE("navigation.purposeful_route_turns_through_obstacles_and_at_arrival") {
+    const GridNavigationService navigation({{-.4f, -2.f, .4f, 2.f}}, 1, 35, 30, {-17, -15, 0});
+    const Pose start{{9.1f, -.2f, 0}, .22f};
+    const Vec3 goal{-9.2f, .3f, 0};
+    const FormationFootprint footprint{2.f, 2.f};
+    const auto route = navigation.FindPath({.start = start, .goal = goal, .footprint = footprint,
+        .arrival_yaw = .4f, .face_travel = true});
+    REQUIRE(route.status == Status::Ok);
+    REQUIRE_FALSE(route.waypoints.empty());
+    CHECK((route.waypoints.back() == Pose{goal, .4f}));
+    auto from = start;
+    bool turned = false;
+    for (const auto &pose : route.waypoints) {
+        REQUIRE(navigation.CanTraverse(from, pose, footprint));
+        const auto step = pose.position - from.position;
+        if (Length(step) > .0001f)
+            CHECK(Dot(step, Forward(pose.yaw)) == doctest::Approx(Length(step)).epsilon(.001));
+        else if (pose.yaw != from.yaw)
+            turned = true;
+        from = pose;
+    }
+    CHECK(turned);
+}
+TEST_CASE("navigation.infantry_column_can_slide_past_a_tight_endpoint_with_its_ordered_front") {
+    auto scenario = test::Duel(2);
+    scenario.rules.regiment_tactics = true;
+    scenario.regiments[0].pose = {{0.f, 0.f, 0.f}, 0.f};
+    scenario.regiments[0].formation = {1, 2.f, .3f};
+    scenario.units[0].pose = scenario.units[1].pose = scenario.regiments[0].pose;
+    scenario.obstacles = {{5.8f, -11.4f, 6.2f, -10.8f, true}};
+    auto created = CreateWorld(scenario, 42);
+    REQUIRE(created);
+    const auto &world = created.value;
+    const auto &column = world.regiments[0];
+    const FlatNavigationService navigation;
+    const Pose goal{{6.f, -10.f, 0.f}, 0.f};
+    const auto route = FindFormationRoute(navigation, world, column, goal);
+    REQUIRE(route.status == Status::Ok);
+    REQUIRE_FALSE(route.waypoints.empty());
+    CHECK(route.waypoints.back() == goal);
+    auto widened = column;
+    widened.pose = goal;
+    widened.formation.columns = 2;
+    CHECK(FindFormationRoute(navigation, world, widened, goal).status == Status::NoPath);
 }
 TEST_CASE("navigation.bottleneck_complete_motion") {
     Scenario s;

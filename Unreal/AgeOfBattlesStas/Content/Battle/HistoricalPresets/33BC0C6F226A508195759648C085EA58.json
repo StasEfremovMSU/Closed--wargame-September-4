@@ -1,0 +1,184 @@
+{
+  "schema_version": 5,
+  "name": "Йена и Ауэрштедт, 1806 · Гребень под Йеной",
+  "terrain": "Austerlitz",
+  "era": {
+    "id": "napoleonic",
+    "version": 1,
+    "blue_faction": "france",
+    "orange_faction": "prussia"
+  },
+  "regiment_tactics": true,
+  "risky_volley": false,
+  "direct_deployment": true,
+  "adaptive_battle": true,
+  "objective": {
+    "goal": "HillHold",
+    "time_limit_seconds": 260,
+    "crossing": 1,
+    "required_regiments": 1,
+    "crossing_team": 0
+  },
+  "briefing": "14 октября 1806 года одновременно шли два боя. Под Йеной Наполеон разбил прусско-саксонские войска, а под Ауэрштедтом корпус маршала Даву победил главную прусскую армию.\n\nВы командуете французами под Йеной. Займите и удержите гребень. Колонны подходят к высоте через центр, стрелки и батарея поддерживают их с флангов.\n\nПоказан только условный сектор под Йеной, бой Даву проходит за пределами карты. Прусская фракция представляет и саксонских союзников, а войска и расстояния сжаты. Игровой участок 560 × 380 м, 5 000 фигур.",
+  "sources": [
+    "https://geschichte.jena.de/en/19th-century",
+    "https://www.napoleon.org/en/history-of-the-two-empires/timelines/the-twin-battles-of-jena-and-auerstedt-14-october-1806/"
+  ],
+  "regiments": [
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -55,
+      "start_y": -8,
+      "formation_files": 17,
+      "swords": 17,
+      "archers": 20,
+      "spearmen": 4,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -107,
+      "start_y": -9,
+      "formation_files": 18,
+      "swords": 16,
+      "archers": 20,
+      "spearmen": 4,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -59,
+      "start_y": 62,
+      "formation_files": 29,
+      "swords": 13,
+      "archers": 20,
+      "spearmen": 5,
+      "mounted": 0,
+      "infantry_profile": "fusiliers"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -79,
+      "start_y": -66,
+      "formation_files": 29,
+      "swords": 13,
+      "archers": 20,
+      "spearmen": 5,
+      "mounted": 0,
+      "infantry_profile": "grenadiers"
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -113,
+      "start_y": 104,
+      "formation_files": 17,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 35,
+      "mounted_class": "light"
+    },
+    {
+      "type": "Platform",
+      "enabled": true,
+      "group": 1,
+      "start_x": -31,
+      "start_y": -96,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 0,
+      "platform": "field_gun",
+      "platform_count": 4
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 69,
+      "start_y": 0,
+      "formation_files": 34,
+      "swords": 16,
+      "archers": 20,
+      "spearmen": 6,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 79,
+      "start_y": -65,
+      "formation_files": 32,
+      "swords": 15,
+      "archers": 20,
+      "spearmen": 6,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 76,
+      "start_y": 63,
+      "formation_files": 31,
+      "swords": 15,
+      "archers": 20,
+      "spearmen": 6,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 129,
+      "start_y": 0,
+      "formation_files": 30,
+      "swords": 16,
+      "archers": 20,
+      "spearmen": 5,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 129,
+      "start_y": 94,
+      "formation_files": 16,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 35,
+      "mounted_class": "heavy"
+    },
+    {
+      "type": "Platform",
+      "enabled": true,
+      "group": 1,
+      "start_x": 61,
+      "start_y": -104,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 0,
+      "platform": "field_gun",
+      "platform_count": 4
+    }
+  ],
+  "field": {
+    "width_m": 560,
+    "height_m": 380
+  },
+  "figure_target": 5000
+}

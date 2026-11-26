@@ -1,0 +1,178 @@
+{
+  "schema_version": 4,
+  "name": "Лютцен, 1632 · Дорога и мельничная высота",
+  "terrain": "Lutzen",
+  "era": {
+    "id": "renaissance",
+    "version": 1,
+    "blue_faction": "sweden",
+    "orange_faction": "austria"
+  },
+  "regiment_tactics": true,
+  "risky_volley": false,
+  "direct_deployment": true,
+  "adaptive_battle": true,
+  "objective": {
+    "goal": "HillHold",
+    "time_limit_seconds": 230,
+    "crossing": 1,
+    "required_regiments": 1,
+    "crossing_team": 0
+  },
+  "briefing": "16 ноября 1632 года Густав II Адольф атаковал армию Альбрехта фон Валленштейна у Лютцена. Имперские части опирались на дорогу Виа Региа с придорожными канавами. Мельницы служили ориентиром рядом с имперской артиллерийской позицией. В этом бою погиб шведский король.\n\nСиним нужно занять центральную высоту и удерживать её 20 секунд подряд. Хотя бы половина исходного состава одного синего полка должна оставаться на вершине в строю. Оранжевый отряд на высоте сбрасывает отсчёт. Высота отмечает район мельниц, а Габсбурги представляют имперскую армию. Состав эпизода — пехота и конница. Источник замысла — «Сто великих битв».\n\nИгровой участок 560 × 360 м вмещает 5 000 фигур. Численность и расстояния сжаты под масштаб поля.",
+  "sources": [
+    "https://www.landesmuseum-vorgeschichte.de/en/conservation-at-the-museum/the-projects/the-luetzen-mass-grave",
+    "https://theses.gla.ac.uk/6508/"
+  ],
+  "regiments": [
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -79,
+      "start_y": 0,
+      "formation_files": 23,
+      "swords": 6,
+      "archers": 17,
+      "spearmen": 17,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -86,
+      "start_y": -68,
+      "formation_files": 23,
+      "swords": 5,
+      "archers": 16,
+      "spearmen": 12,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -91,
+      "start_y": 72,
+      "formation_files": 21,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 26
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -127,
+      "start_y": 4,
+      "formation_files": 24,
+      "swords": 9,
+      "archers": 15,
+      "spearmen": 16,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -124,
+      "start_y": -111,
+      "formation_files": 18,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 25
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -131,
+      "start_y": 117,
+      "formation_files": 22,
+      "swords": 6,
+      "archers": 16,
+      "spearmen": 14,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 60,
+      "start_y": 0,
+      "formation_files": 22,
+      "swords": 6,
+      "archers": 17,
+      "spearmen": 19,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 81,
+      "start_y": -73,
+      "formation_files": 22,
+      "swords": 6,
+      "archers": 20,
+      "spearmen": 12,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 86,
+      "start_y": 64,
+      "formation_files": 22,
+      "swords": 6,
+      "archers": 18,
+      "spearmen": 15,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 106,
+      "start_y": 2,
+      "formation_files": 26,
+      "swords": 9,
+      "archers": 13,
+      "spearmen": 19,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 121,
+      "start_y": -112,
+      "formation_files": 17,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 27
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 125,
+      "start_y": 108,
+      "formation_files": 18,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 29
+    }
+  ],
+  "field": {
+    "width_m": 560,
+    "height_m": 360
+  },
+  "figure_target": 5000
+}

@@ -1,5 +1,6 @@
 #pragma once
 #include "Types.h"
+#include "Terrain.h"
 #include "battle/command/Setup.h"
 namespace battle {
 struct FormationSpec {
@@ -8,12 +9,32 @@ struct FormationSpec {
     float spacing_m{2};
     float body_radius_m{0.3f};
 };
+FormationSpec TravelColumnFormation(FormationSpec);
 struct WeaponSpec {
     bool operator==(const WeaponSpec &) const = default;
     float damage{1}, range{1.5f};
     Tick cooldown_ticks{20}, windup_ticks{2};
     float projectile_speed_mps{20}, base_accuracy{0.8f};
 };
+enum class UnitTroop : uint8_t { Infantry, Spearman, Mounted };
+enum class CavalryClass : uint8_t { None, Light, Heavy };
+enum class RangedWeapon : uint8_t { None, Bow, Crossbow, Sling, Javelin, Gunpowder, Musket, Arcane };
+constexpr bool UsesGunpowder(RangedWeapon weapon) {
+    return weapon == RangedWeapon::Gunpowder || weapon == RangedWeapon::Musket;
+}
+enum class BattlePlatform : uint8_t { None, IndianElephant, AfricanElephant, ScythedChariot, Catapult, Ballista, FieldGun };
+constexpr bool IsSiegeEngine(BattlePlatform platform) {
+    return platform == BattlePlatform::Catapult || platform == BattlePlatform::Ballista ||
+           platform == BattlePlatform::FieldGun;
+}
+constexpr float SiegeTravelLimit(BattlePlatform platform) {
+    if (platform == BattlePlatform::Ballista)
+        return 0.f;
+    return platform == BattlePlatform::Catapult ? 1.f : 1.1f;
+}
+constexpr bool IsElephant(BattlePlatform platform) {
+    return platform == BattlePlatform::IndianElephant || platform == BattlePlatform::AfricanElephant;
+}
 struct UnitSpec {
     bool operator==(const UnitSpec &) const = default;
     UnitId id{};
@@ -25,6 +46,13 @@ struct UnitSpec {
     std::vector<uint32_t> equipment;
     WeaponSpec weapon{};
     int32_t legacy_id{-1};
+    int32_t independent_team{}; // Faction of a command figure without a regiment.
+    UnitTroop troop{UnitTroop::Infantry};
+    CavalryClass cavalry{};
+    RangedWeapon ranged_weapon{};
+    uint32_t ammunition{}; // A zero starting stock preserves unlimited fire in legacy scenarios.
+    BattlePlatform platform{};
+    std::optional<WeaponSpec> ranged_attack{}; // A finite javelin stock carried alongside a melee weapon.
 };
 struct RegimentSpec {
     bool operator==(const RegimentSpec &) const = default;
@@ -35,6 +63,10 @@ struct RegimentSpec {
     float speed{2}, turn_rate{Pi / 2};
     Vec3 rally_point{};
     std::string name;
+    uint32_t skirmisher_count{};
+    Tick deployment_ticks{}; // Hold in a travel column through the opening tactical ticks.
+    float initial_fatigue{};
+    bool loose_skirmish{};
 };
 struct OfficerSpec {
     bool operator==(const OfficerSpec &) const = default;
@@ -46,12 +78,25 @@ struct OfficerSpec {
 };
 struct Obstacle {
     float min_x{}, min_y{}, max_x{}, max_y{};
+    bool blocks_projectiles{};
+    TerrainFeature feature{TerrainFeature::Barrier};
 };
 struct Rules {
     float panic_fraction{0.5f};
     Tick calm_ticks{100};
     float rally_tolerance_m{2}, rally_safe_radius_m{20};
     uint32_t ranged_cohorts{4};
+    bool local_melee{};
+    bool regiment_tactics{};
+    bool risky_volley{};
+    bool adaptive_battle{};
+    bool linear_infantry{};
+};
+struct ScenarioObjective {
+    bool operator==(const ScenarioObjective &) const = default;
+    Vec3 center{};
+    float radius_m{5.f};
+    int32_t defending_team{-1}; // -1 for a neutral objective, otherwise a regiment team ID.
 };
 struct Scenario {
     uint32_t schema_version{1};
@@ -61,6 +106,9 @@ struct Scenario {
     std::vector<Obstacle> obstacles;
     Rules rules{};
     std::optional<command::CommandSetup> command_setup;
+    std::optional<TerrainHill> hill;
+    std::optional<ScenarioObjective> objective;
+    std::optional<TerrainFieldBounds> field_bounds;
 };
 Result<Scenario> ValidateScenario(Scenario input);
 } // namespace battle

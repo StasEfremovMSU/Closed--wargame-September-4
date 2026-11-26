@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Эпоха битв — три прототипа интерфейса</title>
+<!--STYLES-->
+</head>
+<body data-style="field">
+<header>
+<div class="brand">
+<svg viewBox="0 0 32 36" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M6 31V4m0 2c7-5 13 5 21 0v15c-8 5-14-5-21 0M2 32h9m1-21v7m6-6v7m6-8v7"/></svg>
+<h1>Эпоха битв</h1>
+</div>
+<nav id="style-tabs" class="switches" aria-label="Прототип">
+<button type="button" data-style-choice="field" aria-pressed="true">Полевой стол</button>
+<button type="button" data-style-choice="line" aria-pressed="false">В строю</button>
+<button type="button" data-style-choice="atlas" aria-pressed="false">Атлас кампаний</button>
+</nav>
+<nav id="view-tabs" class="switches" aria-label="Экран">
+<button type="button" data-view-choice="catalogue" aria-pressed="false">Выбор битвы</button>
+<button type="button" data-view-choice="overview" aria-pressed="true">Обзор поля</button>
+<button type="button" data-view-choice="officer" aria-pressed="false">Офицер</button>
+</nav>
+</header>
+<main>
+<div class="intro"><div><h2 id="view-title">Обзор поля</h2><p id="concept-line"></p></div></div>
+<section id="catalogue" aria-label="Каталог битв" hidden>
+<div class="catalogue-layout">
+<div class="filters">
+<input type="search" id="battle-search" aria-label="Поиск битвы" placeholder="Найти битву">
+<div id="status-tabs" class="switches" aria-label="Доступность битвы">
+<button type="button" data-status="all" aria-pressed="true">Все</button>
+<button type="button" data-status="available" aria-pressed="false">В игре</button>
+<button type="button" data-status="candidate" aria-pressed="false">К добавлению</button>
+</div>
+<div id="era-tabs" aria-label="Эпохи" role="group"></div>
+</div>
+<div class="battle-results">
+<p id="result-count" role="status"></p>
+<div id="battle-list"></div>
+</div>
+<article id="mission-preview">
+<div class="art preview-art"><img id="preview-image" src="assets/field-thumb.webp" alt=""><p class="art-caption">Эскиз Ватерлоо</p></div>
+<div class="preview-content">
+<h3 id="preview-name"></h3>
+<div class="meta" id="preview-meta"></div>
+<p id="preview-brief"></p>
+<button class="primary" id="demo" type="button">Открыть демо Ватерлоо</button>
+</div>
+</article>
+</div>
+</section>
+<section id="scene" data-view="overview" aria-label="Игровая сцена Ватерлоо">
+<div class="art"><img id="scene-image" src="assets/field-thumb.webp" alt=""></div>
+<div class="hud">
+<div class="score overlay" aria-label="Демонстрационный счёт">
+<div class="total blue">Синие<strong>2 318</strong></div>
+<div class="clock">12:38<span class="small">Бой идёт</span></div>
+<div class="total red">Оранжевые<strong>2 407</strong></div>
+</div>
+<div class="mission overlay">
+<h3>Мон-Сен-Жан</h3>
+<p>Удержать гребень до 15:00</p>
+<div class="progress">Резерв у фермы · готов к вводу</div>
+</div>
+<div class="controls">
+<button type="button" id="possess">Вселиться в офицера</button>
+<button type="button" id="camera" aria-pressed="false" hidden>Камера ближе</button>
+<button type="button" id="commands" aria-controls="command-sheet" aria-expanded="false"><kbd>Tab</kbd>Приказы</button>
+</div>
+<div id="focus-regiment" class="overlay"><h3 id="focus-name"></h3><p class="small" id="focus-summary"></p></div>
+<div class="regiments" aria-label="Выбрать полк" role="group"></div>
+<div id="audit" class="overlay"><h3>Связь с полком</h3><p id="audit-text">Связной готов. Приказов в пути нет.</p></div>
+<div id="officer-status" class="overlay" hidden>
+<h3 id="officer-name">Офицер · 3-й линейный</h3>
+<div class="vital"><span>Здоровье</span><span>87 / 100</span></div>
+<meter min="0" max="100" value="87" aria-label="Здоровье">87%</meter>
+<div class="vital"><span>Выносливость</span><span id="stamina-value">76 / 100</span></div>
+<meter id="stamina" min="0" max="100" value="76" aria-label="Выносливость">76%</meter>
+</div>
+<div class="crosshair" id="crosshair" aria-hidden="true" hidden></div>
+<div id="action-feedback" class="overlay" role="status"></div>
+<div class="actions" id="actions" aria-label="Действия офицера" hidden>
+<button type="button" data-action="attack">Атака</button><button type="button" data-action="parry">Парирование</button>
+</div>
+<aside class="command-sheet" id="command-sheet" aria-label="Приказы полку" hidden>
+<div class="command-head"><h3 id="command-title">Приказы полку</h3><button type="button" id="close-commands">Закрыть</button></div>
+<p id="command-target"></p>
+<div class="command-list" id="command-list">
+<button type="button" data-order="Держать строй">Держать строй</button>
+<button type="button" data-order="Следовать за офицером">Следовать за офицером</button>
+<button type="button" data-order="Перестроиться в линию">Перестроиться в линию</button>
+<button type="button" data-order="Отойти к резерву">Отойти к резерву</button>
+</div>
+<p id="order-stamp" role="status"></p>
+</aside>
+</div>
+</section>
+</main>
+<footer>Прототип интерфейса. Освещение и дальний план — иллюстрации Ватерлоо. Приказы и действия показаны в деморежиме.</footer>
+<!--SCRIPT-->
+</body>
+</html>

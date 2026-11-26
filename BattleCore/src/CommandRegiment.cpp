@@ -79,7 +79,8 @@ StubResult<DecisionProposal> RegimentBrain::Think(const BrainContext &c) const {
     case TaskKind::MoveToArea:
     case TaskKind::Screen:
     case TaskKind::Support: {
-        if (task.action == TaskKind::Support && task.intent.target_regiment) {
+        const bool positional_support = task.action == TaskKind::Support && task.intent.target_command;
+        if (task.action == TaskKind::Support && task.intent.target_regiment && !positional_support) {
             auto *friend_contact = Contact(c, task.intent.target_regiment, false);
             if (!friend_contact) {
                 fail("Support recipient unavailable.");
@@ -89,9 +90,14 @@ StubResult<DecisionProposal> RegimentBrain::Think(const BrainContext &c) const {
                                  Forward(friend_contact->estimated_pose.yaw) * 6;
         }
         if (Distance(c.situation->own.pose.position, option.destination) <= tolerance) {
-            state = FsmState::Complete;
-            status = TaskStatus::Completed;
-            reason = "Destination reached.";
+            if (positional_support) {
+                state = FsmState::Supporting;
+                reason = "Hold the assigned supporting position.";
+            } else {
+                state = FsmState::Complete;
+                status = TaskStatus::Completed;
+                reason = "Destination reached.";
+            }
         } else {
             option.action = TaskKind::MoveToArea;
             state = task.action == TaskKind::Support ? FsmState::Supporting : FsmState::Advancing;
@@ -102,12 +108,49 @@ StubResult<DecisionProposal> RegimentBrain::Think(const BrainContext &c) const {
     case TaskKind::Attack:
     case TaskKind::Exploit:
     case TaskKind::Flank: {
-        auto *target = Contact(c, task.intent.target_regiment);
-        if (!target) {
-            fail("Target unavailable in known contacts.");
-            break;
+        auto *target = AttackContact(c, p);
+        const auto planned_flank = task.action == TaskKind::Flank ? task.intent.flank_waypoint
+                                                                  : std::nullopt;
+        if (planned_flank && (target || task.authority.may_pursue)) {
+            const auto own = c.situation->own.pose;
+            const auto enemy = target ? target->regiment : task.intent.target_regiment;
+            const bool ready = Distance(own.position, planned_flank->position) <= .35f &&
+                std::abs(std::remainder(own.yaw - planned_flank->yaw, 2 * Pi)) < .2f;
+            const bool contact = c.in_melee_with && c.in_melee_with(enemy);
+            const bool committed = !p.new_task && (p.memory.state == FsmState::Attacking ||
+                std::any_of(p.memory.recent_decisions.begin(), p.memory.recent_decisions.end(),
+                            [&](const auto &decision) {
+                    return decision.cause == task.id && decision.selected.action == TaskKind::Attack &&
+                           decision.selected.target_regiment == enemy;
+                }));
+            if (!committed && !ready && !contact) {
+                state = FsmState::Advancing;
+                option.action = TaskKind::MoveToArea;
+                option.destination = planned_flank->position;
+                option.target_regiment = enemy;
+                reason = "Advance to the assigned flank.";
+                break;
+            }
+            if (!target || target->source == ObservationSource::Memory) {
+                state = FsmState::Regrouping;
+                option.action = TaskKind::HoldArea;
+                option.destination = own.position;
+                option.target_regiment = enemy;
+                reason = "Watch for the assigned enemy from the flank.";
+                break;
+            }
         }
-        if (task.action == TaskKind::Flank) {
+        if (!target) {
+            if (!task.authority.may_pursue)
+                fail("Target unavailable in known contacts.");
+            else {
+                state = FsmState::Regrouping;
+                option.action = TaskKind::HoldArea;
+                option.destination = c.situation->own.pose.position;
+                reason = "Regroup and watch for the assigned enemy.";
+            }
+            break;
+        } else if (!planned_flank && task.action == TaskKind::Flank) {
             Vec3 flank = target->estimated_pose.position +
                          Right(target->estimated_pose.yaw) * ((c.node->id.value % 2) ? 8.f : -8.f) -
                          Forward(target->estimated_pose.yaw) * 3;
@@ -121,22 +164,32 @@ StubResult<DecisionProposal> RegimentBrain::Think(const BrainContext &c) const {
             }
         }
         if (target->source == ObservationSource::Memory) {
-            if (Distance(c.situation->own.pose.position, target->estimated_pose.position) <=
-                tolerance) {
-                fail("No target at last known position.");
-                break;
+            option.target_regiment = target->regiment;
+            if (Distance(c.situation->own.pose.position, target->estimated_pose.position) <= tolerance) {
+                state = FsmState::Regrouping;
+                option.action = TaskKind::HoldArea;
+                option.destination = c.situation->own.pose.position;
+                reason = "Regroup and watch for the assigned enemy.";
+            } else {
+                option.action = TaskKind::MoveToArea;
+                option.destination = target->estimated_pose.position;
+                state = FsmState::Advancing;
+                reason = "Advance toward the last known enemy position.";
             }
-            option.action = TaskKind::MoveToArea;
-            option.destination = target->estimated_pose.position;
-            state = FsmState::Advancing;
-            reason = "Investigate last known contact.";
             break;
         }
         state = FsmState::Attacking;
         option.action = TaskKind::Attack;
         option.target_regiment = target->regiment;
-        option.destination = target->estimated_pose.position;
-        reason = "Attack observed assigned enemy.";
+        option.destination = !p.new_task && p.memory.state == FsmState::Attacking &&
+                             p.memory.target == target->regiment
+                                 ? p.memory.goal : target->estimated_pose.position;
+        reason = planned_flank ? "Strike the enemy from the assigned flank."
+                 : task.intent.target_regiment && target->regiment != task.intent.target_regiment
+                     ? "Assigned enemy is gone. Attack a nearby observed enemy."
+                 : p.memory.state == FsmState::Regrouping
+                     ? "Contact restored. Resume the attack."
+                     : "Attack observed assigned enemy.";
         break;
     }
     case TaskKind::Withdraw:

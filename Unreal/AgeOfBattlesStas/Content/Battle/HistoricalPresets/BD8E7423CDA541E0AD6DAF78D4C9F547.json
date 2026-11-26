@@ -1,0 +1,179 @@
+{
+  "schema_version": 4,
+  "name": "Канны, 216 до н. э.",
+  "terrain": "Cannae",
+  "era": {
+    "id": "ancient",
+    "version": 1,
+    "blue_faction": "rome",
+    "orange_faction": "carthage"
+  },
+  "regiment_tactics": true,
+  "risky_volley": false,
+  "direct_deployment": true,
+  "objective": {
+    "goal": "Breakthrough",
+    "time_limit_seconds": 150,
+    "crossing": 1,
+    "required_regiments": 2,
+    "crossing_team": 0,
+    "breakthrough": {
+      "x_m": 94,
+      "y_m": 0,
+      "radius_m": 42,
+      "group": 2
+    }
+  },
+  "briefing": "Полибий описывает глубокий римский строй и выдвинутый центр армии Ганнибала. В этом игровом эпизоде римская пехота идёт тремя эшелонами. Карфаген прикрывает центр пехотой, а на обоих крыльях держит копейщиков и более многочисленную конницу. Вдоль одного крыла показано русло Ауфида. Риму нужно вывести два пехотных полка 2-й группы на рубеж за карфагенским центром (94 м к оранжевым от середины поля) за 150 секунд. Каждый полк должен сохранить в зоне хотя бы половину исходного состава в строю. Конница прикрывает крылья, пока пехота идёт к цели. Карфаген выигрывает, если остановит прорыв. Участок 520 × 340 м, расстановка и состав 5 000 игровых фигур условны.",
+  "sources": [
+    "https://penelope.uchicago.edu/Thayer/E/Roman/Texts/Polybius/3%2A.html#113"
+  ],
+  "regiments": [
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -45,
+      "start_y": 0,
+      "swords": 41,
+      "archers": 4,
+      "spearmen": 9,
+      "mounted": 0,
+      "formation_files": 17,
+      "infantry_profile": "legionaries"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -100,
+      "start_y": -5,
+      "swords": 37,
+      "archers": 3,
+      "spearmen": 13,
+      "mounted": 0,
+      "formation_files": 18,
+      "infantry_profile": "legionaries"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -155,
+      "start_y": 7,
+      "swords": 35,
+      "archers": 2,
+      "spearmen": 14,
+      "mounted": 0,
+      "formation_files": 19,
+      "infantry_profile": "legionaries"
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -57,
+      "start_y": -84,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 15
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -62,
+      "start_y": 84,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 16
+    },
+    {
+      "type": "Infantry",
+      "enabled": false,
+      "group": 2,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 6,
+      "start_y": 0,
+      "swords": 27,
+      "archers": 6,
+      "spearmen": 4,
+      "mounted": 0,
+      "formation_files": 27
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 38,
+      "start_y": 3,
+      "swords": 17,
+      "archers": 8,
+      "spearmen": 5,
+      "mounted": 0,
+      "formation_files": 24
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 61,
+      "start_y": -43,
+      "swords": 12,
+      "archers": 2,
+      "spearmen": 25,
+      "mounted": 0,
+      "formation_files": 22
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 61,
+      "start_y": 43,
+      "swords": 12,
+      "archers": 2,
+      "spearmen": 25,
+      "mounted": 0,
+      "formation_files": 22
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 42,
+      "start_y": -93,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 26
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 41,
+      "start_y": 93,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 22
+    }
+  ],
+  "field": {
+    "width_m": 520,
+    "height_m": 340
+  },
+  "figure_target": 5000,
+  "adaptive_battle": true
+}

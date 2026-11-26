@@ -1,0 +1,885 @@
+{
+  "schema_version": 1,
+  "id": "late_medieval",
+  "name": "Позднее Средневековье",
+  "version": 1,
+  "rules": {
+    "id": "late_medieval",
+    "local_melee": true,
+    "regiment_tactics": true,
+    "risky_volley": false,
+    "ranged_cohorts": 3,
+    "panic_fraction": 0.56
+  },
+  "archetypes": {
+    "english_men_at_arms": {
+      "name": "Английские спешенные латники",
+      "description": "Латники в пешем строю прикрывают лучников в ближнем бою.",
+      "health": 24,
+      "speed": 3.6,
+      "armour": 0.96,
+      "damage": 3.7,
+      "range": 1.7,
+      "cooldown_ticks": 23,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8
+    },
+    "english_longbow": {
+      "name": "Английские лучники с длинным луком",
+      "description": "Дальнобойный лук с большим запасом стрел. Лучникам требуется прикрытие в ближнем бою.",
+      "health": 15.5,
+      "speed": 4.15,
+      "armour": 0.18,
+      "damage": 2.53,
+      "range": 20.5,
+      "cooldown_ticks": 22,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 27,
+      "base_accuracy": 0.77,
+      "ranged_weapon": "bow",
+      "ammunition": 12
+    },
+    "english_billmen": {
+      "name": "Английские билльмены",
+      "description": "Пехота с биллями удерживает строй при сближении противника.",
+      "health": 21,
+      "speed": 3.87,
+      "armour": 0.47,
+      "damage": 3.28,
+      "range": 2.67,
+      "cooldown_ticks": 22,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8
+    },
+    "english_knights": {
+      "name": "Английские конные латники",
+      "description": "Латники на конях для удара по расстроенному строю.",
+      "health": 29,
+      "speed": 6.07,
+      "armour": 1.06,
+      "damage": 4.15,
+      "range": 2.58,
+      "cooldown_ticks": 23,
+      "windup_ticks": 5,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "cavalry_class": "heavy"
+    },
+    "english_border_horse": {
+      "name": "Пограничные хобелары",
+      "description": "Лёгкие всадники для разведки и преследования.",
+      "health": 21.5,
+      "speed": 7.02,
+      "armour": 0.3,
+      "damage": 3.4,
+      "range": 2.3,
+      "cooldown_ticks": 18,
+      "windup_ticks": 3,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "cavalry_class": "light"
+    },
+    "french_men_at_arms": {
+      "name": "Французские спешенные латники",
+      "description": "Тяжёлые латы помогают выдержать обстрел, но замедляют сближение.",
+      "health": 25,
+      "speed": 3.48,
+      "armour": 1.08,
+      "damage": 3.77,
+      "range": 1.74,
+      "cooldown_ticks": 24,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8
+    },
+    "french_crossbow": {
+      "name": "Французские арбалетчики",
+      "description": "Арбалет даёт сильный выстрел, после которого стрелкам нужно время на взведение.",
+      "health": 16.3,
+      "speed": 3.72,
+      "armour": 0.35,
+      "damage": 3.51,
+      "range": 20,
+      "cooldown_ticks": 37,
+      "windup_ticks": 6,
+      "projectile_speed_mps": 31,
+      "base_accuracy": 0.79,
+      "ranged_weapon": "crossbow",
+      "ammunition": 9
+    },
+    "french_foot_lances": {
+      "name": "Французские пешие копейщики",
+      "description": "Копейщики поддерживают пеших латников и прикрывают края строя.",
+      "health": 22,
+      "speed": 3.74,
+      "armour": 0.68,
+      "damage": 3.25,
+      "range": 2.81,
+      "cooldown_ticks": 24,
+      "windup_ticks": 5,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8
+    },
+    "french_knights": {
+      "name": "Французские рыцари",
+      "description": "Доспешные всадники с копьями. Рассчитаны на удар сомкнутым строем.",
+      "health": 30.5,
+      "speed": 5.98,
+      "armour": 1.18,
+      "damage": 4.34,
+      "range": 2.66,
+      "cooldown_ticks": 24,
+      "windup_ticks": 5,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "cavalry_class": "heavy"
+    },
+    "french_mounted_sergeants": {
+      "name": "Французские конные сержанты",
+      "description": "Менее защищённые всадники для прикрытия фланга.",
+      "health": 23.5,
+      "speed": 6.72,
+      "armour": 0.44,
+      "damage": 3.57,
+      "range": 2.38,
+      "cooldown_ticks": 20,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "cavalry_class": "light"
+    },
+    "burgundian_foot": {
+      "name": "Бургундские пешие латники",
+      "description": "Доспешная пехота поддерживает копейщиков и стрелков.",
+      "health": 23.5,
+      "speed": 3.65,
+      "armour": 0.86,
+      "damage": 3.58,
+      "range": 1.68,
+      "cooldown_ticks": 23,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8
+    },
+    "burgundian_crossbow": {
+      "name": "Бургундские арбалетчики",
+      "description": "Арбалетчики поддерживают пехоту, ведя огонь из-за её строя.",
+      "health": 16.4,
+      "speed": 3.68,
+      "armour": 0.4,
+      "damage": 3.52,
+      "range": 20.8,
+      "cooldown_ticks": 38,
+      "windup_ticks": 6,
+      "projectile_speed_mps": 31,
+      "base_accuracy": 0.81,
+      "ranged_weapon": "crossbow",
+      "ammunition": 9
+    },
+    "burgundian_handgunners": {
+      "name": "Бургундские стрелки с ручницами",
+      "description": "Раннее ручное огнестрельное оружие даёт сильный выстрел с короткой дистанции и долго перезаряжается.",
+      "health": 15.5,
+      "speed": 3.63,
+      "armour": 0.25,
+      "damage": 5.3,
+      "range": 17.5,
+      "cooldown_ticks": 58,
+      "windup_ticks": 9,
+      "projectile_speed_mps": 43,
+      "base_accuracy": 0.64,
+      "ranged_weapon": "gunpowder",
+      "ammunition": 6
+    },
+    "burgundian_pikes": {
+      "name": "Бургундские пикинёры",
+      "description": "Сомкнутая пехота с пиками сдерживает натиск на стрелков.",
+      "health": 22.5,
+      "speed": 3.76,
+      "armour": 0.56,
+      "damage": 3.17,
+      "range": 3.07,
+      "cooldown_ticks": 24,
+      "windup_ticks": 5,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8
+    },
+    "burgundian_gendarmes": {
+      "name": "Бургундские жандармы",
+      "description": "Тяжёлые всадники ордонансовых рот. Хорошо защищены, на фланге уступают в скорости лёгким конникам.",
+      "health": 30,
+      "speed": 6.02,
+      "armour": 1.15,
+      "damage": 4.23,
+      "range": 2.68,
+      "cooldown_ticks": 24,
+      "windup_ticks": 5,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "cavalry_class": "heavy"
+    },
+    "swiss_halberds": {
+      "name": "Швейцарские алебардщики",
+      "description": "Алебардщики усиливают атаку пикинёров, когда дистанция сокращается.",
+      "health": 22,
+      "speed": 4.02,
+      "armour": 0.62,
+      "damage": 3.95,
+      "range": 2.15,
+      "cooldown_ticks": 23,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8
+    },
+    "swiss_crossbow": {
+      "name": "Швейцарские арбалетчики",
+      "description": "Лёгкие стрелки прикрывают подход швейцарской пехоты.",
+      "health": 15.4,
+      "speed": 4.03,
+      "armour": 0.22,
+      "damage": 3.4,
+      "range": 19.6,
+      "cooldown_ticks": 36,
+      "windup_ticks": 6,
+      "projectile_speed_mps": 30,
+      "base_accuracy": 0.8,
+      "ranged_weapon": "crossbow",
+      "ammunition": 8
+    },
+    "swiss_pikes": {
+      "name": "Пикинёры швейцарских кантонов",
+      "description": "Подвижная пехота с длинными пиками. Сильна в плотном строю.",
+      "health": 23,
+      "speed": 4.02,
+      "armour": 0.55,
+      "damage": 3.4,
+      "range": 3.38,
+      "cooldown_ticks": 23,
+      "windup_ticks": 5,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8
+    },
+    "swiss_scouts": {
+      "name": "Швейцарские конные дозорные",
+      "description": "Небольшой отряд лёгких всадников для разведки и связи.",
+      "health": 20.7,
+      "speed": 6.96,
+      "armour": 0.24,
+      "damage": 3.18,
+      "range": 2.2,
+      "cooldown_ticks": 18,
+      "windup_ticks": 3,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "cavalry_class": "light"
+    },
+    "hussite_flails": {
+      "name": "Гуситские цепники",
+      "description": "Пешие бойцы с боевыми цепами действуют в тесном ближнем бою.",
+      "health": 21.5,
+      "speed": 3.86,
+      "armour": 0.46,
+      "damage": 3.78,
+      "range": 1.86,
+      "cooldown_ticks": 24,
+      "windup_ticks": 5,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8
+    },
+    "hussite_crossbow": {
+      "name": "Гуситские арбалетчики",
+      "description": "Арбалетчики ведут огонь под прикрытием своей пехоты.",
+      "health": 15.8,
+      "speed": 3.78,
+      "armour": 0.24,
+      "damage": 3.48,
+      "range": 20.4,
+      "cooldown_ticks": 37,
+      "windup_ticks": 6,
+      "projectile_speed_mps": 30,
+      "base_accuracy": 0.77,
+      "ranged_weapon": "crossbow",
+      "ammunition": 9
+    },
+    "hussite_handgunners": {
+      "name": "Гуситские стрелки с ручницами",
+      "description": "Мощное оружие ближней стрельбы. Долгое заряжание оставляет стрелков уязвимыми.",
+      "health": 15.8,
+      "speed": 3.72,
+      "armour": 0.26,
+      "damage": 5.18,
+      "range": 17,
+      "cooldown_ticks": 57,
+      "windup_ticks": 9,
+      "projectile_speed_mps": 42,
+      "base_accuracy": 0.65,
+      "ranged_weapon": "gunpowder",
+      "ammunition": 6
+    },
+    "hussite_spears": {
+      "name": "Гуситские копейщики",
+      "description": "Копейная пехота удерживает подступы к позициям стрелков.",
+      "health": 22,
+      "speed": 3.79,
+      "armour": 0.53,
+      "damage": 3.23,
+      "range": 2.96,
+      "cooldown_ticks": 24,
+      "windup_ticks": 5,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8
+    },
+    "hussite_horse": {
+      "name": "Гуситские конные дозорные",
+      "description": "Лёгкие всадники для разведки и преследования.",
+      "health": 21,
+      "speed": 6.89,
+      "armour": 0.31,
+      "damage": 3.35,
+      "range": 2.22,
+      "cooldown_ticks": 19,
+      "windup_ticks": 3,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "cavalry_class": "light"
+    },
+    "italian_condotta_foot": {
+      "name": "Пешие латники кондотты",
+      "description": "Доспешная профессиональная пехота итальянских наёмных отрядов.",
+      "health": 23,
+      "speed": 3.69,
+      "armour": 0.89,
+      "damage": 3.63,
+      "range": 1.73,
+      "cooldown_ticks": 22,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8
+    },
+    "italian_pavise_crossbows": {
+      "name": "Итальянские арбалетчики",
+      "description": "Защищённые стрелки с мощными арбалетами. Перемещаются медленнее лёгких лучников.",
+      "health": 17,
+      "speed": 3.6,
+      "armour": 0.46,
+      "damage": 3.72,
+      "range": 21.4,
+      "cooldown_ticks": 40,
+      "windup_ticks": 7,
+      "projectile_speed_mps": 32,
+      "base_accuracy": 0.82,
+      "ranged_weapon": "crossbow",
+      "ammunition": 10
+    },
+    "italian_schioppettieri": {
+      "name": "Итальянские стрелки с ручницами",
+      "description": "Ручницы рассчитаны на сильный выстрел с небольшой дистанции.",
+      "health": 15.5,
+      "speed": 3.72,
+      "armour": 0.3,
+      "damage": 5.23,
+      "range": 18.5,
+      "cooldown_ticks": 55,
+      "windup_ticks": 8,
+      "projectile_speed_mps": 44,
+      "base_accuracy": 0.68,
+      "ranged_weapon": "gunpowder",
+      "ammunition": 7
+    },
+    "italian_communal_spears": {
+      "name": "Копейщики городских рот",
+      "description": "Городская пехота защищает стрелков и держит проходы.",
+      "health": 21.5,
+      "speed": 3.91,
+      "armour": 0.53,
+      "damage": 3.09,
+      "range": 2.92,
+      "cooldown_ticks": 23,
+      "windup_ticks": 5,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8
+    },
+    "italian_condotta_horse": {
+      "name": "Латная конница кондотты",
+      "description": "Тяжёлые всадники наёмных рот. Опираются на доспех и удар копья.",
+      "health": 29,
+      "speed": 6.17,
+      "armour": 1.04,
+      "damage": 4.18,
+      "range": 2.62,
+      "cooldown_ticks": 23,
+      "windup_ticks": 5,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "cavalry_class": "heavy"
+    },
+    "italian_light_horse": {
+      "name": "Итальянская лёгкая конница",
+      "description": "Подвижный отряд для разведки, обхода и преследования.",
+      "health": 22,
+      "speed": 7.05,
+      "armour": 0.36,
+      "damage": 3.46,
+      "range": 2.34,
+      "cooldown_ticks": 19,
+      "windup_ticks": 3,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "cavalry_class": "light"
+    },
+    "ottoman_azab_swords": {
+      "name": "Османские азабы с саблями",
+      "description": "Подвижная пехота с лёгкой защитой для боя на фланге.",
+      "health": 19.8,
+      "speed": 4.16,
+      "armour": 0.32,
+      "damage": 3.41,
+      "range": 1.68,
+      "cooldown_ticks": 19,
+      "windup_ticks": 3,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8
+    },
+    "ottoman_janissary_bow": {
+      "name": "Янычары с составными луками",
+      "description": "Пешие лучники султанского войска. Быстро выпускают стрелы по открытой цели.",
+      "health": 16.1,
+      "speed": 4.1,
+      "armour": 0.2,
+      "damage": 2.46,
+      "range": 19.7,
+      "cooldown_ticks": 23,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 27,
+      "base_accuracy": 0.78,
+      "ranged_weapon": "bow",
+      "ammunition": 11
+    },
+    "ottoman_janissary_handgun": {
+      "name": "Янычары с ручницами",
+      "description": "Пешие стрелки с ранним огнестрельным оружием. Между выстрелами нуждаются в прикрытии.",
+      "health": 16.4,
+      "speed": 3.83,
+      "armour": 0.31,
+      "damage": 5.37,
+      "range": 19,
+      "cooldown_ticks": 54,
+      "windup_ticks": 8,
+      "projectile_speed_mps": 44,
+      "base_accuracy": 0.69,
+      "ranged_weapon": "gunpowder",
+      "ammunition": 7
+    },
+    "ottoman_azab_spears": {
+      "name": "Османские азабы с копьями",
+      "description": "Лёгкая копейная пехота прикрывает стрелков от конницы.",
+      "health": 20.7,
+      "speed": 4.02,
+      "armour": 0.35,
+      "damage": 3.06,
+      "range": 2.78,
+      "cooldown_ticks": 22,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8
+    },
+    "ottoman_akinji": {
+      "name": "Османские акынджи",
+      "description": "Лёгкая конница для разведки и преследования.",
+      "health": 21.9,
+      "speed": 7.22,
+      "armour": 0.28,
+      "damage": 3.37,
+      "range": 2.26,
+      "cooldown_ticks": 18,
+      "windup_ticks": 3,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "cavalry_class": "light"
+    },
+    "ottoman_sipahi": {
+      "name": "Доспешные османские сипахи",
+      "description": "Защищённые всадники с копьями для удара по флангу.",
+      "health": 28.4,
+      "speed": 6.24,
+      "armour": 0.95,
+      "damage": 4.04,
+      "range": 2.58,
+      "cooldown_ticks": 23,
+      "windup_ticks": 5,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "cavalry_class": "heavy"
+    },
+    "polish_men_at_arms": {
+      "name": "Польские спешенные латники",
+      "description": "Тяжёлая пехота в латах с мечами и древковым оружием.",
+      "health": 25,
+      "speed": 3.48,
+      "armour": 1.08,
+      "damage": 3.77,
+      "range": 1.74,
+      "cooldown_ticks": 24,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8
+    },
+    "polish_crossbow": {
+      "name": "Арбалетчики Ягайло",
+      "description": "Пешие арбалетчики в войске польского короля.",
+      "health": 16.3,
+      "speed": 3.72,
+      "armour": 0.35,
+      "damage": 3.51,
+      "range": 20,
+      "cooldown_ticks": 37,
+      "windup_ticks": 6,
+      "projectile_speed_mps": 31,
+      "base_accuracy": 0.79,
+      "ranged_weapon": "crossbow",
+      "ammunition": 9
+    },
+    "polish_spearmen": {
+      "name": "Польские копейщики",
+      "description": "Пеший строй с длинными копьями для защиты стрелков.",
+      "health": 22,
+      "speed": 3.74,
+      "armour": 0.68,
+      "damage": 3.25,
+      "range": 2.81,
+      "cooldown_ticks": 24,
+      "windup_ticks": 5,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8
+    },
+    "polish_knights": {
+      "name": "Польские конные хоругви",
+      "description": "Тяжёлая конница с копьями и латной защитой.",
+      "health": 30.5,
+      "speed": 5.98,
+      "armour": 1.18,
+      "damage": 4.34,
+      "range": 2.66,
+      "cooldown_ticks": 24,
+      "windup_ticks": 5,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "cavalry_class": "heavy"
+    },
+    "lithuanian_light_horse": {
+      "name": "Литовская лёгкая конница",
+      "description": "Подвижные конные отряды литовского крыла.",
+      "health": 22,
+      "speed": 7.05,
+      "armour": 0.36,
+      "damage": 3.46,
+      "range": 2.34,
+      "cooldown_ticks": 19,
+      "windup_ticks": 3,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "cavalry_class": "light"
+    },
+    "teutonic_men_at_arms": {
+      "name": "Спешенные латники Ордена",
+      "description": "Доспешные бойцы из орденских отрядов и их союзников.",
+      "health": 25,
+      "speed": 3.48,
+      "armour": 1.08,
+      "damage": 3.77,
+      "range": 1.74,
+      "cooldown_ticks": 24,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8
+    },
+    "teutonic_crossbow": {
+      "name": "Арбалетчики Ордена",
+      "description": "Арбалетчики прикрывают пеший строй и конные хоругви.",
+      "health": 16.3,
+      "speed": 3.72,
+      "armour": 0.35,
+      "damage": 3.51,
+      "range": 20,
+      "cooldown_ticks": 37,
+      "windup_ticks": 6,
+      "projectile_speed_mps": 31,
+      "base_accuracy": 0.79,
+      "ranged_weapon": "crossbow",
+      "ammunition": 9
+    },
+    "teutonic_spearmen": {
+      "name": "Копейщики Ордена",
+      "description": "Пешие копейщики образуют рубеж перед стрелками.",
+      "health": 22,
+      "speed": 3.74,
+      "armour": 0.68,
+      "damage": 3.25,
+      "range": 2.81,
+      "cooldown_ticks": 24,
+      "windup_ticks": 5,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8
+    },
+    "teutonic_knights": {
+      "name": "Тевтонские конные хоругви",
+      "description": "Тяжёлая конница Ордена и рыцарей, выступавших на его стороне.",
+      "health": 30.5,
+      "speed": 5.98,
+      "armour": 1.18,
+      "damage": 4.34,
+      "range": 2.66,
+      "cooldown_ticks": 24,
+      "windup_ticks": 5,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "cavalry_class": "heavy"
+    }
+  },
+  "factions": [
+    {
+      "id": "england",
+      "name": "Англия",
+      "shield": "kite",
+      "heraldry": "B34442",
+      "visual": "plate",
+      "troops": {
+        "swords": "english_men_at_arms",
+        "archers": "english_longbow",
+        "spearmen": "english_billmen",
+        "mounted": "english_knights"
+      },
+      "mounted_variants": {
+        "light": "english_border_horse"
+      }
+    },
+    {
+      "id": "france",
+      "name": "Франция",
+      "shield": "kite",
+      "heraldry": "456CAF",
+      "visual": "plate",
+      "troops": {
+        "swords": "french_men_at_arms",
+        "archers": "french_crossbow",
+        "spearmen": "french_foot_lances",
+        "mounted": "french_knights"
+      },
+      "mounted_variants": {
+        "light": "french_mounted_sergeants"
+      }
+    },
+    {
+      "id": "burgundy",
+      "name": "Бургундия",
+      "shield": "kite",
+      "heraldry": "7E3B6B",
+      "visual": "plate",
+      "troops": {
+        "swords": "burgundian_foot",
+        "archers": "burgundian_crossbow",
+        "spearmen": "burgundian_pikes",
+        "mounted": "burgundian_gendarmes"
+      },
+      "ranged_variants": {
+        "gunpowder": "burgundian_handgunners"
+      }
+    },
+    {
+      "id": "swiss",
+      "name": "Швейцарские кантоны",
+      "shield": "round",
+      "heraldry": "C25C46",
+      "visual": "plate",
+      "troops": {
+        "swords": "swiss_halberds",
+        "archers": "swiss_crossbow",
+        "spearmen": "swiss_pikes",
+        "mounted": "swiss_scouts"
+      }
+    },
+    {
+      "id": "hussites",
+      "name": "Гуситы",
+      "shield": "rectangular",
+      "heraldry": "89704A",
+      "visual": "plate",
+      "troops": {
+        "swords": "hussite_flails",
+        "archers": "hussite_crossbow",
+        "spearmen": "hussite_spears",
+        "mounted": "hussite_horse"
+      },
+      "ranged_variants": {
+        "gunpowder": "hussite_handgunners"
+      }
+    },
+    {
+      "id": "italian_states",
+      "name": "Итальянские государства",
+      "shield": "round",
+      "heraldry": "49806D",
+      "visual": "plate",
+      "troops": {
+        "swords": "italian_condotta_foot",
+        "archers": "italian_pavise_crossbows",
+        "spearmen": "italian_communal_spears",
+        "mounted": "italian_condotta_horse"
+      },
+      "mounted_variants": {
+        "light": "italian_light_horse"
+      },
+      "ranged_variants": {
+        "gunpowder": "italian_schioppettieri"
+      }
+    },
+    {
+      "id": "ottomans",
+      "name": "Османская держава",
+      "shield": "round",
+      "heraldry": "3C8058",
+      "visual": "eastern",
+      "troops": {
+        "swords": "ottoman_azab_swords",
+        "archers": "ottoman_janissary_bow",
+        "spearmen": "ottoman_azab_spears",
+        "mounted": "ottoman_akinji"
+      },
+      "mounted_variants": {
+        "heavy": "ottoman_sipahi"
+      },
+      "ranged_variants": {
+        "gunpowder": "ottoman_janissary_handgun"
+      }
+    },
+    {
+      "id": "poland_lithuania",
+      "name": "Польша и Литва",
+      "shield": "kite",
+      "heraldry": "AD4948",
+      "visual": "plate",
+      "troops": {
+        "swords": "polish_men_at_arms",
+        "archers": "polish_crossbow",
+        "spearmen": "polish_spearmen",
+        "mounted": "polish_knights"
+      },
+      "mounted_variants": {
+        "light": "lithuanian_light_horse"
+      }
+    },
+    {
+      "id": "teutonic_order",
+      "name": "Тевтонский орден",
+      "shield": "kite",
+      "heraldry": "C5B892",
+      "visual": "plate",
+      "troops": {
+        "swords": "teutonic_men_at_arms",
+        "archers": "teutonic_crossbow",
+        "spearmen": "teutonic_spearmen",
+        "mounted": "teutonic_knights"
+      }
+    },
+    {
+      "id": "lancaster",
+      "name": "Ланкастеры и союзники Тюдора",
+      "shield": "kite",
+      "heraldry": "AD4546",
+      "visual": "plate",
+      "troops": {
+        "swords": "english_men_at_arms",
+        "archers": "english_longbow",
+        "spearmen": "english_billmen",
+        "mounted": "english_knights"
+      },
+      "mounted_variants": {
+        "light": "english_border_horse"
+      }
+    },
+    {
+      "id": "york",
+      "name": "Йорки",
+      "shield": "kite",
+      "heraldry": "B0AA94",
+      "visual": "plate",
+      "troops": {
+        "swords": "english_men_at_arms",
+        "archers": "english_longbow",
+        "spearmen": "english_billmen",
+        "mounted": "english_knights"
+      },
+      "mounted_variants": {
+        "light": "english_border_horse"
+      }
+    }
+  ],
+  "mission": {
+    "id": "e3eba185-18fb-4006-8356-a85b0ca6a45d",
+    "name": "Позднее Средневековье · Борьба за гребень",
+    "briefing": "Учебное сражение швейцарских кантонов и Бургундии. У швейцарцев два крупных отряда пикинёров и лёгкая конница. Бургундские арбалетчики прикрывают тяжёлых всадников. Займите гребень пехотой и прикройте фланг перед атакой конницы. Для победы разбейте войско противника.",
+    "terrain": "Hill",
+    "blue_faction": "swiss",
+    "orange_faction": "burgundy",
+    "blue": [
+      {
+        "swords": 14,
+        "archers": 6,
+        "spearmen": 29,
+        "mounted": 0,
+        "x": -26,
+        "y": 0,
+        "group": 2
+      },
+      {
+        "swords": 8,
+        "archers": 13,
+        "spearmen": 24,
+        "mounted": 0,
+        "x": -34,
+        "y": -15,
+        "group": 1
+      },
+      {
+        "swords": 0,
+        "archers": 0,
+        "spearmen": 0,
+        "mounted": 11,
+        "x": -27,
+        "y": 19,
+        "group": 3
+      }
+    ],
+    "orange": [
+      {
+        "swords": 15,
+        "archers": 14,
+        "spearmen": 17,
+        "mounted": 0,
+        "x": 26,
+        "y": 0,
+        "group": 2
+      },
+      {
+        "swords": 11,
+        "archers": 14,
+        "spearmen": 13,
+        "mounted": 0,
+        "x": 32,
+        "y": 15,
+        "group": 3
+      },
+      {
+        "swords": 0,
+        "archers": 0,
+        "spearmen": 0,
+        "mounted": 22,
+        "x": 27,
+        "y": -19,
+        "group": 1
+      }
+    ]
+  }
+}

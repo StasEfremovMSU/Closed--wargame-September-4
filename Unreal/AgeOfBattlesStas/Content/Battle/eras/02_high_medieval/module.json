@@ -1,0 +1,534 @@
+{
+  "schema_version": 1,
+  "id": "high_medieval",
+  "name": "Классическое средневековье",
+  "version": 1,
+  "rules": {
+    "id": "high_medieval",
+    "local_melee": true,
+    "regiment_tactics": true,
+    "risky_volley": false,
+    "ranged_cohorts": 3,
+    "panic_fraction": 0.55
+  },
+  "archetypes": {
+    "swords": {
+      "name": "Мечники",
+      "health": 19,
+      "speed": 3.9,
+      "armour": 0.45,
+      "damage": 3.3,
+      "range": 1.65,
+      "cooldown_ticks": 20,
+      "windup_ticks": 3,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Линейная пехота с мечами и щитами для ближнего боя."
+    },
+    "armoured": {
+      "name": "Тяжёлая пехота с мечами",
+      "health": 23,
+      "speed": 3.6,
+      "armour": 0.8,
+      "damage": 3.55,
+      "range": 1.7,
+      "cooldown_ticks": 22,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Доспешная пехота с мечами и щитами. Выдерживает более продолжительный контакт."
+    },
+    "retainers": {
+      "name": "Дружинники",
+      "health": 22,
+      "speed": 4,
+      "armour": 0.6,
+      "damage": 3.45,
+      "range": 1.7,
+      "cooldown_ticks": 20,
+      "windup_ticks": 3,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Дружинники с мечами, щитами и доспехами. Удерживают позицию в первой линии."
+    },
+    "bowmen": {
+      "name": "Лучники",
+      "health": 15,
+      "speed": 4,
+      "armour": 0.15,
+      "damage": 2.15,
+      "range": 17,
+      "cooldown_ticks": 24,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 23,
+      "base_accuracy": 0.75,
+      "description": "Пешие лучники. Прикрывают пехоту и выдвижение конницы.",
+      "ranged_weapon": "bow",
+      "ammunition": 8
+    },
+    "composite": {
+      "name": "Лучники с составными луками",
+      "health": 16,
+      "speed": 4.15,
+      "armour": 0.15,
+      "damage": 2.4,
+      "range": 19,
+      "cooldown_ticks": 24,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 26,
+      "base_accuracy": 0.77,
+      "description": "Пешие лучники с составными луками. Обстреливают цель с большей дистанции.",
+      "ranged_weapon": "bow",
+      "ammunition": 8
+    },
+    "levy": {
+      "name": "Копейное ополчение",
+      "health": 18,
+      "speed": 4,
+      "armour": 0.25,
+      "damage": 2.7,
+      "range": 2.55,
+      "cooldown_ticks": 22,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Копейное ополчение. Копья позволяют поддерживать первую линию при слабой защите."
+    },
+    "spear": {
+      "name": "Копейщики",
+      "health": 21,
+      "speed": 3.8,
+      "armour": 0.55,
+      "damage": 3,
+      "range": 2.75,
+      "cooldown_ticks": 22,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Пешие копейщики для удержания фронта и встречи конницы."
+    },
+    "guard": {
+      "name": "Доспешные копейщики",
+      "health": 24,
+      "speed": 3.6,
+      "armour": 0.8,
+      "damage": 3.25,
+      "range": 2.85,
+      "cooldown_ticks": 24,
+      "windup_ticks": 5,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Копейщики с повышенной защитой для удержания рубежа."
+    },
+    "cavalry": {
+      "name": "Конные копейщики",
+      "health": 24,
+      "speed": 6.55,
+      "armour": 0.4,
+      "damage": 3.55,
+      "range": 2.45,
+      "cooldown_ticks": 20,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Конные копейщики с лёгкой защитой. Быстро реагируют на угрозы на фланге.",
+      "cavalry_class": "light"
+    },
+    "knights": {
+      "name": "Рыцарская конница",
+      "health": 29,
+      "speed": 6.1,
+      "armour": 1,
+      "damage": 4.05,
+      "range": 2.6,
+      "cooldown_ticks": 23,
+      "windup_ticks": 5,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Тяжёлая рыцарская конница. Доспех и копьё рассчитаны на удар в сомкнутом строю.",
+      "cavalry_class": "heavy"
+    },
+    "light_cavalry": {
+      "name": "Лёгкие всадники",
+      "health": 21,
+      "speed": 7,
+      "armour": 0.25,
+      "damage": 3.3,
+      "range": 2.15,
+      "cooldown_ticks": 18,
+      "windup_ticks": 3,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Лёгкие всадники для манёвра и преследования. Имеют меньшую защиту, чем рыцарская конница.",
+      "cavalry_class": "light"
+    },
+    "crossbowmen": {
+      "name": "Арбалетчики",
+      "health": 15,
+      "speed": 3.65,
+      "armour": 0.3,
+      "damage": 3.4,
+      "range": 21,
+      "cooldown_ticks": 38,
+      "windup_ticks": 6,
+      "projectile_speed_mps": 30,
+      "base_accuracy": 0.82,
+      "description": "Пешие стрелки с арбалетами. Более мощный выстрел требует долгого перезаряжания.",
+      "ranged_weapon": "crossbow",
+      "ammunition": 8
+    },
+    "order_sergeants": {
+      "name": "Конные сержанты",
+      "health": 24,
+      "speed": 6.8,
+      "armour": 0.5,
+      "damage": 3.5,
+      "range": 2.45,
+      "cooldown_ticks": 20,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Лёгкий конный полк рыцарского войска. Подвижнее рыцарей, с меньшей защитой.",
+      "cavalry_class": "light"
+    },
+    "druzhina_horse": {
+      "name": "Тяжёлая конная дружина",
+      "health": 27,
+      "speed": 6.15,
+      "armour": 0.8,
+      "damage": 3.85,
+      "range": 2.6,
+      "cooldown_ticks": 23,
+      "windup_ticks": 5,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Доспешные всадники русской дружины с копьями и щитами.",
+      "cavalry_class": "heavy"
+    },
+    "steppe_heavy_horse": {
+      "name": "Доспешная степная конница",
+      "health": 27,
+      "speed": 6.1,
+      "armour": 0.85,
+      "damage": 3.8,
+      "range": 2.6,
+      "cooldown_ticks": 23,
+      "windup_ticks": 5,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Тяжёлые степные всадники с копьями. Ударный полк для ближнего боя.",
+      "cavalry_class": "heavy"
+    },
+    "armoured_lancers": {
+      "name": "Доспешные всадники",
+      "health": 28,
+      "speed": 6.15,
+      "armour": 0.9,
+      "damage": 3.8,
+      "range": 2.6,
+      "cooldown_ticks": 23,
+      "windup_ticks": 5,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Конный полк с копьями, щитами и усиленной защитой.",
+      "cavalry_class": "heavy"
+    }
+  },
+  "factions": [
+    {
+      "id": "rus",
+      "name": "Русские княжества",
+      "shield": "kite",
+      "heraldry": "496989",
+      "troops": {
+        "swords": "retainers",
+        "archers": "bowmen",
+        "spearmen": "spear",
+        "mounted": "cavalry"
+      },
+      "mounted_variants": {
+        "heavy": "druzhina_horse"
+      }
+    },
+    {
+      "id": "mongols",
+      "name": "Монголы",
+      "shield": "round",
+      "heraldry": "9B6945",
+      "troops": {
+        "swords": "swords",
+        "archers": "composite",
+        "spearmen": "levy",
+        "mounted": "light_cavalry"
+      },
+      "mounted_variants": {
+        "heavy": "steppe_heavy_horse"
+      }
+    },
+    {
+      "id": "golden_horde",
+      "name": "Золотая Орда",
+      "shield": "round",
+      "heraldry": "987336",
+      "troops": {
+        "swords": "swords",
+        "archers": "composite",
+        "spearmen": "spear",
+        "mounted": "light_cavalry"
+      },
+      "mounted_variants": {
+        "heavy": "steppe_heavy_horse"
+      }
+    },
+    {
+      "id": "teutonic_order",
+      "name": "Тевтонский орден",
+      "shield": "kite",
+      "heraldry": "D9DDD6",
+      "troops": {
+        "swords": "armoured",
+        "archers": "bowmen",
+        "spearmen": "guard",
+        "mounted": "knights"
+      },
+      "mounted_variants": {
+        "light": "order_sergeants"
+      },
+      "ranged_variants": {
+        "crossbow": "crossbowmen"
+      }
+    },
+    {
+      "id": "livonian_order",
+      "name": "Ливонский орден",
+      "shield": "kite",
+      "heraldry": "9A6250",
+      "troops": {
+        "swords": "armoured",
+        "archers": "bowmen",
+        "spearmen": "spear",
+        "mounted": "knights"
+      },
+      "mounted_variants": {
+        "light": "order_sergeants"
+      },
+      "ranged_variants": {
+        "crossbow": "crossbowmen"
+      }
+    },
+    {
+      "id": "crusaders",
+      "name": "Крестоносцы",
+      "shield": "kite",
+      "heraldry": "AC3D3D",
+      "troops": {
+        "swords": "armoured",
+        "archers": "bowmen",
+        "spearmen": "guard",
+        "mounted": "knights"
+      },
+      "mounted_variants": {
+        "light": "order_sergeants"
+      },
+      "ranged_variants": {
+        "crossbow": "crossbowmen"
+      }
+    },
+    {
+      "id": "saracens",
+      "name": "Сарацины",
+      "shield": "round",
+      "heraldry": "4D845E",
+      "troops": {
+        "swords": "swords",
+        "archers": "composite",
+        "spearmen": "spear",
+        "mounted": "cavalry"
+      },
+      "mounted_variants": {
+        "heavy": "armoured_lancers"
+      }
+    },
+    {
+      "id": "byzantium",
+      "name": "Византия",
+      "shield": "kite",
+      "heraldry": "784C8E",
+      "troops": {
+        "swords": "retainers",
+        "archers": "composite",
+        "spearmen": "guard",
+        "mounted": "knights"
+      },
+      "mounted_variants": {
+        "light": "cavalry",
+        "heavy": "armoured_lancers"
+      }
+    },
+    {
+      "id": "poland",
+      "name": "Польша",
+      "shield": "kite",
+      "heraldry": "BB5063",
+      "troops": {
+        "swords": "armoured",
+        "archers": "bowmen",
+        "spearmen": "spear",
+        "mounted": "knights"
+      },
+      "mounted_variants": {
+        "light": "cavalry"
+      }
+    },
+    {
+      "id": "lithuania",
+      "name": "Литва",
+      "shield": "kite",
+      "heraldry": "667B49",
+      "troops": {
+        "swords": "retainers",
+        "archers": "bowmen",
+        "spearmen": "levy",
+        "mounted": "cavalry"
+      },
+      "mounted_variants": {
+        "heavy": "armoured_lancers"
+      }
+    },
+    {
+      "id": "normans",
+      "name": "Нормандия",
+      "shield": "kite",
+      "heraldry": "94502E",
+      "troops": {
+        "swords": "armoured",
+        "archers": "bowmen",
+        "spearmen": "guard",
+        "mounted": "knights"
+      },
+      "mounted_variants": {
+        "light": "order_sergeants"
+      },
+      "ranged_variants": {
+        "crossbow": "crossbowmen"
+      }
+    },
+    {
+      "id": "anglo_saxons",
+      "name": "Англосаксы",
+      "shield": "round",
+      "heraldry": "4F713B",
+      "troops": {
+        "swords": "armoured",
+        "archers": "bowmen",
+        "spearmen": "spear",
+        "mounted": "cavalry"
+      },
+      "mounted_variants": {
+        "light": "cavalry"
+      },
+      "ranged_variants": {}
+    },
+    {
+      "id": "capetian_france",
+      "name": "Франция Капетингов",
+      "shield": "kite",
+      "heraldry": "345C94",
+      "troops": {
+        "swords": "armoured",
+        "archers": "bowmen",
+        "spearmen": "guard",
+        "mounted": "knights"
+      },
+      "mounted_variants": {
+        "light": "order_sergeants"
+      },
+      "ranged_variants": {
+        "crossbow": "crossbowmen"
+      }
+    },
+    {
+      "id": "otto_coalition",
+      "name": "Коалиция Оттона IV",
+      "shield": "kite",
+      "heraldry": "A17A3C",
+      "troops": {
+        "swords": "armoured",
+        "archers": "bowmen",
+        "spearmen": "spear",
+        "mounted": "knights"
+      },
+      "mounted_variants": {
+        "light": "order_sergeants"
+      },
+      "ranged_variants": {
+        "crossbow": "crossbowmen"
+      }
+    }
+  ],
+  "mission": {
+    "id": "28e3ec30-df17-4564-9d19-269741ea2528",
+    "name": "Классическое средневековье · Княжество и Орден",
+    "briefing": "Учебный бой на открытом поле. Две группы пехоты и конница с каждой стороны. Проверьте, как меняется бой, если ввести конницу с фланга после контакта пехоты.",
+    "blue_faction": "rus",
+    "orange_faction": "teutonic_order",
+    "blue": [
+      {
+        "swords": 14,
+        "archers": 6,
+        "spearmen": 25,
+        "mounted": 0,
+        "x": -24,
+        "y": 0,
+        "group": 2
+      },
+      {
+        "swords": 12,
+        "archers": 13,
+        "spearmen": 12,
+        "mounted": 0,
+        "x": -30,
+        "y": -16,
+        "group": 1
+      },
+      {
+        "swords": 0,
+        "archers": 0,
+        "spearmen": 0,
+        "mounted": 21,
+        "x": -25,
+        "y": 17,
+        "group": 3
+      }
+    ],
+    "orange": [
+      {
+        "swords": 20,
+        "archers": 6,
+        "spearmen": 23,
+        "mounted": 0,
+        "x": 24,
+        "y": 0,
+        "group": 2
+      },
+      {
+        "swords": 15,
+        "archers": 12,
+        "spearmen": 11,
+        "mounted": 0,
+        "x": 30,
+        "y": 16,
+        "group": 3
+      },
+      {
+        "swords": 0,
+        "archers": 0,
+        "spearmen": 0,
+        "mounted": 18,
+        "x": 25,
+        "y": -17,
+        "group": 1
+      }
+    ]
+  }
+}

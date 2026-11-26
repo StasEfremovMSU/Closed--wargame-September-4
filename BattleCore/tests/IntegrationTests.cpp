@@ -122,3 +122,90 @@ TEST_CASE("integration.ten_thousand_exchange_measurement") {
       << "initial_replay_bytes=" << std::filesystem::file_size(dir / "ten-thousand-replay.json")
       << "\n";
 }
+
+#include "battle/MarchMission.h"
+#include <limits>
+
+TEST_CASE("integration.march_reports_first_contact_and_waits_for_a_valid_player_order") {
+    MarchMission mission({{{1}, 0, {{-46, -24, 0}, 0}},
+                          {{2}, 0, {{-46, 24, 0}, 0}},
+                          {{3}, 1, {{46, -24, 0}, Pi}}});
+    CHECK_FALSE(mission.EnemyFound());
+    for (int frame = 0; frame < 300 && !mission.EnemyFound(); ++frame)
+        mission.Step(.05f);
+
+    REQUIRE(mission.EnemyFound());
+    CHECK_FALSE(mission.Encounter());
+    const auto stopped = mission.Regiments();
+    const auto old_flag = stopped[0].waypoint;
+    CHECK_FALSE(mission.SetWaypoint({1}, {0, 12, 0}));
+    CHECK_FALSE(mission.SetWaypoint({1}, {61, -24, 0}));
+    CHECK_FALSE(mission.SetWaypoint({1}, {std::numeric_limits<float>::infinity(), 0, 0}));
+    CHECK_FALSE(mission.SetWaypoint({3}, {10, -24, 0}));
+    CHECK(mission.Regiments()[0].waypoint == old_flag);
+    mission.Step(1.f);
+    CHECK(mission.Regiments()[0].pose == stopped[0].pose);
+    CHECK(mission.Regiments()[2].pose == stopped[2].pose);
+
+    const Vec3 new_flag{-12, -24, 0};
+    REQUIRE(mission.SetWaypoint({1}, new_flag));
+    CHECK(mission.Regiments()[0].waypoint == new_flag);
+    CHECK(mission.Regiments()[1].waypoint == stopped[1].waypoint);
+    CHECK(mission.Regiments()[1].route == stopped[1].route);
+    for (int frame = 0; frame < 300 && !mission.Encounter(); ++frame)
+        mission.Step(.05f);
+
+    REQUIRE(mission.Encounter());
+    CHECK(mission.Encounter()->first == RegimentId{1});
+    CHECK(mission.Encounter()->second == RegimentId{3});
+    CHECK(mission.Encounter()->center.x < 0);
+    CHECK(mission.Encounter()->center.y == doctest::Approx(-24));
+    CHECK_FALSE(mission.SetWaypoint({1}, {-16, -24, 0}));
+}
+
+TEST_CASE("integration.march_uses_open_crossings_for_cross_bank_orders") {
+    for (const float crossing_y : {-24.f, 0.f, 24.f}) {
+        CAPTURE(crossing_y);
+        const Vec3 goal{42, crossing_y + 6, 0};
+        MarchMission mission({{{1}, 0, {{-42, goal.y, 0}, 0}}});
+        REQUIRE(mission.SetWaypoint({1}, goal));
+
+        bool crossed_river = false;
+        for (int frame = 0; frame < 400; ++frame) {
+            mission.Step(.05f);
+            const Vec3 position = mission.Regiments().front().pose.position;
+            if (std::abs(position.x) <= 5.f) {
+                crossed_river = true;
+                CHECK(std::abs(position.y - crossing_y) < 4.f);
+            }
+        }
+
+        CHECK(crossed_river);
+        CHECK(mission.Regiments().front().pose.position == goal);
+        CHECK_FALSE(mission.Encounter());
+    }
+}
+
+TEST_CASE("integration.march_sighting_across_open_water_does_not_start_battle") {
+    MarchMission mission({{{1}, 0, {{-6, 12, 0}, 0}, Vec3{-6, 12, 0}},
+                          {{2}, 1, {{6, 12, 0}, Pi}, Vec3{6, 12, 0}}});
+    mission.Step(.05f);
+    REQUIRE(mission.EnemyFound());
+    REQUIRE(mission.SetWaypoint({1}, {-6, 12, 0}));
+    mission.Step(1.f);
+    CHECK_FALSE(mission.Encounter());
+}
+
+TEST_CASE("integration.march_opposing_regiments_meet_at_each_crossing") {
+    for (const auto &crossing : MarchCrossings) {
+        CAPTURE(crossing.y);
+        MarchMission mission({{{1}, 0, {{-6, crossing.y, 0}, 0}, Vec3{6, crossing.y, 0}},
+                              {{2}, 1, {{6, crossing.y, 0}, Pi}, Vec3{-6, crossing.y, 0}}});
+        mission.Step(.05f);
+        REQUIRE(mission.EnemyFound());
+        REQUIRE(mission.SetWaypoint({1}, {6, crossing.y, 0}));
+        mission.Step(1.f);
+        REQUIRE(mission.Encounter());
+        CHECK(mission.Encounter()->center.y == doctest::Approx(crossing.y));
+    }
+}

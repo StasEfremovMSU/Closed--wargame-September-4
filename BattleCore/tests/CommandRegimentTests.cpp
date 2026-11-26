@@ -150,3 +150,78 @@ TEST_CASE("regiment_fsm.rejects_bad_context_and_scores_legal_options") {
     CHECK((*scores.value)[0].option_index == 0);
     CHECK(std::isfinite((*scores.value)[0].utility));
 }
+
+TEST_CASE("regiment_fsm.holds_a_planned_support_position_through_friendly_contact_changes") {
+    BrainFixture f;
+    auto &task = f.tasks[0];
+    task.action = c::TaskKind::Support;
+    task.intent.target_command = {3};
+    task.intent.target_regiment = {20};
+    task.intent.objective_position = {5, 2, 0};
+    c::KnownContact lead;
+    lead.regiment = {20};
+    lead.allegiance = c::Allegiance::Friendly;
+    lead.confidence = 1;
+    lead.estimated_pose.position = {2, 0, 0};
+    f.situation.contacts.push_back(lead);
+
+    const auto move = f.Think();
+    REQUIRE(move.execution_order);
+    CHECK(move.execution_order->type == OrderType::MoveTo);
+    CHECK(move.execution_order->point == task.intent.objective_position);
+
+    f.situation.own.pose.position = task.intent.objective_position;
+    f.situation.contacts.clear();
+    const auto hold = f.Think(1);
+    REQUIRE(hold.execution_order);
+    CHECK(hold.execution_order->type == OrderType::Hold);
+    CHECK(f.memory.state == c::FsmState::Supporting);
+    CHECK(f.memory.task_status == c::TaskStatus::Active);
+}
+
+TEST_CASE("regiment_fsm.uses_a_planned_flank_outside_its_own_sight") {
+    BrainFixture f;
+    auto &task = f.tasks[0];
+    task.action = c::TaskKind::Flank;
+    task.intent.target_regiment = {2};
+    task.intent.flank_waypoint = Pose{{1, 5, 0}, 0};
+    task.authority.may_pursue = true;
+    auto target = f.situation.contacts.front();
+    f.situation.contacts.clear();
+
+    const auto move = f.Think();
+    REQUIRE(move.execution_order);
+    CHECK(move.execution_order->type == OrderType::MoveTo);
+    CHECK(move.execution_order->point == task.intent.flank_waypoint->position);
+
+    f.situation.own.pose = *task.intent.flank_waypoint;
+    const auto at_waypoint = f.Think(1);
+    REQUIRE(at_waypoint.execution_order);
+    CHECK(at_waypoint.execution_order->type == OrderType::Hold);
+
+    f.situation.contacts.push_back(target);
+    const auto visible = f.Think(2);
+    REQUIRE(visible.execution_order);
+    CHECK(visible.execution_order->type == OrderType::Attack);
+    f.situation.own.pose.position.x += 3.f;
+    f.situation.contacts.clear();
+    f.Think(3);
+    f.situation.contacts.push_back(target);
+    const auto reacquired = f.Think(4);
+    REQUIRE(reacquired.execution_order);
+    CHECK(reacquired.execution_order->type == OrderType::Attack);
+}
+
+TEST_CASE("regiment_fsm.keeps_the_attack_order_point_for_the_same_moving_target") {
+    BrainFixture f;
+    f.tasks[0].action = c::TaskKind::Attack;
+    f.tasks[0].intent.target_regiment = {2};
+    const auto original = f.Think();
+    REQUIRE(original.execution_order);
+    REQUIRE(f.situation.contacts.size() == 1);
+    f.situation.contacts.front().estimated_pose.position.x += 3.f;
+    const auto repeat = f.Think(1);
+    REQUIRE(repeat.execution_order);
+    CHECK(repeat.execution_order->type == OrderType::Attack);
+    CHECK(repeat.execution_order->point == original.execution_order->point);
+}

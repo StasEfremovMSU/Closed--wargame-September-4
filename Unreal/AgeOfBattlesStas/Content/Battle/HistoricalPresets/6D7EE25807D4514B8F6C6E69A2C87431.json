@@ -1,0 +1,178 @@
+{
+  "schema_version": 4,
+  "name": "Микатагахара, 1572–1573 · Плато у Хамамацу",
+  "terrain": "Grunwald",
+  "era": {
+    "id": "sengoku",
+    "version": 1,
+    "blue_faction": "takeda",
+    "orange_faction": "tokugawa"
+  },
+  "regiment_tactics": true,
+  "risky_volley": false,
+  "direct_deployment": true,
+  "adaptive_battle": true,
+  "objective": {
+    "goal": "Eliminate",
+    "time_limit_seconds": 240,
+    "crossing": 1,
+    "required_regiments": 1,
+    "crossing_team": 0
+  },
+  "briefing": "Во время похода в провинцию Тотоми Такэда Сингэн встретил войско Токугавы Иэясу на плато у Хамамацу. Армия Такэда победила, Иэясу отступил к замку. В японском летоисчислении это конец 1572 года, соответствующий началу 1573 года по григорианскому календарю.\n\nВы командуете Такэда. Разбейте силы Токугавы, пока его крылья не соединились с центром. Выдвинутая пехота ведёт бой на возвышенности, конница начинает на свободных подступах.\n\nПологая возвышенность представляет участок плато. Хамамацу и путь отхода остались за границей поля. Состав и численность сторон адаптированы для игры. Игровой участок 540 × 350 м, 5 000 фигур.",
+  "sources": [
+    "https://www.city.hamamatsu.shizuoka.jp/kouen/park/minamihiroba/ieyasu21.html",
+    "https://www.city.hamamatsu.shizuoka.jp/hamahaku/02tenji/tokubetu/mikatagaharanotatakai.html"
+  ],
+  "regiments": [
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -47,
+      "start_y": 0,
+      "formation_files": 22,
+      "swords": 15,
+      "archers": 12,
+      "spearmen": 27,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -64,
+      "start_y": -72,
+      "formation_files": 16,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 38
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -63,
+      "start_y": 59,
+      "formation_files": 21,
+      "swords": 15,
+      "archers": 17,
+      "spearmen": 21,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -102,
+      "start_y": 4,
+      "formation_files": 20,
+      "swords": 15,
+      "archers": 14,
+      "spearmen": 24,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -110,
+      "start_y": -67,
+      "formation_files": 20,
+      "swords": 13,
+      "archers": 16,
+      "spearmen": 21,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -105,
+      "start_y": 112,
+      "formation_files": 16,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 39
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 46,
+      "start_y": 0,
+      "formation_files": 25,
+      "swords": 15,
+      "archers": 17,
+      "spearmen": 22,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 69,
+      "start_y": -61,
+      "formation_files": 21,
+      "swords": 15,
+      "archers": 16,
+      "spearmen": 22,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 57,
+      "start_y": 64,
+      "formation_files": 22,
+      "swords": 17,
+      "archers": 15,
+      "spearmen": 22,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 103,
+      "start_y": 5,
+      "formation_files": 21,
+      "swords": 17,
+      "archers": 14,
+      "spearmen": 19,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 120,
+      "start_y": -91,
+      "formation_files": 17,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 34
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 107,
+      "start_y": 68,
+      "formation_files": 20,
+      "swords": 14,
+      "archers": 16,
+      "spearmen": 18,
+      "mounted": 0
+    }
+  ],
+  "field": {
+    "width_m": 540,
+    "height_m": 350
+  },
+  "figure_target": 5000
+}

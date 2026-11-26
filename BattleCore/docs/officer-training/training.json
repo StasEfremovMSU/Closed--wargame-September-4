@@ -1,0 +1,98 @@
+{
+  "feature_schema": 2,
+  "features": [
+    "choose_support",
+    "choose_alternate",
+    "choose_flank",
+    "previous_support",
+    "previous_alternate",
+    "previous_flank",
+    "group_living_fraction",
+    "lead_living_fraction",
+    "wing_living_fraction",
+    "lead_strength",
+    "wing_strength",
+    "primary_strength",
+    "primary_strength_known",
+    "candidate_strength",
+    "candidate_strength_known",
+    "primary_confidence",
+    "candidate_confidence",
+    "wing_primary_range",
+    "lead_primary_range",
+    "wing_candidate_range",
+    "wing_lead_range",
+    "option_travel",
+    "lead_melee_contact",
+    "ranged_pressure",
+    "alternate_available",
+    "flank_available",
+    "wing_primary_forward",
+    "wing_primary_lateral"
+  ],
+  "architecture": [
+    28,
+    24,
+    1
+  ],
+  "parameters": 721,
+  "training_seed": 27182,
+  "torch_version": "2.10.0+cu128",
+  "cuda_version": "12.8",
+  "device": "cuda",
+  "device_name": "NVIDIA GeForce RTX 3070",
+  "epochs": 500,
+  "selected_epoch": 232,
+  "train_decisions": 998,
+  "validation_decisions": 249,
+  "train_rows": 2428,
+  "validation_rows": 598,
+  "train_pairwise_mse_initial": 0.01207136083394289,
+  "train_pairwise_mse_selected": 0.00651649571955204,
+  "validation_pairwise_mse_selected": 0.008039742708206177,
+  "validation_margins": [
+    {
+      "margin": 0.0,
+      "mean_gain": 0.037936184435604085,
+      "overrides": 113
+    },
+    {
+      "margin": 0.01,
+      "mean_gain": 0.03791610411850803,
+      "overrides": 104
+    },
+    {
+      "margin": 0.025,
+      "mean_gain": 0.034213252949068344,
+      "overrides": 95
+    },
+    {
+      "margin": 0.05,
+      "mean_gain": 0.03503901097010896,
+      "overrides": 82
+    },
+    {
+      "margin": 0.075,
+      "mean_gain": 0.027354731213256538,
+      "overrides": 65
+    },
+    {
+      "margin": 0.1,
+      "mean_gain": 0.017118387507746018,
+      "overrides": 33
+    },
+    {
+      "margin": 0.15,
+      "mean_gain": 0.000325300966400698,
+      "overrides": 1
+    },
+    {
+      "margin": 0.2,
+      "mean_gain": 0.0,
+      "overrides": 0
+    }
+  ],
+  "selected_margin": 0.0,
+  "data_sha256": "cf9bc0b32363d9a2d512644ad8652f21068d0314c309774c78a58a5aeecc9ce0",
+  "model_sha256": "e101ffbfd9357108865f1a8944c6cdd16ebc4ec6dea59795febd09e4b8c68d13"
+}

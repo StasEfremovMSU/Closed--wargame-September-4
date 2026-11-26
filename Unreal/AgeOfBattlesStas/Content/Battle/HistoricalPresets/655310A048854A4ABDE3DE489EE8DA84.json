@@ -1,0 +1,168 @@
+{
+  "schema_version": 4,
+  "name": "Полтава, 1709 · Бой за редуты",
+  "terrain": "Poltava",
+  "era": {
+    "id": "great_northern_war",
+    "version": 1,
+    "blue_faction": "sweden",
+    "orange_faction": "russia"
+  },
+  "regiment_tactics": true,
+  "risky_volley": false,
+  "direct_deployment": true,
+  "objective": {
+    "goal": "Eliminate",
+    "time_limit_seconds": 140,
+    "crossing": 1,
+    "required_regiments": 1,
+    "crossing_team": 0
+  },
+  "briefing": "27 июня (8 июля) 1709 года шведская пехота встретила под Полтавой линию русских земляных редутов. В первой фазе сражения за укреплениями и перед ними действовала конница. Синие шведские части наступают, оранжевые русские части держат проходы и вводят конницу. На участке 540 × 350 м представлена условная линия земляных редутов. Вход с тыла открыт, а при лобовом штурме ров замедляет движение. Численность, дистанции и расположение проходов заданы для игры. В распоряжении сторон пехота и конница без артиллерии. Казачьи части обеих сторон исторически действовали на Полтавском поле, а игровой состав ограничен выбранным участком. Источники просмотрены 25 ноября 2026 года. В этом сценарии 5 000 игровых фигур с командным составом.",
+  "sources": [
+    "https://www.rct.uk/collection/726028/map-of-the-battle-of-poltova-1709-poltava-poltavs-ka-oblast-ukraine-49-35-37-n-34-32-26-e",
+    "https://battle-poltava.org.ua/en/exposition/"
+  ],
+  "regiments": [
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -82,
+      "start_y": 0,
+      "swords": 5,
+      "archers": 18,
+      "spearmen": 7,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -103,
+      "start_y": -55,
+      "swords": 4,
+      "archers": 16,
+      "spearmen": 7,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -110,
+      "start_y": 55,
+      "swords": 4,
+      "archers": 17,
+      "spearmen": 7,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -130,
+      "start_y": -90,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 13,
+      "mounted_class": "light"
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -127,
+      "start_y": 87,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 16,
+      "mounted_class": "heavy"
+    },
+    {
+      "type": "Infantry",
+      "enabled": false,
+      "group": 2,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 42,
+      "start_y": 0,
+      "swords": 4,
+      "archers": 20,
+      "spearmen": 4,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 24,
+      "start_y": -55,
+      "swords": 4,
+      "archers": 20,
+      "spearmen": 4,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 31,
+      "start_y": 55,
+      "swords": 4,
+      "archers": 19,
+      "spearmen": 4,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 60,
+      "start_y": -25,
+      "swords": 4,
+      "archers": 15,
+      "spearmen": 3,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 67,
+      "start_y": 87,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 12,
+      "mounted_class": "light"
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 79,
+      "start_y": -94,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 17,
+      "mounted_class": "heavy"
+    }
+  ],
+  "field": {
+    "width_m": 540,
+    "height_m": 350
+  },
+  "figure_target": 5000,
+  "adaptive_battle": true
+}

@@ -27,6 +27,7 @@ struct OwnForceSummary {
     bool panic{};
     // Missing means unknown/unmodelled, not exhausted or completely supplied.
     std::optional<float> morale, cohesion, fatigue, ammunition_fraction;
+    bool under_ranged_fire{};
 };
 
 struct ThreatEstimate {

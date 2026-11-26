@@ -85,8 +85,15 @@ enum class EventKind : uint8_t {
     OrderChanged,
     ControlChanged,
     CommandRejected,
-    DecisionTrace
+    DecisionTrace,
+    CavalryImpact,
+    FormationReformed,
+    OfficerSucceeded,
+    SmokeCreated,
+    CommandVacant,
+    Parried
 };
+enum class AttackAspect : uint8_t { Front, Flank, Rear };
 struct BattleEvent {
     EventId id{};
     Tick tick{};
@@ -98,11 +105,18 @@ struct BattleEvent {
     Tick due_tick{};
     bool hit{}, projectile{};
     EventId cause{};
+    AttackAspect aspect{AttackAspect::Front};
+    bool high_arc{};
 };
 enum class BattleOutcome : uint8_t { Running, Victory, Draw };
+namespace command {
+class ITacticalEvaluator;
+}
 struct SimulationOptions {
     uint32_t tick_ms{50};
     uint32_t worker_count{1};
+    const command::ITacticalEvaluator *group_policy{}; // Borrowed for this Step only.
+    bool group_order_commitment{};
 };
 struct TickResult {
     Tick tick{};

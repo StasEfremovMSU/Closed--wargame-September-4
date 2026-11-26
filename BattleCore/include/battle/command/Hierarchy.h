@@ -9,6 +9,20 @@ using MessageId = Id<struct CommandMessageTag>;
 
 // A command position, not a military rank or the legacy OfficerSpec.role.
 enum class Level : uint8_t { Army, Part, Group, Regiment };
+
+inline constexpr bool CanCommandLevel(Level parent, Level child) {
+    switch (parent) {
+    case Level::Army:
+        return child == Level::Part || child == Level::Group;
+    case Level::Part:
+        return child == Level::Group;
+    case Level::Group:
+        return child == Level::Regiment;
+    default:
+        return false;
+    }
+}
+
 enum class SectorRole : uint8_t {
     MainBody,
     Vanguard,
@@ -18,7 +32,8 @@ enum class SectorRole : uint8_t {
     Reserve,
     Detached
 };
-enum class SupportDuty : uint8_t { Deputy, Adjutant, StandardBearer, Musician };
+enum class SupportDuty : uint8_t { Deputy, Adjutant, StandardBearer, Musician, Bodyguard };
+inline constexpr uint32_t ArmyStaffOfficerRole = 5;
 
 enum class StubStatus : uint8_t { NotImplemented, Ready, InvalidInput };
 // No implicit success conversion. Inactive code must never manufacture a payload.
@@ -30,7 +45,7 @@ template <class T> struct StubResult {
 
 struct CommandNode {
     bool operator==(const CommandNode &) const = default;
-    NodeId id{}, parent{}; // Zero parent denotes an army root.
+    NodeId id{}, parent{}; // Army roots and independent group roots have no parent.
     Level level{Level::Regiment};
     int32_t team{};
     std::string name;
@@ -40,6 +55,10 @@ struct CommandNode {
     std::vector<NodeId> children;
     RegimentId regiment{}; // Only a regiment leaf binds to a physical regiment.
 };
+
+inline bool IsCommandRoot(const CommandNode &node) {
+    return !node.parent && (node.level == Level::Army || node.level == Level::Group);
+}
 
 // Proposed normalized traits [0,1]; no conversion from legacy values exists yet.
 struct OfficerProfile {

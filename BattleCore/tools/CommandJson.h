@@ -84,7 +84,7 @@ inline void ValidateCommandInputTypes(const nlohmann::json &input,
 
 BATTLE_COMMAND_ENUM_JSON(Level, Level::Regiment)
 BATTLE_COMMAND_ENUM_JSON(SectorRole, SectorRole::Detached)
-BATTLE_COMMAND_ENUM_JSON(SupportDuty, SupportDuty::Musician)
+BATTLE_COMMAND_ENUM_JSON(SupportDuty, SupportDuty::Bodyguard)
 BATTLE_COMMAND_ENUM_JSON(StubStatus, StubStatus::InvalidInput)
 BATTLE_COMMAND_ENUM_JSON(ObservationSource, ObservationSource::Memory)
 BATTLE_COMMAND_ENUM_JSON(Allegiance, Allegiance::Enemy)
@@ -117,8 +117,24 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(BrainSchedule, node, next_think_
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(KnownContact, command, regiment, allegiance, team,
                                                 estimated_pose, estimated_strength, observed_tick,
                                                 confidence, source)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(OwnForceSummary, living, initial, pose, panic,
-                                                morale, cohesion, fatigue, ammunition_fraction)
+inline void to_json(nlohmann::json &j, const OwnForceSummary &force) {
+    j = {{"living", force.living}, {"initial", force.initial}, {"pose", force.pose},
+         {"panic", force.panic}, {"morale", force.morale}, {"cohesion", force.cohesion},
+         {"fatigue", force.fatigue}, {"ammunition_fraction", force.ammunition_fraction}};
+    if (force.under_ranged_fire)
+        j["under_ranged_fire"] = true;
+}
+inline void from_json(const nlohmann::json &j, OwnForceSummary &force) {
+    force.living = j.value("living", uint32_t{});
+    force.initial = j.value("initial", uint32_t{});
+    force.pose = j.value("pose", Pose{});
+    force.panic = j.value("panic", false);
+    force.morale = j.value("morale", std::optional<float>{});
+    force.cohesion = j.value("cohesion", std::optional<float>{});
+    force.fatigue = j.value("fatigue", std::optional<float>{});
+    force.ammunition_fraction = j.value("ammunition_fraction", std::optional<float>{});
+    force.under_ranged_fire = j.value("under_ranged_fire", false);
+}
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ThreatEstimate, sector, strength, confidence,
                                                 under_ranged_fire, cavalry_approaching)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(TerrainAssessment, position, cover, passability,
@@ -126,7 +142,8 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(TerrainAssessment, position, cov
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(LocalSituation, observer, tick, own, rally_point,
                                                 contacts, threats, terrain)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CommandIntent, purpose, objective_position,
-                                                objective_radius_m, target_command, target_regiment)
+                                                objective_radius_m, target_command, target_regiment,
+                                                flank_waypoint)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(AuthorityLimits, initiative, may_pursue,
                                                 may_break_formation, may_change_target,
                                                 pursuit_limit_m, acceptable_loss_fraction)

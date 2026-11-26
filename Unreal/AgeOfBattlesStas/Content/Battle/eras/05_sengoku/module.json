@@ -1,0 +1,491 @@
+{
+  "schema_version": 1,
+  "id": "sengoku",
+  "name": "Япония · Сэнгоку",
+  "version": 1,
+  "rules": {
+    "id": "sengoku",
+    "local_melee": true,
+    "regiment_tactics": true,
+    "risky_volley": false,
+    "ranged_cohorts": 3,
+    "panic_fraction": 0.55
+  },
+  "archetypes": {
+    "foot_samurai": {
+      "name": "Пешие самураи",
+      "health": 21,
+      "speed": 4.0,
+      "armour": 0.6,
+      "damage": 3.45,
+      "range": 1.75,
+      "cooldown_ticks": 20,
+      "windup_ticks": 3,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Воины в пластинчатых доспехах для боя на короткой дистанции."
+    },
+    "mikawa_samurai": {
+      "name": "Самураи Микавы",
+      "health": 23,
+      "speed": 3.8,
+      "armour": 0.72,
+      "damage": 3.55,
+      "range": 1.75,
+      "cooldown_ticks": 21,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Пешая дружина Токугава. Выдерживает продолжительный бой в центре."
+    },
+    "echigo_samurai": {
+      "name": "Самураи Этиго",
+      "health": 21,
+      "speed": 4.3,
+      "armour": 0.53,
+      "damage": 3.5,
+      "range": 1.8,
+      "cooldown_ticks": 19,
+      "windup_ticks": 3,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Подвижная дружина Уэсуги для атаки между копейными полками."
+    },
+    "satsuma_samurai": {
+      "name": "Самураи Сацума",
+      "health": 22,
+      "speed": 4.05,
+      "armour": 0.52,
+      "damage": 3.8,
+      "range": 1.8,
+      "cooldown_ticks": 21,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Ударная пехота Симадзу. Сильна в ближнем бою и нуждается в поддержке копейщиков."
+    },
+    "odawara_guard": {
+      "name": "Стража Одавары",
+      "health": 24,
+      "speed": 3.65,
+      "armour": 0.82,
+      "damage": 3.3,
+      "range": 1.7,
+      "cooldown_ticks": 22,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Доспешная пехота Ходзё для защиты стрелков и удержания линии."
+    },
+    "yari_ashigaru": {
+      "name": "Асигару с яри",
+      "health": 18,
+      "speed": 4.02,
+      "armour": 0.25,
+      "damage": 2.8,
+      "range": 2.65,
+      "cooldown_ticks": 22,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Пеший строй асигару с копьями яри. Держит противника на дистанции."
+    },
+    "mikawa_yari": {
+      "name": "Копейщики Микавы",
+      "health": 21,
+      "speed": 3.85,
+      "armour": 0.51,
+      "damage": 3.0,
+      "range": 2.8,
+      "cooldown_ticks": 23,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Копейные асигару Токугава с улучшенной защитой."
+    },
+    "oda_long_yari": {
+      "name": "Асигару с длинными яри",
+      "health": 19,
+      "speed": 3.7,
+      "armour": 0.32,
+      "damage": 2.9,
+      "range": 3.18,
+      "cooldown_ticks": 25,
+      "windup_ticks": 5,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Длинные копья Ода прикрывают стрелков. Полк медленнее меняет позицию."
+    },
+    "echigo_yari": {
+      "name": "Копейщики Этиго",
+      "health": 20,
+      "speed": 4.1,
+      "armour": 0.43,
+      "damage": 3.1,
+      "range": 2.8,
+      "cooldown_ticks": 22,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Подвижные копейщики Уэсуги. Поддерживают наступление самураев."
+    },
+    "odawara_yari": {
+      "name": "Копейщики Одавары",
+      "health": 22,
+      "speed": 3.65,
+      "armour": 0.67,
+      "damage": 3.0,
+      "range": 2.82,
+      "cooldown_ticks": 24,
+      "windup_ticks": 5,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Тяжелее вооружённые асигару Ходзё для защиты проходов."
+    },
+    "yumi_ashigaru": {
+      "name": "Асигару с юми",
+      "health": 15,
+      "speed": 4.12,
+      "armour": 0.16,
+      "damage": 2.15,
+      "range": 18,
+      "cooldown_ticks": 24,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 24,
+      "base_accuracy": 0.74,
+      "description": "Пешие стрелки с длинными луками юми. Быстро выпускают стрелы по открытой цели.",
+      "ranged_weapon": "bow",
+      "ammunition": 8
+    },
+    "aki_bowmen": {
+      "name": "Лучники Аки",
+      "health": 16,
+      "speed": 4.08,
+      "armour": 0.18,
+      "damage": 2.35,
+      "range": 20,
+      "cooldown_ticks": 23,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 26,
+      "base_accuracy": 0.8,
+      "description": "Лучники Мори. Большая дальность помогает удерживать свободный фланг.",
+      "ranged_weapon": "bow",
+      "ammunition": 8
+    },
+    "teppo_ashigaru": {
+      "name": "Асигару с тэппо",
+      "health": 15,
+      "speed": 3.75,
+      "armour": 0.21,
+      "damage": 3.85,
+      "range": 21,
+      "cooldown_ticks": 41,
+      "windup_ticks": 6,
+      "projectile_speed_mps": 54,
+      "base_accuracy": 0.71,
+      "description": "Фитильные стрелки. Более сильный выстрел требует долгой перезарядки.",
+      "ranged_weapon": "gunpowder",
+      "ammunition": 6
+    },
+    "oda_teppo": {
+      "name": "Фитильные стрелки Ода",
+      "health": 16,
+      "speed": 3.65,
+      "armour": 0.24,
+      "damage": 4.2,
+      "range": 23,
+      "cooldown_ticks": 39,
+      "windup_ticks": 6,
+      "projectile_speed_mps": 57,
+      "base_accuracy": 0.75,
+      "description": "Асигару с ружьями тэппо. Дальняя и сильная стрельба требует поддержки копейного строя.",
+      "ranged_weapon": "gunpowder",
+      "ammunition": 7
+    },
+    "satsuma_teppo": {
+      "name": "Фитильные стрелки Сацума",
+      "health": 16,
+      "speed": 4.0,
+      "armour": 0.18,
+      "damage": 4.0,
+      "range": 20,
+      "cooldown_ticks": 37,
+      "windup_ticks": 5,
+      "projectile_speed_mps": 55,
+      "base_accuracy": 0.75,
+      "description": "Подвижные стрелки Симадзу. Меньшая дальность компенсируется более быстрой перезарядкой.",
+      "ranged_weapon": "gunpowder",
+      "ammunition": 7
+    },
+    "mounted_samurai": {
+      "name": "Конные самураи",
+      "health": 24,
+      "speed": 6.35,
+      "armour": 0.55,
+      "damage": 3.6,
+      "range": 2.5,
+      "cooldown_ticks": 21,
+      "windup_ticks": 4,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Лёгкая конная дружина с копьями для манёвра и преследования.",
+      "cavalry_class": "light"
+    },
+    "takeda_kiba": {
+      "name": "Ударная конница Такэда",
+      "health": 29,
+      "speed": 6.2,
+      "armour": 0.82,
+      "damage": 4.2,
+      "range": 2.65,
+      "cooldown_ticks": 23,
+      "windup_ticks": 5,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Доспешный конный полк Такэда с копьями. Силен при первом контакте.",
+      "cavalry_class": "heavy"
+    },
+    "echigo_kiba": {
+      "name": "Всадники Этиго",
+      "health": 23,
+      "speed": 6.85,
+      "armour": 0.41,
+      "damage": 3.55,
+      "range": 2.45,
+      "cooldown_ticks": 19,
+      "windup_ticks": 3,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Лёгкие всадники Уэсуги для быстрого перевода сил между флангами.",
+      "cavalry_class": "light"
+    },
+    "armoured_kiba": {
+      "name": "Доспешные конные самураи",
+      "health": 27,
+      "speed": 5.95,
+      "armour": 0.78,
+      "damage": 3.88,
+      "range": 2.6,
+      "cooldown_ticks": 23,
+      "windup_ticks": 5,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "description": "Тяжёлая конная дружина с копьями и усиленным доспехом.",
+      "cavalry_class": "heavy"
+    }
+  },
+  "factions": [
+    {
+      "id": "tokugawa",
+      "name": "Токугава",
+      "shield": "rectangular",
+      "heraldry": "3C8062",
+      "visual": "sengoku",
+      "troops": {
+        "swords": "mikawa_samurai",
+        "archers": "yumi_ashigaru",
+        "spearmen": "mikawa_yari",
+        "mounted": "mounted_samurai"
+      },
+      "ranged_variants": {
+        "gunpowder": "teppo_ashigaru"
+      },
+      "mounted_variants": {
+        "heavy": "armoured_kiba"
+      }
+    },
+    {
+      "id": "takeda",
+      "name": "Такэда",
+      "shield": "rectangular",
+      "heraldry": "B13B3A",
+      "visual": "sengoku",
+      "troops": {
+        "swords": "foot_samurai",
+        "archers": "yumi_ashigaru",
+        "spearmen": "yari_ashigaru",
+        "mounted": "takeda_kiba"
+      },
+      "ranged_variants": {
+        "gunpowder": "teppo_ashigaru"
+      },
+      "mounted_variants": {
+        "light": "mounted_samurai"
+      }
+    },
+    {
+      "id": "oda",
+      "name": "Ода",
+      "shield": "rectangular",
+      "heraldry": "C19A3F",
+      "visual": "sengoku",
+      "troops": {
+        "swords": "foot_samurai",
+        "archers": "oda_teppo",
+        "spearmen": "oda_long_yari",
+        "mounted": "mounted_samurai"
+      },
+      "ranged_variants": {
+        "bow": "yumi_ashigaru"
+      },
+      "mounted_variants": {
+        "heavy": "armoured_kiba"
+      }
+    },
+    {
+      "id": "uesugi",
+      "name": "Уэсуги",
+      "shield": "rectangular",
+      "heraldry": "5B7AAB",
+      "visual": "sengoku",
+      "troops": {
+        "swords": "echigo_samurai",
+        "archers": "yumi_ashigaru",
+        "spearmen": "echigo_yari",
+        "mounted": "echigo_kiba"
+      },
+      "ranged_variants": {
+        "gunpowder": "teppo_ashigaru"
+      },
+      "mounted_variants": {
+        "heavy": "armoured_kiba"
+      }
+    },
+    {
+      "id": "shimazu",
+      "name": "Симадзу",
+      "shield": "rectangular",
+      "heraldry": "776391",
+      "visual": "sengoku",
+      "troops": {
+        "swords": "satsuma_samurai",
+        "archers": "satsuma_teppo",
+        "spearmen": "yari_ashigaru",
+        "mounted": "mounted_samurai"
+      },
+      "ranged_variants": {
+        "bow": "yumi_ashigaru"
+      }
+    },
+    {
+      "id": "hojo",
+      "name": "Ходзё",
+      "shield": "rectangular",
+      "heraldry": "D58E4B",
+      "visual": "sengoku",
+      "troops": {
+        "swords": "odawara_guard",
+        "archers": "teppo_ashigaru",
+        "spearmen": "odawara_yari",
+        "mounted": "armoured_kiba"
+      },
+      "ranged_variants": {
+        "bow": "yumi_ashigaru"
+      },
+      "mounted_variants": {
+        "light": "mounted_samurai"
+      }
+    },
+    {
+      "id": "mori",
+      "name": "Мори",
+      "shield": "rectangular",
+      "heraldry": "526E82",
+      "visual": "sengoku",
+      "troops": {
+        "swords": "foot_samurai",
+        "archers": "aki_bowmen",
+        "spearmen": "yari_ashigaru",
+        "mounted": "mounted_samurai"
+      },
+      "ranged_variants": {
+        "gunpowder": "teppo_ashigaru"
+      }
+    },
+    {
+      "id": "imagawa",
+      "name": "Имагава",
+      "shield": "rectangular",
+      "heraldry": "745A8D",
+      "visual": "sengoku",
+      "troops": {
+        "swords": "foot_samurai",
+        "archers": "yumi_ashigaru",
+        "spearmen": "yari_ashigaru",
+        "mounted": "mounted_samurai"
+      },
+      "ranged_variants": {
+        "gunpowder": "teppo_ashigaru"
+      },
+      "mounted_variants": {
+        "heavy": "armoured_kiba"
+      }
+    }
+  ],
+  "mission": {
+    "id": "63bf963a-aaef-4f80-a7a3-9054249f31db",
+    "name": "Сэнгоку · Тэппо и юми",
+    "terrain": "OpenField",
+    "briefing": "Учебный бой Симадзу против Токугава. У синих фитильные стрелки Сацума, у оранжевых лучники. Прикройте стрелков асигару с яри на время перезарядки. Конный отряд на краю поля можно оставить в резерве до первого контакта пехоты.",
+    "blue_faction": "shimazu",
+    "orange_faction": "tokugawa",
+    "blue": [
+      {
+        "swords": 12,
+        "archers": 19,
+        "spearmen": 16,
+        "mounted": 0,
+        "x": -21,
+        "y": 0,
+        "group": 2
+      },
+      {
+        "swords": 17,
+        "archers": 6,
+        "spearmen": 20,
+        "mounted": 0,
+        "x": -26,
+        "y": -19,
+        "group": 1
+      },
+      {
+        "swords": 0,
+        "archers": 0,
+        "spearmen": 0,
+        "mounted": 16,
+        "x": -26,
+        "y": 21,
+        "group": 3
+      }
+    ],
+    "orange": [
+      {
+        "swords": 15,
+        "archers": 12,
+        "spearmen": 22,
+        "mounted": 0,
+        "x": 21,
+        "y": 0,
+        "group": 2
+      },
+      {
+        "swords": 14,
+        "archers": 16,
+        "spearmen": 14,
+        "mounted": 0,
+        "x": 26,
+        "y": 19,
+        "group": 3
+      },
+      {
+        "swords": 0,
+        "archers": 0,
+        "spearmen": 0,
+        "mounted": 17,
+        "x": 26,
+        "y": -21,
+        "group": 1
+      }
+    ]
+  }
+}

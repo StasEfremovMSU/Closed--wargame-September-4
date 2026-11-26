@@ -29,6 +29,12 @@ struct Decision {
     PathResult path{};
     bool keep_route{};
 };
+struct RegimentStaffEffects {
+    float panic_fraction{};
+    Tick calm_ticks{};
+    float leadership{}, standard{}, music{};
+};
+RegimentStaffEffects GetStaffEffects(const World &, const RegimentState &);
 OfficerId Commander(const World &, RegimentId);
 Perception Observe(const World &, OfficerId, const SpatialIndex &);
 Decision Evaluate(const Perception &, const OfficerTraits &, const Order *);

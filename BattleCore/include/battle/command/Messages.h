@@ -28,6 +28,7 @@ struct CommandIntent {
     float objective_radius_m{};
     NodeId target_command{};
     RegimentId target_regiment{};
+    std::optional<Pose> flank_waypoint;
 };
 
 struct AuthorityLimits {
@@ -87,7 +88,7 @@ struct MessageEnvelope {
     MessageId id{};
     NodeId sender{}, recipient{};
     DeliveryChannel channel{DeliveryChannel::Voice};
-    UnitId courier{}; // Existing body; not a second unit spawned by a message.
+    UnitId courier{}; // Empty until a queued staff dispatch is assigned a rider.
     Tick created_tick{}, delivery_tick{};
     std::optional<Tick> expiry_tick;
     DeliveryStatus status{DeliveryStatus::Queued};

@@ -119,13 +119,12 @@ std::string ExportSvg(const Snapshot &snapshot, const Scenario &scenario) {
           << r.id.value << " · " << r.units.size() << (r.panic ? " PANIC" : "") << "</text></g>\n";
     }
     for (auto &u : w.units) {
-        auto *r = FindRegiment(w, u.regiment);
         o << "<g id=\"unit-" << u.id.value << "\"><title>" << Xml(u.name) << " | ID " << u.id.value
           << " | HP " << u.health << "</title>";
         if (u.alive)
             o << "<circle cx=\"" << x(u.pose.position.x) << "\" cy=\"" << y(u.pose.position.y)
               << "\" r=\"" << std::clamp(scale * .25f, 1.8f, 4.0f) << "\" fill=\""
-              << Colour(r->team) << "\"/>";
+              << Colour(UnitTeam(w, u)) << "\"/>";
         else {
             o << "<path d=\"M " << x(u.pose.position.x) - 2 << " " << y(u.pose.position.y) - 2
               << " l 4 4 m -4 0 l 4 -4\" stroke=\"#a7adb4\"/>";

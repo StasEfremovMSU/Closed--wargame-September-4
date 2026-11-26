@@ -1,0 +1,185 @@
+{
+  "schema_version": 4,
+  "name": "Клишов, 1702 · Обход низины",
+  "terrain": "Lutzen",
+  "era": {
+    "id": "great_northern_war",
+    "version": 1,
+    "blue_faction": "sweden",
+    "orange_faction": "saxony"
+  },
+  "regiment_tactics": true,
+  "risky_volley": false,
+  "direct_deployment": true,
+  "adaptive_battle": true,
+  "objective": {
+    "goal": "Breakthrough",
+    "time_limit_seconds": 240,
+    "crossing": 1,
+    "required_regiments": 2,
+    "crossing_team": 0,
+    "breakthrough": {
+      "x_m": 118,
+      "y_m": 65,
+      "radius_m": 29,
+      "group": 3
+    }
+  },
+  "briefing": "19 июля 1702 года у Клишова армия Карла XII встретила войско Августа II. Основу армии Августа составляли саксонские части, рядом с которыми сражались коронные войска под командованием Иеронима Любомирского.\n\nВы командуете шведами. Проведите два пехотных полка третьей группы к отмеченному рубежу за открытым крылом. Центральные полки прикрывают продвижение вдоль низины.\n\nДорога, низина и позиция цели служат ориентирами условного участка. Саксонская фракция представляет обе части армии Августа. Пропорции войск и расстояния сокращены для игры. Игровой участок 560 × 360 м, 5 000 фигур.",
+  "sources": [
+    "https://muzeumwp.pl/mwpedia/obraz-bitwa-pod-kliszowem-19-vii-1702/"
+  ],
+  "regiments": [
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -56,
+      "start_y": 64,
+      "formation_files": 18,
+      "swords": 10,
+      "archers": 20,
+      "spearmen": 17,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -106,
+      "start_y": 64,
+      "formation_files": 18,
+      "swords": 8,
+      "archers": 20,
+      "spearmen": 17,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -70,
+      "start_y": -6,
+      "formation_files": 27,
+      "swords": 10,
+      "archers": 20,
+      "spearmen": 18,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -82,
+      "start_y": -78,
+      "formation_files": 26,
+      "swords": 10,
+      "archers": 20,
+      "spearmen": 16,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -125,
+      "start_y": -114,
+      "formation_files": 16,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 31,
+      "mounted_class": "light"
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -108,
+      "start_y": 117,
+      "formation_files": 16,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 31
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 57,
+      "start_y": -5,
+      "formation_files": 27,
+      "swords": 12,
+      "archers": 20,
+      "spearmen": 18,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 66,
+      "start_y": -79,
+      "formation_files": 28,
+      "swords": 11,
+      "archers": 20,
+      "spearmen": 17,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 66,
+      "start_y": 66,
+      "formation_files": 26,
+      "swords": 11,
+      "archers": 20,
+      "spearmen": 18,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 109,
+      "start_y": -4,
+      "formation_files": 25,
+      "swords": 11,
+      "archers": 19,
+      "spearmen": 17,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 116,
+      "start_y": -113,
+      "formation_files": 16,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 39,
+      "mounted_class": "heavy"
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 106,
+      "start_y": 116,
+      "formation_files": 17,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 39
+    }
+  ],
+  "field": {
+    "width_m": 560,
+    "height_m": 360
+  },
+  "figure_target": 5000
+}

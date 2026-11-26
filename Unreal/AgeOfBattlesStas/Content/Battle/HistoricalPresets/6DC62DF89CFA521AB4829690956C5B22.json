@@ -1,0 +1,194 @@
+{
+  "schema_version": 5,
+  "name": "Лейпциг, 1813 · Южный фронт у Вахау",
+  "terrain": "Waterloo",
+  "era": {
+    "id": "napoleonic",
+    "version": 1,
+    "blue_faction": "france",
+    "orange_faction": "russia"
+  },
+  "regiment_tactics": true,
+  "risky_volley": false,
+  "direct_deployment": true,
+  "adaptive_battle": true,
+  "objective": {
+    "goal": "Breakthrough",
+    "time_limit_seconds": 285,
+    "crossing": 1,
+    "required_regiments": 2,
+    "crossing_team": 0,
+    "breakthrough": {
+      "x_m": 145,
+      "y_m": 18,
+      "radius_m": 31,
+      "group": 2
+    }
+  },
+  "briefing": "16 октября 1813 года, в первый день Битвы народов, к югу от Лейпцига армия Наполеона сражалась с Богемской армией Шварценберга. Одним из центров боя стало поле между Вахау и Либертвольквицем, где действовала французская артиллерия.\n\nВы командуете французами. Проведите два пехотных батальона второй группы к отмеченному участку за линией коалиции. Прикройте их огнём батареи и удержите конницей дальний фланг.\n\nУсловная карта передаёт один участок южного фронта с дорогами, гребнем и усадьбами. Русский состав представляет силы коалиции в этом секторе. Отмеченный рубеж и численность выбраны для игры. Игровой участок 580 × 380 м, 5 000 фигур.",
+  "sources": [
+    "https://www.napoleon.org/en/history-of-the-two-empires/timelines/1813-and-the-lead-up-to-the-battle-of-leipzig",
+    "https://www.markkleeberg.de/freizeit-und-tourismus/sehenswertes/denkmale-und-gedenksteine/wachtberg-denkmal"
+  ],
+  "regiments": [
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -65,
+      "start_y": 14,
+      "formation_files": 18,
+      "swords": 17,
+      "archers": 20,
+      "spearmen": 5,
+      "mounted": 0
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": -113,
+      "start_y": 14,
+      "formation_files": 17,
+      "swords": 17,
+      "archers": 20,
+      "spearmen": 5,
+      "mounted": 0,
+      "infantry_profile": "old_guard"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": -70,
+      "start_y": -62,
+      "formation_files": 31,
+      "swords": 14,
+      "archers": 20,
+      "spearmen": 4,
+      "mounted": 0,
+      "infantry_profile": "young_guard"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -74,
+      "start_y": 81,
+      "formation_files": 30,
+      "swords": 15,
+      "archers": 20,
+      "spearmen": 4,
+      "mounted": 0,
+      "infantry_profile": "fusiliers"
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": -115,
+      "start_y": 126,
+      "formation_files": 18,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 37,
+      "mounted_class": "heavy"
+    },
+    {
+      "type": "Platform",
+      "enabled": true,
+      "group": 1,
+      "start_x": -36,
+      "start_y": -96,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 0,
+      "platform": "field_gun",
+      "platform_count": 6
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 68,
+      "start_y": 12,
+      "formation_files": 32,
+      "swords": 17,
+      "archers": 20,
+      "spearmen": 5,
+      "mounted": 0,
+      "infantry_profile": "russian_grenadiers"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 1,
+      "start_x": 57,
+      "start_y": -71,
+      "formation_files": 32,
+      "swords": 15,
+      "archers": 20,
+      "spearmen": 5,
+      "mounted": 0,
+      "infantry_profile": "russian_line"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 69,
+      "start_y": 75,
+      "formation_files": 29,
+      "swords": 15,
+      "archers": 20,
+      "spearmen": 5,
+      "mounted": 0,
+      "infantry_profile": "russian_jaegers"
+    },
+    {
+      "type": "Infantry",
+      "enabled": true,
+      "group": 2,
+      "start_x": 118,
+      "start_y": 17,
+      "formation_files": 28,
+      "swords": 16,
+      "archers": 20,
+      "spearmen": 6,
+      "mounted": 0
+    },
+    {
+      "type": "Cavalry",
+      "enabled": true,
+      "group": 3,
+      "start_x": 125,
+      "start_y": 112,
+      "formation_files": 18,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 39,
+      "mounted_class": "heavy"
+    },
+    {
+      "type": "Platform",
+      "enabled": true,
+      "group": 1,
+      "start_x": 48,
+      "start_y": -106,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 0,
+      "platform": "field_gun",
+      "platform_count": 5
+    }
+  ],
+  "field": {
+    "width_m": 580,
+    "height_m": 380
+  },
+  "figure_target": 5000
+}

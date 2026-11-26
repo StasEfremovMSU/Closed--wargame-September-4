@@ -1,0 +1,16 @@
+/.vs/
+/Binaries/
+/DerivedDataCache/
+/Distribution/
+/Intermediate/
+/Saved/
+/Content/Fab/
+/Content/RPGTinyFantasyForest/
+/Content/StylizedEnvironment/
+/Plugins/*/Binaries/
+/Plugins/*/Intermediate/
+/Landing/dist/
+*.sln
+*.slnx
+*.pyc
+__pycache__/
