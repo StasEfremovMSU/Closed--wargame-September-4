@@ -68,6 +68,12 @@ struct FRegimentAncientFigure
 // Geometry is in centimeters with +X forward. Paint is a swap-in faction material.
 FRegimentAncientFigure BuildRegimentAncientPlatform(battle::BattlePlatform Platform);
 FRegimentAncientFigure BuildRegimentAncientShield(ERegimentAncientShield Shield);
+inline constexpr double RegimentEraHeadgearAnchorHeight = 156.0;
+inline FTransform RegimentEraHeadgearPose(const FTransform& Dress)
+{
+    return FTransform(Dress.GetRotation(), Dress.TransformPosition(FVector(0, 0, RegimentEraHeadgearAnchorHeight)),
+        Dress.GetScale3D());
+}
 FRegimentAncientFigure BuildRegimentEraHeadgear(ERegimentEraVisual Style);
 double RegimentEraFigureScale(ERegimentEraVisual Style);
 ERegimentAncientShield RegimentAncientShieldStyle(FStringView Faction);

@@ -294,7 +294,7 @@ bool LocalMelee::RangedTargetAllowed(const UnitState &u, bool skirmisher_shooter
     if (!u.regiment)
         return command::IsArmyStaffTarget(world_, u);
     if (u.skirmisher)
-        return skirmisher_shooter;
+        return skirmisher_shooter || world_.scenario.rules.formed_fire_on_skirmishers;
     return !Engaged(*Regiment(u));
 }
 
@@ -421,14 +421,20 @@ bool LocalMelee::ClearMove(const UnitState &u, Vec3 destination) const {
 }
 
 bool LocalMelee::ClearMove(const UnitState &u, Vec3 destination,
-                           std::span<const size_t> neighbors, const UnitState **blocker) const {
+                           std::span<const size_t> neighbors, const UnitState **blocker, bool yield_rout) const {
     const size_t i = UnitIndex(u);
     const Vec3 from = start_[i];
     const Vec3 travel = Ground(destination - from);
+    const auto *regiment = world_.scenario.rules.regiment_tactics && world_.scenario.rules.individual_rout
+        ? Regiment(u) : nullptr;
     for (auto j : neighbors) {
         if (j == i)
             continue;
         const auto &other = world_.units[j];
+        if (regiment && regiment->panic && (other.regiment != u.regiment || yield_rout) &&
+            Team(other) == regiment->team &&
+            other.control != ControlMode::PlayerControlled && other.platform == BattlePlatform::None)
+            continue;
         const Vec3 gap = Ground(from - start_[j]);
         const Vec3 relative = travel - Ground(other.pose.position - start_[j]);
         const float relative_squared = Dot(relative, relative);
@@ -503,7 +509,8 @@ std::optional<Vec3> LocalMelee::BypassStaff(const UnitState &u, const UnitState 
     return best;
 }
 
-Vec3 LocalMelee::Constrain(const UnitState &u, Vec3 destination, float march_speed, float dt) const {
+Vec3 LocalMelee::Constrain(const UnitState &u, Vec3 destination, float march_speed, float dt,
+                         bool yield_rout) const {
     const Vec3 from = start_[UnitIndex(u)];
     if (!coarse_groups_.empty() && coarse_groups_[unit_groups_[UnitIndex(u)]].clear_march)
         return destination;
@@ -514,7 +521,7 @@ Vec3 LocalMelee::Constrain(const UnitState &u, Vec3 destination, float march_spe
     const bool can_bypass = march_speed > 0.f && dt > 0.f && distance > .001f;
     Neighbors(from, distance + radii_[UnitIndex(u)] + max_radius_);
     const UnitState *blocker = nullptr;
-    if (ClearMove(u, destination, nearby_, can_bypass ? &blocker : nullptr))
+    if (ClearMove(u, destination, nearby_, can_bypass ? &blocker : nullptr, yield_rout))
         return destination;
     if (blocker && !blocker->regiment)
         if (const auto way_around = BypassStaff(u, *blocker, from, travel, march_speed, dt))
@@ -542,7 +549,7 @@ Vec3 LocalMelee::Constrain(const UnitState &u, Vec3 destination, float march_spe
     float blocked = 1.f;
     for (int attempt = 0; attempt < 5; ++attempt) {
         const float fraction = (clear + blocked) * .5f;
-        if (ClearMove(u, from + travel * fraction, nearby_))
+        if (ClearMove(u, from + travel * fraction, nearby_, nullptr, yield_rout))
             clear = fraction;
         else
             blocked = fraction;

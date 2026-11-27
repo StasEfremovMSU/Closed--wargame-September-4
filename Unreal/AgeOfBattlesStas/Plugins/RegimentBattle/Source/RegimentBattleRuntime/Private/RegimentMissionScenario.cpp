@@ -466,6 +466,9 @@ battle::Scenario BuildMissionBattle(const FMissionRoster& Roster, std::span<cons
     Scenario.rules.regiment_tactics = bRegimentTactics;
     Scenario.rules.mixed_rank_tactics = bRegimentTactics;
     Scenario.rules.sustained_melee = bRegimentTactics;
+    Scenario.rules.formed_fire_on_skirmishers = true;
+    Scenario.rules.meeting_engagement = bRegimentTactics;
+    Scenario.rules.individual_rout = bRegimentTactics;
     Scenario.rules.controlled_arrow_aim = true;
     Scenario.obstacles = battle::MarchTerrainAreas(Terrain, Field);
     Scenario.hill = battle::MarchHill(Terrain, Field);
@@ -969,6 +972,13 @@ battle::Scenario BuildPresetBattle(const FMissionPreset& Preset, std::span<const
             const bool bLinearDrill = Era && (Era->Rules.linear_infantry || Era->Id == TEXT("great_northern_war"));
             Regiment.formation.slot_stagger = bAncientDrill || bLinearDrill ? 0.f : .37f;
         }
+    Scenario.rules.formed_fire_on_skirmishers = true;
+    Scenario.rules.individual_rout = Preset.bRegimentTactics && Preset.Tutorial == ERegimentTutorial::None;
+    // Historical deployments and linear-infantry battles already stage their opening contact.
+    const bool bAuthoredHistoricalOpening = Preset.StartsInBattle() && Preset.HistoricalIdentity.IsValid();
+    Scenario.rules.meeting_engagement = Preset.bRegimentTactics && !bAuthoredHistoricalOpening &&
+        !Scenario.rules.linear_infantry && Preset.Objective.Goal == EMissionGoal::Eliminate &&
+        Preset.Tutorial == ERegimentTutorial::None && !Preset.bSmokeExercise;
     Scenario.rules.risky_volley = Preset.bRiskyVolley;
     Scenario.rules.adaptive_battle = Preset.bAdaptiveBattle;
     RegimentCommanderProfiles::Apply(Scenario, Preset);

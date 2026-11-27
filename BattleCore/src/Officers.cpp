@@ -3,25 +3,21 @@
 #include "battle/Control.h"
 #include "battle/command/Services.h"
 #include "FieldCombat.h"
+#include "LocalMelee.h"
+#include "Routing.h"
 #include <array>
 #include <limits>
 namespace battle {
 namespace {
 constexpr float RegimentSightRange = 60.f;
 
-PathResult FindRoutExit(const NavigationService &navigation, const World &world,
-                        const RegimentState &regiment, Vec3 limit) {
-    const auto current = regiment.pose.position;
+PathResult FindRoutExit(const NavigationService &navigation, const RegimentState &regiment,
+                        PathRequest request, Vec3 limit) {
+    const auto current = request.start.position;
     const float x = std::clamp(current.x, -limit.x, limit.x);
     const float y = std::clamp(current.y, -limit.y, limit.y);
     // Fleeing soldiers can pass through allied formations. The navigation terrain
     // and the formation's movement sweep still govern the route around obstacles.
-    PathRequest request{.start = regiment.pose, .footprint = Footprint(regiment), .face_travel = true};
-    const auto *lead = FindUnit(world, regiment.units.front());
-    if (world.scenario.hill && lead && lead->troop == UnitTroop::Mounted)
-        request.segment_clear = [hill = *world.scenario.hill](Pose from, Pose to) {
-            return HillSegmentPassable(hill, from.position, to.position, UnitTroop::Mounted);
-        };
     const auto path_to = [&](Vec3 goal) {
         request.goal = goal;
         return navigation.FindPath(request);
@@ -59,6 +55,83 @@ PathResult FindRoutExit(const NavigationService &navigation, const World &world,
             return route;
     }
     return {Status::NoPath, {}};
+}
+
+PathResult FindRoutExit(const NavigationService &navigation, const World &world,
+                        const RegimentState &regiment, Vec3 limit) {
+    PathRequest request{.start = regiment.pose, .footprint = Footprint(regiment), .face_travel = true};
+    const auto *lead = FindUnit(world, regiment.units.front());
+    if (world.scenario.hill && lead && lead->troop == UnitTroop::Mounted)
+        request.segment_clear = [hill = *world.scenario.hill](Pose from, Pose to) {
+            return HillSegmentPassable(hill, from.position, to.position, UnitTroop::Mounted);
+        };
+    return FindRoutExit(navigation, regiment, request, limit);
+}
+
+void PlanIndividualRout(World &world, const NavigationService &navigation, RegimentState &regiment,
+                        bool rallying) {
+    const bool changed_goal = regiment.rout_to_rally != rallying;
+    if (!changed_goal && !regiment.route.empty() && world.tick < regiment.rout_progress_tick + 30)
+        return;
+    if (!changed_goal && world.tick < regiment.decision_tick)
+        return;
+
+    const auto *lead = FindUnit(world, regiment.units.front());
+    const float radius = regiment.formation.body_radius_m;
+    Vec3 start = regiment.pose.position;
+    if (UnitTerrainLimit(world, start, start, radius) < 1.f) {
+        float nearest = std::numeric_limits<float>::infinity();
+        for (const auto id : regiment.units) {
+            const auto &unit = *FindUnit(world, id);
+            if (unit.control == ControlMode::PlayerControlled)
+                continue;
+            const auto at = unit.pose.position;
+            const float distance = Distance(at, regiment.pose.position);
+            if (distance < nearest && UnitTerrainLimit(world, at, at, radius) >= 1.f) {
+                start = at;
+                nearest = distance;
+            }
+        }
+    }
+    const auto *hill = world.scenario.hill ? &*world.scenario.hill : nullptr;
+    PathRequest request{.start = {start, 0.f}, .goal = regiment.rally_point,
+                        .footprint = {2.f * radius, 2.f * radius}, .preserve_facing = true};
+    request.segment_clear = [&world, hill, radius, troop = lead->troop](Pose from, Pose to) {
+        return UnitTerrainLimit(world, from.position, to.position, radius) >= 1.f &&
+            (!hill || HillSegmentPassable(*hill, from.position, to.position, troop));
+    };
+    // The static graph is shared by all fugitives. Include live enemy formations only after
+    // a previously valid escape stalled, so a regiment can still break from an existing contact.
+    std::vector<FormationBlock> enemies;
+    if (!changed_goal && !regiment.route.empty()) {
+        for (const auto &other : world.regiments)
+            if (other.team != regiment.team && !other.units.empty() && !other.panic &&
+                Distance(other.pose.position, regiment.pose.position) <= 12.f)
+                enemies.push_back({other.pose, Footprint(other)});
+        if (enemies.empty()) {
+            regiment.decision_tick = world.tick + 30;
+            return;
+        }
+        request.occupied = enemies;
+    }
+    const auto path = [&] {
+        if (rallying || !world.scenario.field_bounds)
+            return navigation.FindPath(request);
+        const auto limit = TerrainFieldInset(*world.scenario.field_bounds, 0.f, radius, radius);
+        return FindRoutExit(navigation, regiment, request, limit);
+    }();
+    regiment.decision_tick = world.tick + 30;
+    if (path.status != Status::Ok && !changed_goal && !regiment.route.empty())
+        return;
+    regiment.ai_action = OrderType::Withdraw;
+    regiment.ai_target = {};
+    regiment.retreat_waypoint.reset();
+    regiment.waypoint = 0;
+    regiment.rout_to_rally = rallying;
+    regiment.route = path.status == Status::Ok ? RoutWaypoints(start, path.waypoints) : std::vector<Pose>{};
+    regiment.rout_progress_tick = world.tick;
+    for (const auto id : regiment.units)
+        FindUnit(world, id)->rout_waypoint = 0;
 }
 
 Perception ObserveRegiment(const World &w, const RegimentState &r) {
@@ -629,6 +702,10 @@ void UpdateOfficers(World &w, const NavigationService &nav) {
             d.reason = "panic: withdraw";
             emergency = true;
             const bool rallying = active && r.order->type == OrderType::Rally && !r.cannot_rally;
+            if (w.scenario.rules.individual_rout && r.individual_routing) {
+                PlanIndividualRout(w, nav, r, rallying);
+                continue;
+            }
             if (w.scenario.rules.regiment_tactics && w.scenario.field_bounds && !rallying) {
                 if (r.retreat_waypoint)
                     continue;
@@ -643,6 +720,12 @@ void UpdateOfficers(World &w, const NavigationService &nav) {
                 if (r.ai_action == OrderType::Withdraw && w.tick < r.decision_tick)
                     continue;
                 d.path = FindRoutExit(nav, w, r, limit);
+                if (w.scenario.rules.individual_rout && d.path.status != Status::Ok) {
+                    r.individual_routing = true;
+                    r.decision_tick = 0;
+                    PlanIndividualRout(w, nav, r, false);
+                    continue;
+                }
                 d.reason = "panic: flee to the battlefield edge";
                 if (d.path.status != Status::Ok)
                     d.path = {Status::Ok, {}};
@@ -810,8 +893,19 @@ void UpdateOfficers(World &w, const NavigationService &nav) {
                     (d.action == OrderType::MoveTo || IsWithdrawing(d.action));
                 d.path = nav.FindPath({.start = r.pose, .goal = d.point, .footprint = Footprint(r),
                                        .face_travel = face_travel});
+                if (d.path.status == Status::NoPath && w.scenario.rules.meeting_engagement &&
+                    active && d.action == OrderType::MoveTo && !resolved.player_direct &&
+                    r.march_lane && r.march_lane->recovery_attempts == MarchLane::MaxAttempts)
+                    d.path = FindSupportRoute(nav, w, r, d.point);
             }
             d.keep_route = existing_route;
+        }
+        if (w.scenario.rules.regiment_tactics && w.scenario.rules.individual_rout && r.panic && IsWithdrawing(d.action) &&
+            !d.keep_route && d.path.status != Status::Ok) {
+            r.individual_routing = true;
+            r.decision_tick = 0;
+            PlanIndividualRout(w, nav, r, active && r.order->type == OrderType::Rally && !r.cannot_rally);
+            continue;
         }
         if (emergency || !active || w.tick >= r.decision_tick || r.route.empty()) {
             ApplyDecision(w, commander, d);

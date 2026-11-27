@@ -281,6 +281,7 @@ TEST_CASE("combat.protected_bows_keep_loft_penalty_across_open_lanes_and_respect
 TEST_CASE("combat.detached_screens_exchange_fire_while_their_parent_ranks_are_in_melee") {
     auto scenario = test::Duel(3);
     scenario.rules.local_melee = scenario.rules.regiment_tactics = true;
+    scenario.rules.formed_fire_on_skirmishers = true;
     scenario.regiments[0].pose.position.x = -.4f;
     scenario.regiments[1].pose.position.x = .4f;
     for (auto &unit : scenario.units) {
@@ -317,6 +318,58 @@ TEST_CASE("combat.detached_screens_exchange_fire_while_their_parent_ranks_are_in
     CHECK_FALSE(std::ranges::any_of(events, [](const auto &event) {
         return event.projectile && (event.source == UnitId{2} || event.source == UnitId{5});
     }));
+}
+
+TEST_CASE("combat.formed_bows_can_target_detached_screens_of_an_engaged_regiment") {
+    auto scenario = test::Duel(2);
+    scenario.rules.local_melee = scenario.rules.regiment_tactics = true;
+    scenario.regiments[0].pose.position.x = -.4f;
+    scenario.regiments[1].pose.position.x = .4f;
+    for (auto &unit : scenario.units) {
+        unit.pose = scenario.regiments[unit.regiment.value - 1].pose;
+        unit.health = 100.f;
+    }
+    auto &regiment = scenario.regiments.emplace_back(scenario.regiments[0]);
+    regiment.id = {3};
+    regiment.pose.position = {-8.f, 7.f, 0.f};
+    auto &shooter = scenario.units.emplace_back(scenario.units[0]);
+    shooter.id = {5};
+    shooter.regiment = regiment.id;
+    shooter.pose = regiment.pose;
+    shooter.archer = true;
+    shooter.ranged_weapon = RangedWeapon::Bow;
+    shooter.weapon.range = 20.f;
+    scenario.units[3].archer = true;
+    scenario.units[3].ranged_weapon = RangedWeapon::Bow;
+    scenario.units[3].weapon.range = 18.f;
+
+    auto created = CreateWorld(scenario, 2);
+    REQUIRE(created);
+    auto &world = created.value;
+    auto &screen = *FindUnit(world, {4});
+    screen.skirmisher = true;
+    screen.pose.position = {4.f, 7.f, 0.f};
+
+    const auto fires_at_screen = [&] {
+        LocalMelee contact(world, .05f);
+        contact.Refresh(world);
+        REQUIRE(contact.Engaged(world.regiments[1]));
+        REQUIRE_FALSE(contact.Engaged(world.regiments[2]));
+        if (screen.pose.position.y == 0.f)
+            CHECK_FALSE(contact.RangedTargetAllowed(screen, true));
+        std::vector<BattleEvent> events;
+        BuildCombatEvents(world, events, nullptr, &contact);
+        return std::ranges::any_of(events, [](const auto &event) {
+            return event.projectile && event.source == UnitId{5} && event.target == UnitId{4};
+        });
+    };
+    CHECK_FALSE(fires_at_screen());
+    world.scenario.rules.formed_fire_on_skirmishers = true;
+    CHECK(fires_at_screen());
+    const auto rules = nlohmann::json(world.scenario.rules).get<Rules>();
+    CHECK(rules.formed_fire_on_skirmishers);
+    screen.pose.position = {.4f, 0.f, 0.f};
+    CHECK_FALSE(fires_at_screen());
 }
 
 TEST_CASE("combat.empty_bow_ammunition_does_not_prevent_a_dagger_strike_in_contact") {

@@ -62,6 +62,7 @@ Result<World> Restore(const Snapshot &s) {
             uint8_t(u.control) > uint8_t(ControlMode::Dead) ||
             ((u.control == ControlMode::Dead) == u.alive) || !Finite(u.slot) ||
             !Finite(u.desired_velocity) || !Finite(u.contact_travel) ||
+            (u.rout_waypoint && !w.scenario.rules.individual_rout) ||
             !std::isfinite(u.jump_base_z) || !std::isfinite(u.parry_yaw) ||
             u.jump_started_tick > w.tick || (!u.jump_started_tick && u.jump_base_z != 0.f) ||
             (u.parry_until && (u.parry_until <= w.tick || u.parry_until > u.parry_ready_tick)) ||
@@ -112,6 +113,9 @@ Result<World> Restore(const Snapshot &s) {
             r.discipline_window_count > r.initial_count ||
             r.melee_attack_aspects > 3 ||
             !Finite(r.rout_direction) || Length(r.rout_direction) > 1.001f ||
+            (r.individual_routing && (!w.scenario.rules.individual_rout || !r.panic)) ||
+            ((r.rout_to_rally || r.rout_progress_tick) && !r.individual_routing) ||
+            r.rout_progress_tick > w.tick ||
             (r.ai_target && !FindRegiment(w, r.ai_target)) ||
             (r.cavalry_target && !FindRegiment(w, r.cavalry_target)) ||
             (r.pursuit_target && !FindRegiment(w, r.pursuit_target)) ||
@@ -138,6 +142,7 @@ Result<World> Restore(const Snapshot &s) {
         for (auto id : r.units) {
             auto *u = FindUnit(w, id);
             if (!u || !u->alive || u->regiment != r.id || u->slot_index >= r.slots.size() ||
+                (r.individual_routing && !r.route.empty() && u->rout_waypoint > r.route.size()) ||
                 !members.insert(id.value).second)
                 return bad("duplicate or missing live membership");
         }
@@ -415,6 +420,10 @@ uint64_t StateHash(const World &w) {
             h.text("secondary javelin cooldown");
             h.n(u.ranged_ready_tick);
         }
+        if (u.rout_waypoint) {
+            h.text("rout_waypoint");
+            h.n(u.rout_waypoint);
+        }
         if (u.dagger_drawn || u.skirmisher || u.skirmisher_returning || u.bypassing ||
             u.dagger_ready_tick || u.contact_travel != Vec3{}) {
             h.text("local combat");
@@ -542,6 +551,11 @@ uint64_t StateHash(const World &w) {
             h.n(r.cannot_rally);
             h.vec(r.rout_direction);
         }
+        if (r.individual_routing) {
+            h.text("individual_routing");
+            h.n(r.rout_to_rally);
+            h.n(r.rout_progress_tick);
+        }
         if (r.melee_attack_aspects) {
             h.text("melee attack aspects");
             h.n(r.melee_attack_aspects);
@@ -614,10 +628,16 @@ uint64_t StateHash(const World &w) {
         h.text("linear_infantry");
     if (rules.mixed_rank_tactics)
         h.text("mixed_rank_tactics");
+    if (rules.formed_fire_on_skirmishers)
+        h.text("formed_fire_on_skirmishers");
     if (rules.sustained_melee)
         h.text("sustained_melee");
     if (rules.controlled_arrow_aim)
         h.text("controlled_arrow_aim");
+    if (rules.individual_rout)
+        h.text("individual_rout");
+    if (rules.meeting_engagement)
+        h.text("meeting_engagement");
     h.n(w.scenario.obstacles.size());
     for (auto &o : w.scenario.obstacles) {
         h.f(o.min_x);

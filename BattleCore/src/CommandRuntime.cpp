@@ -763,6 +763,74 @@ void AddNeedSupportFallback(CommandState &state, NodeRuntime &runtime, const Com
         QueueMessage(state, node.id, node.parent, tick, report);
 }
 
+void AssignMeetingInitiative(const World &world, const CommandHierarchy &hierarchy,
+                             std::vector<CommandTask> &missions) {
+    if (!world.scenario.rules.meeting_engagement || world.scenario.objective)
+        return;
+    std::vector<const CommandNode *> armies;
+    for (const auto &node : hierarchy.nodes)
+        if (node.level == Level::Army && IsCommandRoot(node) && node.commander)
+            armies.push_back(&node);
+    if (armies.size() != 2 || armies[0]->team == armies[1]->team)
+        return;
+
+    std::array<std::optional<size_t>, 2> assigned;
+    for (size_t side = 0; side < armies.size(); ++side) {
+        for (size_t i = 0; i < missions.size(); ++i) {
+            const auto &mission = missions[i];
+            if (mission.recipient != armies[side]->id)
+                continue;
+            if (assigned[side] || !detail::IsAutomaticAreaAttack(mission) ||
+                mission.not_before_tick || mission.expiry_tick || mission.duration_ticks ||
+                !ValidTaskRequest(mission))
+                return;
+            assigned[side] = i;
+        }
+    }
+    // Honor a single opening assault. For equal missions, team and command IDs break the tie.
+    const auto rank = [&](size_t side) {
+        return std::tuple(!assigned[side], armies[side]->team, armies[side]->id);
+    };
+    const size_t attacker = rank(0) < rank(1) ? 0u : 1u;
+    const size_t defender = 1 - attacker;
+    const auto deployment_center = [&](NodeId army) -> std::optional<Vec3> {
+        Vec3 center{};
+        float weight = 0.f;
+        for (const auto regiment_id : OwnedRegiments(hierarchy, army))
+            if (const auto *regiment = FindRegiment(world, regiment_id)) {
+                const float living = float(regiment->units.size());
+                center = center + regiment->pose.position * living;
+                weight += living;
+            }
+        return weight > 0.f ? std::optional(center * (1.f / weight)) : std::nullopt;
+    };
+    const auto assault_post = deployment_center(armies[attacker]->id);
+    const auto defense_post = deployment_center(armies[defender]->id);
+    if (!assault_post || !defense_post)
+        return;
+
+    if (!assigned[attacker]) {
+        CommandTask attack;
+        attack.recipient = armies[attacker]->id;
+        attack.action = TaskKind::Attack;
+        attack.intent.objective_position = *assault_post + (*defense_post - *assault_post) * .75f;
+        attack.authority.initiative = InitiativePolicy::WithinIntent;
+        attack.authority.may_change_target = true;
+        attack.authority.may_pursue = true;
+        missions.push_back(std::move(attack));
+    }
+    CommandTask hold = assigned[defender] ? missions[*assigned[defender]] : CommandTask{};
+    hold.recipient = armies[defender]->id;
+    hold.action = TaskKind::HoldArea;
+    hold.authority = {};
+    hold.intent = {};
+    hold.intent.objective_position = *defense_post;
+    if (assigned[defender])
+        missions[*assigned[defender]] = std::move(hold);
+    else
+        missions.push_back(std::move(hold));
+}
+
 } // namespace
 
 bool ValidTaskRequest(const CommandTask &task) {
@@ -809,6 +877,7 @@ StubResult<bool> InitializeCommand(World &world) {
     }
     std::set<uint64_t> task_ids;
     auto missions = world.scenario.command_setup->missions;
+    AssignMeetingInitiative(world, state.hierarchy, missions);
     if (const auto &objective = world.scenario.objective) {
         for (const auto &node : state.hierarchy.nodes) {
             if (!IsCommandRoot(node) || std::ranges::any_of(missions, [&](const auto &mission) {
@@ -1218,12 +1287,14 @@ StubResult<bool> UpdateCommand(World &world, const NavigationService &navigation
         StubResult<DecisionProposal> decision;
         switch (node.level) {
         case Level::Army:
+            context.meeting_engagement = world.scenario.rules.meeting_engagement &&
+                                         !world.scenario.objective;
             if (world.scenario.rules.local_melee) {
                 context.can_stage = [&](NodeId group, Vec3 goal) {
                     const auto *lead = GroupLead(world, state.hierarchy, group);
                     const auto *regiment = lead ? FindRegiment(world, lead->regiment) : nullptr;
-                    return regiment && Dot(goal - regiment->pose.position,
-                                            Forward(situation.own.pose.yaw)) > 1.f &&
+                    return regiment && (context.meeting_engagement || Dot(goal - regiment->pose.position,
+                                            Forward(situation.own.pose.yaw)) > 1.f) &&
                         FindSupportRoute(navigation, world, *regiment, goal).status == Status::Ok;
                 };
                 context.observe_order = [&](const CommandTask &task) -> std::optional<ChildOrderObservation> {
@@ -1235,6 +1306,24 @@ StubResult<bool> UpdateCommand(World &world, const NavigationService &navigation
                                                     Forward(situation.own.pose.yaw));
                     ChildOrderObservation observed;
                     observed.progress = distance_ahead <= 2.f ? 1.f : 0.f;
+                    if (context.meeting_engagement) {
+                        observed.progress = Distance(task.intent.objective_position, regiment->pose.position) <= 2.f
+                            ? 1.f : 0.f;
+                        if (const auto *group = FindRuntime(state, task.recipient);
+                            group && (!group->memory.active_task || group->memory.active_task == task.id)) {
+                            const auto delivered = std::ranges::find(group->orders, task.id, &CommandTask::id);
+                            if (delivered != group->orders.end())
+                                observed.delivered_tick = delivered->received_tick;
+                        }
+                        const auto *lead_runtime = FindRuntime(state, lead->id);
+                        const bool paused_by_player = lead_runtime &&
+                            ExternalOrder(world, *regiment, lead_runtime->last_order_id);
+                        const auto &lane = regiment->march_lane;
+                        const bool detours_exhausted = lane && lane->detour.empty() &&
+                            lane->recovery_attempts >= MarchLane::MaxAttempts;
+                        observed.executing = paused_by_player ||
+                            (!detours_exhausted && regiment->waypoint < regiment->route.size());
+                    }
                     return observed;
                 };
                 context.choose_group_flank = [&](NodeId wing, const KnownContact &target,

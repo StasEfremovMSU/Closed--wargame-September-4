@@ -5,6 +5,12 @@
 #include <set>
 #include <tuple>
 namespace battle::command::detail {
+bool IsAutomaticAreaAttack(const CommandTask &task) {
+    return task.action == TaskKind::Attack && !task.intent.target_regiment &&
+           !task.intent.target_command && task.authority.may_change_target &&
+           task.authority.may_pursue && !task.author && !task.issuer &&
+           task.priority < PlayerOrderPriority;
+}
 Tick Later(Tick a, Tick b) { return b > UINT64_MAX - a ? UINT64_MAX : a + b; }
 std::optional<Tick> TaskExpiry(const CommandTask &t, Tick received) {
     auto end = t.expiry_tick;

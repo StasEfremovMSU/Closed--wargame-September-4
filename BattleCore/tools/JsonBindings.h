@@ -161,10 +161,16 @@ inline void to_json(nlohmann::json &j, const Rules &r) {
         j["linear_infantry"] = true;
     if (r.mixed_rank_tactics)
         j["mixed_rank_tactics"] = true;
+    if (r.formed_fire_on_skirmishers)
+        j["formed_fire_on_skirmishers"] = true;
     if (r.sustained_melee)
         j["sustained_melee"] = true;
     if (r.controlled_arrow_aim)
         j["controlled_arrow_aim"] = true;
+    if (r.individual_rout)
+        j["individual_rout"] = true;
+    if (r.meeting_engagement)
+        j["meeting_engagement"] = true;
 }
 inline void from_json(const nlohmann::json &j, Rules &r) {
     const Rules defaults;
@@ -178,8 +184,11 @@ inline void from_json(const nlohmann::json &j, Rules &r) {
     r.adaptive_battle = j.value("adaptive_battle", defaults.adaptive_battle);
     r.linear_infantry = j.value("linear_infantry", defaults.linear_infantry);
     r.mixed_rank_tactics = j.value("mixed_rank_tactics", defaults.mixed_rank_tactics);
+    r.formed_fire_on_skirmishers = j.value("formed_fire_on_skirmishers", defaults.formed_fire_on_skirmishers);
     r.sustained_melee = j.value("sustained_melee", defaults.sustained_melee);
     r.controlled_arrow_aim = j.value("controlled_arrow_aim", defaults.controlled_arrow_aim);
+    r.individual_rout = j.value("individual_rout", defaults.individual_rout);
+    r.meeting_engagement = j.value("meeting_engagement", defaults.meeting_engagement);
     r.ranged_cohorts = defaults.ranged_cohorts;
     if (!j.contains("ranged_cohorts"))
         return;
@@ -359,6 +368,8 @@ inline void to_json(nlohmann::json &j, const UnitState &u) {
         j["ammunition_remaining"] = u.ammunition_remaining;
     if (u.ranged_ready_tick)
         j["ranged_ready_tick"] = u.ranged_ready_tick;
+    if (u.rout_waypoint)
+        j["rout_waypoint"] = u.rout_waypoint;
 }
 inline void from_json(const nlohmann::json &j, UnitState &u) {
     const UnitState defaults;
@@ -383,6 +394,7 @@ inline void from_json(const nlohmann::json &j, UnitState &u) {
     u.parry_yaw = j.value("parry_yaw", defaults.parry_yaw);
     u.ammunition_remaining = defaults.ammunition_remaining;
     u.ranged_ready_tick = j.value("ranged_ready_tick", defaults.ranged_ready_tick);
+    u.rout_waypoint = j.value("rout_waypoint", defaults.rout_waypoint);
     if (const auto count = j.find("ammunition_remaining"); count != j.end())
         u.ammunition_remaining = uint32_t(ReadJsonUnsigned(*count, std::numeric_limits<uint32_t>::max(),
                                                           "invalid ammunition_remaining"));
@@ -492,6 +504,11 @@ inline void to_json(nlohmann::json &j, const RegimentState &r) {
         j["melee_attack_aspects"] = r.melee_attack_aspects;
     if (r.rout_direction != Vec3{})
         j["rout_direction"] = r.rout_direction;
+    if (r.individual_routing) {
+        j["individual_routing"] = true;
+        j["rout_to_rally"] = r.rout_to_rally;
+        j["rout_progress_tick"] = r.rout_progress_tick;
+    }
 }
 inline void from_json(const nlohmann::json &j, RegimentState &r) {
     static_cast<RegimentSpec &>(r) = j.get<RegimentSpec>();
@@ -559,6 +576,9 @@ inline void from_json(const nlohmann::json &j, RegimentState &r) {
     if (const auto aspects = j.find("melee_attack_aspects"); aspects != j.end())
         r.melee_attack_aspects = uint8_t(ReadJsonUnsigned(*aspects, 3, "invalid melee_attack_aspects"));
     r.rout_direction = j.value("rout_direction", Vec3{});
+    r.individual_routing = j.value("individual_routing", false);
+    r.rout_to_rally = j.value("rout_to_rally", false);
+    r.rout_progress_tick = j.value("rout_progress_tick", Tick{});
 }
 inline void to_json(nlohmann::json &j, const PendingAttack &a) {
     j = {{"id", a.id}, {"source", a.source}, {"target", a.target}, {"due_tick", a.due_tick}, {"damage", a.damage},

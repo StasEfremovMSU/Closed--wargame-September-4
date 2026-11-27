@@ -1,6 +1,7 @@
 #include "battle/Formation.h"
 #include "CavalryTuning.h"
 #include "LocalMelee.h"
+#include "Routing.h"
 #include "battle/Officers.h"
 #include <array>
 #include <limits>
@@ -1181,6 +1182,10 @@ void AdvanceFormations(World &w, float dt, const LocalMelee *contact) {
         const float fatigue_factor = regiment_tactics ? 1.f - .35f * r.fatigue : 1.f;
         const Pose previous = shared_step[index].value_or(r.pose);
         const auto escape = !shared_step[index] ? LooseSkirmishEscape(w, r) : Vec3{};
+        if (regiment_tactics && w.scenario.rules.individual_rout && r.panic && r.individual_routing) {
+            AdvanceIndividualRout(w, r, dt, contact);
+            continue;
+        }
         const bool evading = escape != Vec3{};
         const bool ordered_retreat = IsWithdrawing(r.ai_action);
         const bool withdrawing = ordered_retreat || evading;
@@ -1283,6 +1288,14 @@ void AdvanceFormations(World &w, float dt, const LocalMelee *contact) {
                 return FormationMotionLimit(w, r, r.pose, destination, footprint);
             };
             const float fraction = r.retreat_waypoint || has_waypoint ? sweep(next) : 0.f;
+            if (regiment_tactics && w.scenario.rules.individual_rout && r.panic && has_waypoint &&
+                next != r.pose && fraction < .001f) {
+                r.individual_routing = true;
+                r.route.clear();
+                r.waypoint = 0;
+                r.decision_tick = 0;
+                continue;
+            }
             if (can_detour && next != r.pose && fraction < .001f) {
                 if (!r.march_lane)
                     r.march_lane = MarchLane{.waypoint = r.route[r.waypoint], .goal = r.route.back(),
@@ -1346,8 +1359,8 @@ void AdvanceFormations(World &w, float dt, const LocalMelee *contact) {
                 for (const auto direction : escape_directions) {
                     if (Length(direction) < .5f)
                         continue;
-                    const Pose escape{r.pose.position + direction * reach, r.pose.yaw};
-                    const float clear = sweep(escape);
+                    const Pose withdrawal{r.pose.position + direction * reach, r.pose.yaw};
+                    const float clear = sweep(withdrawal);
                     if (reach * clear < .85f)
                         continue;
                     r.retreat_waypoint = r.pose.position + direction * (reach * clear);

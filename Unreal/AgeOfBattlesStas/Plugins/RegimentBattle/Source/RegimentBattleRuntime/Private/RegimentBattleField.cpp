@@ -755,9 +755,11 @@ struct FInstanceBatch
     }
 };
 
-double ProxyFigureStature(ECommandFigure Command)
+double FigureStature(ECommandFigure Command)
 {
-    return Command == ECommandFigure::General ? 1.14 : Command == ECommandFigure::Commander ? 1.08 : 1.0;
+    const double Height = Command == ECommandFigure::General ? 198.0
+        : Command == ECommandFigure::Commander ? 181.0 : RegimentFigureReferenceHeight;
+    return Height / RegimentFigureReferenceHeight;
 }
 
 battle::RangedWeapon HistoricalHandProp(bool bAncient, ERegimentHistoricalFigure Style, const battle::UnitSpec& Unit)
@@ -795,8 +797,8 @@ void AddTrainingTarget(FInstanceBatch& Batch, const FTransform& Transform)
 }
 
 void AddProxyFigure(FInstanceBatch& Batch, const FTransform& Transform, const battle::UnitState& Unit,
-    ECommandFigure Command, ERegimentHistoricalFigure Dress, bool bBakedBody, bool bHandProp, bool bMusket,
-    double PikeLength, double FigureScale, bool bRefreshedPolearm,
+    ECommandFigure Command, bool bBakedBody, bool bHandProp, bool bMusket,
+    double PikeLength, double FigureScale, double RiderHeight, bool bRefreshedPolearm,
     const FRegimentEraTroop* MountedProfile, const FLinearColor& TeamColor,
     const FRegimentFigureAppearance& Appearance)
 {
@@ -816,12 +818,14 @@ void AddProxyFigure(FInstanceBatch& Batch, const FTransform& Transform, const ba
     const FLinearColor Timber = FLinearColor(.15f, .078f, .039f) * Appearance.LeatherShade;
     const FLinearColor Steel(.24f, .26f, .28f);
     const bool bMounted = Unit.troop == battle::UnitTroop::Mounted;
-    const double Height = bMounted ? (bBakedBody ? RegimentHistoricalSeatOffset(Dress) : 105.0) : 0.0;
-    const double Stature = ProxyFigureStature(Command);
+    const double Height = RiderHeight / FigureScale;
+    const double Stature = FigureStature(Command);
     if (!bBakedBody)
     {
-        Part({0, 0, 74 * Stature + Height}, {37, 48, 111 * Stature}, Uniform, Cloth);
-        Part({0, 0, 145 * Stature + Height}, {29, 29, 35}, Appearance.Skin, Hide);
+        const double TorsoHeight = bMounted ? 75.0 : 111.0;
+        const double TorsoCenter = bMounted ? 92.0 : 74.0;
+        Part({0, 0, TorsoCenter * Stature + Height}, {37, 48, TorsoHeight * Stature}, Uniform, Cloth);
+        Part({0, 0, 145 * Stature + Height}, FVector(29, 29, 35) * Stature, Appearance.Skin, Hide);
     }
     if (bMounted && !bBakedBody)
     {
@@ -4889,12 +4893,16 @@ bool ARegimentBattleField::PresentFrame()
             }
             const bool bShowHandProp = bHandProp && !Unit.dagger_drawn && (!bPilum || Unit.ammunition_remaining > 0);
             const bool bShowSengokuWeapon = bSengokuWeapon && !Unit.dagger_drawn;
-            AddProxyFigure(Session->ProxyBatches[Side], Transform, Unit, CommandFigure, Dress,
-                bBakedBody, bShowHandProp || bShowSengokuWeapon, bMusket, PikeLength, EraScale,
+            AddProxyFigure(Session->ProxyBatches[Side], Transform, Unit, CommandFigure,
+                bBakedBody, bShowHandProp || bShowSengokuWeapon, bMusket, PikeLength, EraScale, RiderHeight,
                 Session->bAncient || Dress >= ERegimentHistoricalFigure::Egyptian, MountedProfile,
                 ProxyColors[Side], View.Appearance);
-            const double HatHeight = ((bMounted ? 105.0 : 0.0) + 156.0 * ProxyFigureStature(CommandFigure)) * EraScale;
-            AddOutfitPart(Headgear, FTransform(Rotation, Location + FVector(0, 0, HatHeight), FVector(EraScale)));
+            if (Headgear)
+            {
+                const FVector ProxyFeet = Location + FVector(0, 0, RiderHeight);
+                const FTransform ProxyDress(Rotation, ProxyFeet, FVector(EraScale * FigureStature(CommandFigure)));
+                AddOutfitPart(Headgear, RegimentEraHeadgearPose(ProxyDress));
+            }
             if (PaintedShield && PaintedShield->Mesh)
                 PaintedShield->Batches[Side].Transforms.Emplace(
                     bRoofShield ? Rotation * FRotator(90, 0, 0).Quaternion() : Rotation,
@@ -4932,8 +4940,7 @@ bool ARegimentBattleField::PresentFrame()
         const bool bDagger = Unit.dagger_drawn;
         const bool bGunpowder = bMusket || (Unit.archer && battle::UsesGunpowder(Unit.ranged_weapon));
         const bool bArcane = Unit.archer && Unit.ranged_weapon == battle::RangedWeapon::Arcane;
-        const double Height = EraScale * (CommandFigure == ECommandFigure::General ? 198.0
-            : CommandFigure == ECommandFigure::Commander ? 181.0 : RegimentFigureReferenceHeight);
+        const double Height = EraScale * FigureStature(CommandFigure) * RegimentFigureReferenceHeight;
         const bool bPolearm = !bHeldLoose && CommandFigure == ECommandFigure::None && StaffCylinder && SpearPoint &&
             RegimentShowsPolearm(Unit, bMusket, MountedProfile);
         auto& Rig = Session->Rigs[UnitRole];
@@ -5338,8 +5345,7 @@ bool ARegimentBattleField::PresentFrame()
             const auto& FigurePose = bInterpolated ? Motion->Body : Figure->GetComponentTransform();
             const FTransform Dressed = RegimentHistoricalDressPose(FigurePose, Rig->GetMeshForwardYaw(),
                 View.FeetOffset - RiderHeight, Height);
-            FTransform Hat = Dressed;
-            Hat.SetTranslation(Dressed.TransformPosition(FVector(0, 0, RegimentFigureReferenceHeight * .94)));
+            const FTransform Hat = RegimentEraHeadgearPose(Dressed);
             auto* Horse = View.Mount.Get();
             FTransform TackPose = Horse ? (bInterpolated ? Motion->Mount : Horse->GetComponentTransform())
                 : FTransform::Identity;

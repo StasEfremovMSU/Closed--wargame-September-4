@@ -19,6 +19,7 @@ struct UnitState : UnitSpec {
     Tick parry_until{}, parry_ready_tick{};
     float parry_yaw{};
     Tick ranged_ready_tick{};
+    uint32_t rout_waypoint{};
 };
 enum class CavalryPhase : uint8_t { None, Approach, Impact, Reform };
 struct MarchLane {
@@ -69,6 +70,8 @@ struct RegimentState : RegimentSpec {
     bool ranged_checked{}, rear_checked{}, retreat_overlap{}, cannot_rally{};
     uint8_t melee_attack_aspects{};
     Vec3 rout_direction{};
+    bool individual_routing{}, rout_to_rally{};
+    Tick rout_progress_tick{};
 };
 struct SmokeCloud {
     Vec3 center{};

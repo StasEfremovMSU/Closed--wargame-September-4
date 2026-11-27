@@ -54,7 +54,7 @@ enum class EBoardColor : uint8
     Blue, BlueLight, Orange, OrangeLight, Ivory, Brass,
     Harvest, Stubble, WallMortar, WallStone, WallPale, WallCap,
     Plain, Reed, Snow, ShelteredSnow, Ice, IceBand, IceStreak, RouteOpen, RouteBlocked,
-    DistantGrass, DistantField, DistantTrees, WinterTrees, Rut, WetGravel, Ditch, EarthBank, BankTurf, Count
+    DistantGrass, DistantField, DistantTrees, WinterTrees, Rut, WetGravel, Ditch, EarthBank, BankTurf, Scree, Limestone, RockSeam, Count
 };
 
 const TCHAR* const ShapePaths[] =
@@ -74,7 +74,7 @@ constexpr uint32 BoardColors[] =
     0xB7A371, 0xC4AE73, 0x645D55, 0x938F83, 0xAFABA0, 0xC0B7A8,
     0xC2AA70, 0x9D9360, 0xCDD9D5, 0xA9B9B4, 0x93BBC7, 0xAEC9D0, 0xD7E5DF,
     0x8FF4BB, 0xFE6F62, 0x82927F, 0xA49E80, 0x586E60, 0x60736F,
-    0x89724A, 0x958974, 0x715941, 0x967551, 0x9A8E5C
+    0x89724A, 0x958974, 0x715941, 0x967551, 0x9A8E5C, 0x9F9273, 0xA39B89, 0x847D70
 };
 
 static_assert(UE_ARRAY_COUNT(ShapePaths) == int32(EShape::Count));
@@ -430,6 +430,22 @@ TArray<FShapeBatch> MakeDetailedTerrain(battle::MarchTerrain Terrain, battle::Ma
             }
             break;
         }
+        case T::Marsh:
+        {
+            if (Terrain != battle::MarchTerrain::Thermopylae)
+                break;
+            const int32 Tufts = FMath::Clamp(FMath::RoundToInt(SizeX / 520.0), 3, 32);
+            for (int32 Index = 0; Index < Tufts; ++Index)
+            {
+                const double Tx = X + SizeX * Random.FRandRange(-.48f, .48f);
+                const double Ty = Y + SizeY * Random.FRandRange(-.38f, .38f);
+                const double Height = Random.FRandRange(36.f, 92.f);
+                AddShape(Batches, EShape::Cone, EBoardColor::Reed,
+                    {Tx, Ty, Ground(Tx, Ty) + .32 * Height}, {34.0, 25.0, Height},
+                    FRotator(Random.FRandRange(-18.f, 18.f), Random.FRandRange(0.f, 360.f), 0.f));
+            }
+            break;
+        }
         case T::PloughedField:
         {
             const double RowSpacing = FMath::Max(420.0, SizeY / 18.0);
@@ -479,6 +495,8 @@ TArray<FShapeBatch> MakeDetailedTerrain(battle::MarchTerrain Terrain, battle::Ma
         }
         case T::StoneWall:
         {
+            if (Terrain == battle::MarchTerrain::Thermopylae)
+                break; // The board places fitted masonry on the slope.
             const bool bRedoubt = Terrain == battle::MarchTerrain::Poltava ||
                 Terrain == battle::MarchTerrain::Narva || Terrain == battle::MarchTerrain::Borodino;
             const double Height = bRedoubt ? 145.0 : 245.0;
@@ -498,6 +516,87 @@ TArray<FShapeBatch> MakeDetailedTerrain(battle::MarchTerrain Terrain, battle::Ma
         }
     }
     return Batches;
+}
+
+UE::Geometry::FDynamicMesh3 MakeThermopylaeOutcrops(const battle::TerrainHill& Hill,
+    std::span<const battle::Obstacle> Areas)
+{
+    using namespace UE::Geometry;
+    FDynamicMesh3 Mesh;
+    Mesh.EnableAttributes();
+    Mesh.Attributes()->EnableMaterialID();
+    auto* Normals = Mesh.Attributes()->PrimaryNormals();
+    auto* UVs = Mesh.Attributes()->PrimaryUV();
+    auto* Materials = Mesh.Attributes()->GetMaterialID();
+    FRandomStream Noise(35819);
+    const auto Ground = [&Hill](double X, double Y)
+    {
+        return Cm * battle::HillHeight(Hill, {float(X / Cm), float(Y / Cm), 0.f});
+    };
+    const auto AddFace = [&](int32 A, int32 B, int32 C, int32 Material)
+    {
+        const int32 Id = Mesh.AppendTriangle(A, C, B);
+        if (Id < 0)
+            return;
+        const FVector P = Mesh.GetVertex(A);
+        const FVector3f Normal(FVector::CrossProduct(Mesh.GetVertex(B) - P, Mesh.GetVertex(C) - P).GetSafeNormal());
+        Normals->SetTriangle(Id, FIndex3i(
+            Normals->AppendElement(Normal), Normals->AppendElement(Normal), Normals->AppendElement(Normal)));
+        UVs->SetTriangle(Id, FIndex3i(A, C, B));
+        Materials->SetValue(Id, Material);
+    };
+    for (const auto& Area : Areas)
+    {
+        // The boulders stay on inaccessible mountainside ground; their toes never cover a route.
+        if (Area.feature != battle::TerrainFeature::Forest)
+            continue;
+        const FVector2D Min(Cm * Area.min_x, Cm * Area.min_y);
+        const FVector2D Max(Cm * Area.max_x, Cm * Area.max_y);
+        const FVector2D Size = Max - Min;
+        constexpr int32 Rows = 3;
+        const int32 Columns = FMath::Clamp(FMath::FloorToInt(Size.X / 1600.0), 4, 10);
+        for (int32 Row = 0; Row < Rows; ++Row)
+            for (int32 Column = 0; Column < Columns; ++Column)
+            {
+                const double SpanX = Size.X / Columns, SpanY = Size.Y / Rows;
+                const double X = Min.X + (Column + .5 + Noise.FRandRange(-.14f, .14f)) * SpanX;
+                const double Y = Min.Y + (Row + .52 + Noise.FRandRange(-.16f, .16f)) * SpanY;
+                const double Rx = SpanX * Noise.FRandRange(.25f, .46f);
+                const double Ry = SpanY * Noise.FRandRange(.20f, .42f);
+                const double Height = FMath::Min(Rx, Ry) * Noise.FRandRange(.96f, 2.25f);
+                const double Bend = Noise.FRandRange(-.16f, .16f);
+                const double Azimuth = Noise.FRandRange(0.f, 2.f * UE_PI);
+                constexpr int32 Sides = 7;
+                constexpr double Heights[] = {-.12, .47, .85};
+                constexpr double Radii[] = {1.0, .95, .62};
+                const int32 First = Mesh.VertexCount();
+                for (int32 Ring = 0; Ring < UE_ARRAY_COUNT(Heights); ++Ring)
+                    for (int32 Side = 0; Side < Sides; ++Side)
+                    {
+                        const double Angle = Azimuth + Side * (2.0 * UE_DOUBLE_PI / Sides);
+                        const double Radius = Radii[Ring] * Noise.FRandRange(.83f, 1.f);
+                        const double Px = FMath::Clamp(X + Rx * (Radius * FMath::Cos(Angle) + Bend * Ring),
+                            Min.X + 5.0, Max.X - 5.0);
+                        const double Py = FMath::Clamp(Y + Ry * (Radius * FMath::Sin(Angle) + .08 * Ring),
+                            Min.Y + 5.0, Max.Y - 5.0);
+                        const double Z = Ground(Px, Py) + Height * (Heights[Ring] + Noise.FRandRange(-.08f, .08f));
+                        Mesh.AppendVertex({Px, Py, Z});
+                        UVs->AppendElement(FVector2f(float(Px / 1000.0), float((Py + Z) / 1000.0)));
+                    }
+                for (int32 Ring = 0; Ring < 2; ++Ring)
+                    for (int32 Side = 0; Side < Sides; ++Side)
+                    {
+                        const int32 Bottom = First + Ring * Sides;
+                        const int32 Next = (Side + 1) % Sides;
+                        const int32 Stone = Noise.RandRange(0, 4) == 0 ? 2 : Ring;
+                        AddFace(Bottom + Side, Bottom + Next, Bottom + Sides + Next, Stone);
+                        AddFace(Bottom + Side, Bottom + Sides + Next, Bottom + Sides + Side, Stone);
+                    }
+                for (int32 Side = 1; Side + 1 < Sides; ++Side)
+                    AddFace(First + 2 * Sides, First + 2 * Sides + Side, First + 2 * Sides + Side + 1, 1);
+            }
+    }
+    return Mesh;
 }
 
 struct FSurroundingLandscape
@@ -632,7 +731,18 @@ FSurroundingLandscape MakeSurroundingLandscape(battle::MarchTerrain Terrain, FVe
         }
     }
     const bool bChannel = Terrain == T::River || Terrain == T::StirlingBridge || Terrain == T::Granicus;
-    const bool bCoast = Terrain == T::Thermopylae || Terrain == T::Issus;
+    const bool bThermopylae = Terrain == T::Thermopylae;
+    const bool bCoast = bThermopylae || Terrain == T::Issus;
+    FVector2D CoastAtFieldEdge(-HalfExtent.Y, -HalfExtent.Y);
+    if (bThermopylae)
+        for (const auto& Area : Areas)
+            if (Area.feature == battle::TerrainFeature::River)
+            {
+                if (Cm * Area.min_x <= -HalfExtent.X + .01)
+                    CoastAtFieldEdge.X = Cm * Area.max_y;
+                if (Cm * Area.max_x >= HalfExtent.X - .01)
+                    CoastAtFieldEdge.Y = Cm * Area.max_y;
+            }
     const double ChannelSamples[] = {-RiverHalfWidth, -RiverHalfWidth + 90.0,
         RiverHalfWidth - 90.0, RiverHalfWidth};
     const double CannaeSamples[] = {-HalfExtent.Y - 1765.0, -HalfExtent.Y - 235.0};
@@ -651,7 +761,16 @@ FSurroundingLandscape MakeSurroundingLandscape(battle::MarchTerrain Terrain, FVe
             }
     const TArray<double> XAxis = ExteriorAxis(HalfExtent.X, MoveTemp(InnerX),
         bChannel ? TConstArrayView<double>(ChannelSamples) : TConstArrayView<double>());
+    if (bThermopylae)
+        for (const double Offset : {450., 900., 2100., 3150., 5700., 6900., 10200., 12900., 18100., 22300., 37000.})
+            InnerY.Add(HalfExtent.Y + Offset);
     const TArray<double> YAxis = ExteriorAxis(HalfExtent.Y, MoveTemp(InnerY), WaterEdgeSamples);
+    const auto CliffWeight = [HalfExtent](FVector2D Point)
+    {
+        const double Side = FMath::Max(0.0, FMath::Abs(Point.X) - HalfExtent.X);
+        return (1.0 - FMath::SmoothStep(28000.0, 124000.0, Side)) *
+            (1.0 - FMath::SmoothStep(37000.0, 169000.0, Point.Y - HalfExtent.Y));
+    };
 
     const auto ExteriorDistance = [HalfExtent](FVector2D Point)
     {
@@ -661,6 +780,8 @@ FSurroundingLandscape MakeSurroundingLandscape(battle::MarchTerrain Terrain, FVe
     {
         if (bChannel)
             return FMath::Abs(Point.Y) >= HalfExtent.Y && FMath::Abs(Point.X) < RiverHalfWidth;
+        if (bThermopylae)
+            return Point.Y < (Point.X < 0 ? CoastAtFieldEdge.X : CoastAtFieldEdge.Y);
         if (bCoast)
             return Point.Y < -HalfExtent.Y;
         if (Terrain == T::Cannae)
@@ -684,19 +805,40 @@ FSurroundingLandscape MakeSurroundingLandscape(battle::MarchTerrain Terrain, FVe
             return -42.0;
         if (bChannel && FMath::Abs(Point.X) < RiverHalfWidth && FMath::Abs(Point.Y) >= HalfExtent.Y)
             return -40.0;
-        if (bCoast && Point.Y <= -HalfExtent.Y)
+        if (bCoast && (Point.Y <= -HalfExtent.Y || (bThermopylae && IsWater(Point))))
             return EdgeHeight * FMath::Exp(-Distance / 4200.0) - 30.0 * FMath::Min(1.0, Distance / 4200.0);
         const double Undulation = FMath::PerlinNoise2D(Point / 38200.0 + FVector2D(3.7, 5.8)) +
             .36 * FMath::PerlinNoise2D(Point / 12500.0 + FVector2D(19.1, -4.5));
         const double Relief = Undulation * (bDry ? 5800.0 : 8400.0);
-        return EdgeHeight * (1.0 - FMath::SmoothStep(0., 4200., Distance)) +
+        const double OrdinaryHeight = EdgeHeight * (1.0 - FMath::SmoothStep(0., 4200., Distance)) +
             (Relief - 240.0) * FMath::SmoothStep(1200., 40000., Distance);
+        if (bThermopylae && Point.Y > HalfExtent.Y)
+        {
+            const double Up = Point.Y - HalfExtent.Y;
+            const double Fold = FMath::PerlinNoise2D(FVector2D(Point.X / 9500.0, Up / 4200.0));
+            const double Fissure = 1.0 - FMath::Abs(FMath::PerlinNoise2D(FVector2D(Point.X / 2100.0, Up / 8700.0)));
+            const double Scarp = 11500.0 * FMath::SmoothStep(600., 10900., Up) +
+                6400.0 * FMath::SmoothStep(12500., 27000., Up);
+            const double Detail = (5200.0 * Fold - 2250.0 * Fissure) * FMath::SmoothStep(0., 7800., Up);
+            const double Blend = CliffWeight(Point) * FMath::SmoothStep(0., 3150., Up);
+            return FMath::Lerp(OrdinaryHeight, EdgeHeight + Scarp + Detail, Blend);
+        }
+        return OrdinaryHeight;
     };
     const auto CellColor = [&](FVector2D Point)
     {
         const double Distance = ExteriorDistance(Point);
         if (IsWater(Point))
             return EBoardColor::DeepWater;
+        if (bThermopylae && Point.Y > HalfExtent.Y && CliffWeight(Point) > .6)
+        {
+            const double Up = Point.Y - HalfExtent.Y;
+            const double Fracture = FMath::PerlinNoise2D(FVector2D(Point.X / 3700.0, Up / 1550.0));
+            const double Stratum = FMath::Sin((GroundHeight(Point) + .022 * Point.X + 630.0 * Fracture) / 780.0);
+            if (Up < 1800.0 || (Up > 25500.0 && Fracture < .05))
+                return EBoardColor::Scree;
+            return Stratum < -.32 ? EBoardColor::RockSeam : EBoardColor::Limestone;
+        }
         if (Terrain == T::Peipus && Point.Y > HalfExtent.Y && Point.Y < HalfExtent.Y + 4500.0 &&
             FMath::Abs(Point.X) < HalfExtent.X + 4200.0)
             return EBoardColor::Ice;
@@ -1038,6 +1180,7 @@ bool IsGroundColor(EBoardColor Color)
     case B::Dust: case B::Rut: case B::Harvest: case B::Stubble: case B::Plain:
     case B::Snow: case B::ShelteredSnow: case B::DistantGrass: case B::DistantField:
     case B::Ditch: case B::EarthBank: case B::BankTurf:
+    case B::Scree: case B::Limestone: case B::RockSeam:
         return true;
     default:
         return false;
@@ -1522,25 +1665,53 @@ struct FRegimentMarchBoard::FScene
             auto Areas = battle::MarchTerrainAreas(Choice, Field);
             if (Hill || battle::MarchUsesDetailedTerrain(Choice) || Choice == T::OpenField || Choice == T::Cannae)
             {
-                auto Mesh = BuildRegimentGroundMesh(Hill ? &*Hill : nullptr, HalfExtent.X, HalfExtent.Y, Areas);
+                auto Mesh = BuildRegimentGroundMesh(Hill ? &*Hill : nullptr, HalfExtent.X, HalfExtent.Y, Areas,
+                    Choice == T::Thermopylae);
                 if (bStockMap)
                     SetExterior(*Root, MakeSurroundingLandscape(Choice, HalfExtent, &Mesh, Areas));
                 const B GroundMaterials[] = {Choice == T::Cannae ? B::Plain : B::Meadow,
                     B::Stubble, B::Dust, B::Harvest, B::Lawn, B::DeepWater, B::Ford, B::Bank,
-                    B::Ditch, B::EarthBank, B::BankTurf};
-                static_assert(UE_ARRAY_COUNT(GroundMaterials) == int32(ERegimentGroundMaterial::BankTurf) + 1);
+                    B::Ditch, B::EarthBank, B::BankTurf, B::Scree, B::Limestone};
+                static_assert(UE_ARRAY_COUNT(GroundMaterials) == int32(ERegimentGroundMaterial::Limestone) + 1);
                 AddSurface(*Root, Terrain, MoveTemp(Mesh), GroundMaterials);
+                if (Choice == T::Thermopylae && Hill)
+                {
+                    constexpr B RockMaterials[] = {B::Scree, B::Limestone, B::RockSeam};
+                    AddSurface(*Root, Terrain, MakeThermopylaeOutcrops(*Hill, Areas), RockMaterials);
+                }
             }
             else if (bStockMap)
                 SetExterior(*Root, MakeSurroundingLandscape(Choice, HalfExtent, nullptr, Areas));
 
-            if (Choice == T::StoneWalls)
+            if (Choice == T::StoneWalls || Choice == T::Thermopylae)
             {
                 constexpr B WallMaterials[] = {B::WallMortar, B::WallStone, B::WallPale, B::WallCap};
                 const auto Walls = battle::MarchObstacles(Choice, Field);
-                AddSurface(*Root, Terrain, BuildRegimentWallMesh(Walls), WallMaterials);
-                for (const auto& Crossing : battle::MarchCrossings)
-                    Areas.push_back({-19.5f, Crossing.y - 2.2f, 19.5f, Crossing.y + 2.2f, false, battle::TerrainFeature::Road});
+                auto WallMesh = BuildRegimentWallMesh(Walls);
+                if (Choice == T::Thermopylae && Hill)
+                {
+                    for (const int32 Id : WallMesh.VertexIndicesItr())
+                    {
+                        FVector Vertex = WallMesh.GetVertex(Id);
+                        Vertex.Z += Cm * battle::HillHeight(*Hill, {float(Vertex.X / Cm), float(Vertex.Y / Cm), 0.f});
+                        WallMesh.SetVertex(Id, Vertex);
+                    }
+                    auto* Normals = WallMesh.Attributes()->PrimaryNormals();
+                    for (const int32 Id : WallMesh.TriangleIndicesItr())
+                    {
+                        const auto Triangle = WallMesh.GetTriangle(Id);
+                        const FVector A = WallMesh.GetVertex(Triangle.A);
+                        const FVector3f Normal(FVector::CrossProduct(WallMesh.GetVertex(Triangle.C) - A,
+                            WallMesh.GetVertex(Triangle.B) - A).GetSafeNormal());
+                        const auto Corners = Normals->GetTriangle(Id);
+                        for (const int32 Corner : {Corners.A, Corners.B, Corners.C})
+                            Normals->SetElement(Corner, Normal);
+                    }
+                }
+                AddSurface(*Root, Terrain, MoveTemp(WallMesh), WallMaterials);
+                if (Choice == T::StoneWalls)
+                    for (const auto& Crossing : battle::MarchCrossings)
+                        Areas.push_back({-19.5f, Crossing.y - 2.2f, 19.5f, Crossing.y + 2.2f, false, battle::TerrainFeature::Road});
             }
             constexpr B RoadMaterials[] = {B::Dust, B::Rut};
             AddSurface(*Root, Terrain,
@@ -1770,6 +1941,83 @@ bool FRegimentBattlefieldDaylightTest::RunTest(const FString&)
     TestEqual(TEXT("Leaving the battlefield restores stationary mobility"),
         Light->Mobility.GetValue(), EComponentMobility::Stationary);
     World->DestroyWorld(false);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentThermopylaeEscarpmentTest, "RegimentBattle.Presentation.ThermopylaeEscarpment",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+
+bool FRegimentThermopylaeEscarpmentTest::RunTest(const FString&)
+{
+    using G = ERegimentGroundMaterial;
+    constexpr auto Terrain = battle::MarchTerrain::Thermopylae;
+    const battle::MarchField Field{735.0f, 455.0f};
+    const FVector2D Half(Cm * Field.HalfWidth(), Cm * Field.HalfHeight());
+    const auto Hill = battle::MarchHill(Terrain, Field);
+    if (!TestTrue(TEXT("The pass has hill and shore geometry"), Hill.has_value()))
+        return false;
+    const auto Areas = battle::MarchTerrainAreas(Terrain, Field);
+    const auto Outcrops = MakeThermopylaeOutcrops(*Hill, Areas);
+    TestTrue(TEXT("Near-field rocks use one bounded mesh"), Outcrops.TriangleCount() > 0 && Outcrops.TriangleCount() < 2400);
+    for (const int32 Id : Outcrops.VertexIndicesItr())
+    {
+        const FVector Point = Outcrops.GetVertex(Id) / Cm;
+        if (!std::ranges::any_of(Areas, [&Point](const auto& Area)
+            {
+                return Area.feature == battle::TerrainFeature::Forest && Point.X >= Area.min_x && Point.X <= Area.max_x &&
+                    Point.Y >= Area.min_y && Point.Y <= Area.max_y;
+            }))
+            return TestTrue(TEXT("Near-field rocks stay inside inaccessible mountainside terrain"), false);
+    }
+    const auto Core = BuildRegimentGroundMesh(&*Hill, Half.X, Half.Y, Areas, true);
+    const auto Exterior = MakeSurroundingLandscape(Terrain, Half, &Core, Areas);
+    TestTrue(TEXT("The mountain rises behind the pass in one bounded exterior mesh"),
+        Exterior.Ground.GetBounds().Max.Z > 10000 && Exterior.Ground.TriangleCount() <= 14000);
+    TestTrue(TEXT("The cliff has both rock strata and talus materials"),
+        Exterior.Materials.Contains(EBoardColor::Limestone) && Exterior.Materials.Contains(EBoardColor::RockSeam) &&
+        Exterior.Materials.Contains(EBoardColor::Scree));
+    bool bWestCoast = false;
+    bool bEastCoast = false;
+    const int32 Water = Exterior.Materials.IndexOfByKey(EBoardColor::DeepWater);
+    for (const int32 Id : Exterior.Ground.TriangleIndicesItr())
+    {
+        if (Exterior.Ground.Attributes()->GetMaterialID()->GetValue(Id) != Water)
+            continue;
+        const auto Face = Exterior.Ground.GetTriangle(Id);
+        const FVector Center = (Exterior.Ground.GetVertex(Face.A) + Exterior.Ground.GetVertex(Face.B) +
+            Exterior.Ground.GetVertex(Face.C)) / 3.0;
+        if (Center.Y > -Half.Y)
+        {
+            bWestCoast |= Center.X < -Half.X;
+            bEastCoast |= Center.X > Half.X;
+        }
+    }
+    TestTrue(TEXT("The sea continues beyond both edges of the pass"), bWestCoast && bEastCoast);
+
+    int32 SlopeFaces = 0;
+    for (const int32 Id : Core.TriangleIndicesItr())
+    {
+        const int32 Material = Core.Attributes()->GetMaterialID()->GetValue(Id);
+        if (Material < int32(G::Scree))
+            continue;
+        ++SlopeFaces;
+        const auto Face = Core.GetTriangle(Id);
+        if (Core.GetVertex(Face.A).Y <= .25 * Half.Y || Core.GetVertex(Face.B).Y <= .25 * Half.Y ||
+            Core.GetVertex(Face.C).Y <= .25 * Half.Y)
+            return TestTrue(TEXT("Rock strata leave the road and gate approach clear"), false);
+    }
+    TestTrue(TEXT("Exposed stone starts on the playable mountain slopes"), SlopeFaces > 0);
+
+    for (const int32 Id : Exterior.Ground.VertexIndicesItr())
+    {
+        const FVector P = Exterior.Ground.GetVertex(Id);
+        if (FMath::Abs(P.X) <= Half.X && P.Y == Half.Y)
+        {
+            const double Z = Cm * battle::HillHeight(*Hill, {float(P.X / Cm), float(P.Y / Cm), 0.f});
+            if (!FMath::IsNearlyEqual(P.Z, Z, .01))
+                return TestTrue(TEXT("The exterior cliff matches the field elevation at the seam"), false);
+        }
+    }
     return true;
 }
 

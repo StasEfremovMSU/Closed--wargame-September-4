@@ -734,13 +734,22 @@ void FRegimentMissionRuntime::BeginTactical()
         CameraScale = FMath::Max3(1.4, (Size.X + 1400.0) / 2600.0, (Size.Y + 1100.0) / 1300.0);
         Pitch = -38.7;
     }
+    const bool bCoastalOverview = Preset.Terrain == battle::MarchTerrain::Thermopylae && Preset.StartsInBattle();
+    FVector CameraOffset(0, -2000, 1600);
+    if (bCoastalOverview)
+    {
+        // Open on the passage between the coastline and the mountain face.
+        Focus.Y += 20.0 * Preset.Field.HalfHeight();
+        CameraOffset = FVector(0, -2700, 1570);
+        Pitch = -29.5;
+    }
     auto* Camera = Owner.GetWorld()->SpawnActor<ACameraActor>(
-        Focus + FVector(0, -2000, 1600) * CameraScale, FRotator(Pitch, 90, 0));
+        Focus + CameraOffset * CameraScale, FRotator(Pitch, 90, 0));
     if (!Camera)
         return;
     TacticalCamera = Camera;
     auto* View = Camera->GetCameraComponent();
-    View->SetFieldOfView(58.f);
+    View->SetFieldOfView(bCoastalOverview ? 70.f : 58.f);
     ApplyRegimentBattleCameraExposure(*View);
     View->PostProcessSettings.bOverride_MotionBlurAmount = true;
     View->PostProcessSettings.MotionBlurAmount = 0.f;

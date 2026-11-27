@@ -281,13 +281,40 @@ PathResult FindSupportRoute(const NavigationService &navigation, const World &wo
                             const RegimentState &moving, Vec3 goal, RegimentId excluded) {
     const auto occupied = FormationBlocks(world, moving.id, {}, excluded);
     const auto slope = HillConstraint(world, moving);
-    auto route = navigation.FindPath({moving.pose, goal, Footprint(moving), std::nullopt, occupied,
-                                      world.scenario.rules.adaptive_battle, false, slope});
+    const auto footprint = Footprint(moving);
+    PathRequest request{moving.pose, goal, footprint, std::nullopt, occupied,
+                        world.scenario.rules.adaptive_battle, false, slope};
+    auto route = navigation.FindPath(request);
+    const auto &lane = moving.march_lane;
+    if (route.status == Status::NoPath && world.scenario.rules.meeting_engagement && lane &&
+        lane->detour.empty() && lane->recovery_attempts == MarchLane::MaxAttempts) {
+        // The occupied grid cell may lie just across the obstruction from the swept pose.
+        // Make a short physical move before re-entering the grid.
+        const auto back = Forward(moving.pose.yaw) * -1.f;
+        const auto right = Right(moving.pose.yaw);
+        for (const float reach : {1.f, 2.f}) {
+            for (const float side : {0.f, .5f, -.5f}) {
+                const Pose nearby{moving.pose.position + (back + right * side) * reach, moving.pose.yaw};
+                if ((slope && !slope(moving.pose, nearby)) ||
+                    !ClearTerrain(moving.pose, nearby, footprint, world) ||
+                    !ClearFormationBlocks(moving.pose, nearby, footprint, occupied))
+                    continue;
+                request.start = nearby;
+                route = navigation.FindPath(request);
+                if (route.status == Status::Ok) {
+                    route.waypoints.insert(route.waypoints.begin(), nearby);
+                    break;
+                }
+            }
+            if (route.status == Status::Ok)
+                break;
+        }
+    }
     if (route.status != Status::Ok)
         return route;
     auto from = moving.pose;
     for (const auto waypoint : route.waypoints) {
-        if ((slope && !slope(from, waypoint)) || !ClearTerrain(from, waypoint, Footprint(moving), world))
+        if ((slope && !slope(from, waypoint)) || !ClearTerrain(from, waypoint, footprint, world))
             return {Status::NoPath, {}};
         from = waypoint;
     }

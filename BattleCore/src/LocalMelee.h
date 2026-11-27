@@ -16,7 +16,8 @@ class LocalMelee {
     bool HoldForWindup(UnitState &) const;
     bool CanYieldForOfficer(const RegimentState &) const;
     Vec3 OfficerClearanceGoal(const UnitState &, const RegimentState &) const;
-    Vec3 Constrain(const UnitState &, Vec3 destination, float march_speed = 0.f, float dt = 0.f) const;
+    Vec3 Constrain(const UnitState &, Vec3 destination, float march_speed = 0.f, float dt = 0.f,
+                   bool yield_rout = false) const;
     float BodyRadius(const UnitState &) const;
     float MeleeReach(const UnitState &, const UnitState &, float weapon_range) const;
     const UnitState *StrikeTarget(const UnitState &, int32_t team) const;
@@ -27,7 +28,7 @@ class LocalMelee {
   private:
     bool ClearMove(const UnitState &, Vec3 destination) const;
     bool ClearMove(const UnitState &, Vec3 destination, std::span<const size_t> neighbors,
-                   const UnitState **blocker = nullptr) const;
+                   const UnitState **blocker = nullptr, bool yield_rout = false) const;
     std::optional<Vec3> BypassStaff(const UnitState &, const UnitState &staff, Vec3 from,
                                     Vec3 travel, float speed, float dt) const;
     bool ClearStrike(const UnitState &, const UnitState &, std::span<const size_t>) const;

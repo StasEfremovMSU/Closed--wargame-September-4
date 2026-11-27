@@ -140,6 +140,7 @@ struct BrainContext {
     const ITacticalEvaluator *group_policy{};
     bool group_order_commitment{};
     std::function<std::optional<ChildOrderObservation>(const CommandTask &)> observe_order;
+    bool meeting_engagement{};
 };
 
 enum class FireDiscipline : uint8_t { HoldFire, Volley, AtWill, Conserve };

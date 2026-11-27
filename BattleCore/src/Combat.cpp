@@ -314,11 +314,18 @@ class TacticalArchery {
         return terrain.shooting_modifier ? FireLaneMask::Cover : FireLaneMask::Clear;
     }
 
+    bool SelectableTarget(const UnitState &shooter, const UnitState &target, int32_t team) const {
+        if (!target.alive || units_[UnitIndex(target)].team == team)
+            return false;
+        if (target.skirmisher && !shooter.skirmisher && !IsSiegeEngine(shooter.platform) &&
+            !world_.scenario.rules.formed_fire_on_skirmishers)
+            return false;
+        return target.regiment || !world_.scenario.rules.local_melee ||
+               contact_.RangedTargetAllowed(target, shooter.skirmisher);
+    }
+
     RangedAim AimAt(const UnitState &shooter, const UnitState &target, int32_t team) {
-        if (!target.alive || units_[UnitIndex(target)].team == team ||
-            (target.skirmisher && !shooter.skirmisher && !IsSiegeEngine(shooter.platform)) ||
-            (!target.regiment && world_.scenario.rules.local_melee &&
-             !contact_.RangedTargetAllowed(target, shooter.skirmisher)))
+        if (!SelectableTarget(shooter, target, team))
             return {};
         RangedAim aim;
         AssessLane(shooter, target.pose.position, &target, team, aim);
@@ -351,11 +358,8 @@ class TacticalArchery {
         float best = sample_radius;
         for (auto index : candidates_) {
             const auto &unit = world_.units[index];
-            if (units_[index].team == team ||
-                Distance(shooter.pose.position, unit.pose.position) > FiringWeapon(shooter).range ||
-                (!shooter.skirmisher && unit.skirmisher && !IsSiegeEngine(shooter.platform)) ||
-                (!unit.regiment && world_.scenario.rules.local_melee &&
-                 !contact_.RangedTargetAllowed(unit, shooter.skirmisher)))
+            if (!SelectableTarget(shooter, unit, team) ||
+                Distance(shooter.pose.position, unit.pose.position) > FiringWeapon(shooter).range)
                 continue;
             const float distance = Distance(Ground(unit.pose.position), Ground(point));
             if (distance <= best) {
@@ -819,8 +823,8 @@ void BuildCombatEvents(const World &w, std::vector<BattleEvent> &out, uint64_t *
                ((s.projectile && !tactics && !IsSiegeEngine(u.platform)) ||
                 (!contact && (!s.projectile || u.ranged_attack)));
     });
-    const bool need_screen_index = !tactics && contact && std::any_of(shooters.begin(), shooters.end(),
-        [&](auto s) { return s.projectile && w.units[s.index].skirmisher; });
+    const bool need_screen_index = !tactics && contact && !w.scenario.rules.formed_fire_on_skirmishers &&
+        std::any_of(shooters.begin(), shooters.end(), [&](auto s) { return s.projectile && w.units[s.index].skirmisher; });
     std::optional<LocalMelee> ranged_contact;
     std::optional<TacticalArchery> archery;
     if (std::ranges::any_of(shooters, [&](auto s) {

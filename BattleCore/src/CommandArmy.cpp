@@ -231,9 +231,14 @@ StubResult<DecisionProposal> ArmyBrain::Think(const BrainContext &c) const {
     float yaw =
         Length(direction) > 0 ? std::atan2(direction.y, direction.x) : c.situation->own.pose.yaw;
     const bool release_reserve = state == FsmState::Supporting;
-    const auto search_forward = Forward(c.situation->own.pose.yaw);
-    const auto search_right = Right(c.situation->own.pose.yaw);
     const bool searching = search_for_contact && action == TaskKind::MoveToArea;
+    const bool meeting_probe = searching && c.meeting_engagement && IsAutomaticAreaAttack(*p.task);
+    // Keep the search on the mission axis even when a local detour turns the formation.
+    const auto search_axis = meeting_probe ? p.task->intent.objective_position - c.situation->rally_point : Vec3{};
+    const float search_yaw = std::hypot(search_axis.x, search_axis.y) > 1.f
+        ? std::atan2(search_axis.y, search_axis.x) : c.situation->own.pose.yaw;
+    const auto search_forward = Forward(search_yaw);
+    const auto search_right = Right(search_yaw);
     bool probe_issued = false;
     bool planned_flank = false, planned_support = false;
     bool sector_attacks = false, holding_outer_sector = false;
@@ -345,32 +350,49 @@ StubResult<DecisionProposal> ArmyBrain::Think(const BrainContext &c) const {
             };
             const bool has_probe = old && old->action == TaskKind::MoveToArea &&
                                    within_search_area(old->intent.objective_position);
-            bool extend_probe = false;
+            bool extend_probe = false, replace_stalled_probe = false;
             if (has_probe) {
                 goal = old->intent.objective_position;
                 child_action = TaskKind::MoveToArea;
-                if (Dot(option.destination - goal, search_forward) > 1.f) {
+                if (meeting_probe || Dot(option.destination - goal, search_forward) > 1.f) {
                     const auto observed = c.observe_order ? c.observe_order(*old) : std::nullopt;
                     extend_probe = observed ? observed->progress >= 1.f :
                         Dot(goal - formation, search_forward) <= 2.f;
+                    constexpr Tick ProbeDeliveryGrace = 80;
+                    replace_stalled_probe = meeting_probe && observed && observed->delivered_tick &&
+                        !observed->executing && !extend_probe && c.tick >= *observed->delivered_tick &&
+                        c.tick - *observed->delivered_tick >= ProbeDeliveryGrace;
                 }
             }
-            if (!has_probe || extend_probe) {
+            if (!has_probe || extend_probe || replace_stalled_probe) {
                 // Keep the group's lateral lane. If the checkpoint is blocked,
                 // try a nearer point on the same lane, still ahead of the group.
                 const auto lane = has_probe ? goal : formation;
                 const auto checkpoint = option.destination + search_right *
                     Dot(lane - option.destination, search_right);
-                for (const auto setback : {0.f, 12.f, 24.f}) {
-                    const auto candidate = checkpoint - search_forward * setback;
+                const auto try_probe = [&](Vec3 candidate) {
                     if (Dot(candidate - formation, search_forward) <= 1.f ||
                         (has_probe && Dot(candidate - goal, search_forward) <= 1.f) ||
                         !within_search_area(candidate) ||
                         (c.can_stage && !c.can_stage(child->id, candidate)))
-                        continue;
+                        return false;
                     goal = candidate;
                     child_action = TaskKind::MoveToArea;
-                    break;
+                    return true;
+                };
+                bool staged = false;
+                if (!replace_stalled_probe)
+                    for (const auto setback : {0.f, 12.f, 24.f})
+                        if ((staged = try_probe(checkpoint - search_forward * setback)))
+                            break;
+                if (meeting_probe && !staged) {
+                    // Every replacement progresses beyond the old goal. With no clear
+                    // alternative, the same task can recover without a new dispatch.
+                    const auto next = lane + search_forward * 6.f;
+                    if (!try_probe(lane + search_forward * 12.f) && !try_probe(next))
+                        for (const float side : {8.f, -8.f})
+                            if (try_probe(next + search_right * side))
+                                break;
                 }
             }
             probe_issued |= child_action == TaskKind::MoveToArea;

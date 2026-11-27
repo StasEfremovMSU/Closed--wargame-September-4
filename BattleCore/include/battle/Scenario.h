@@ -101,6 +101,9 @@ struct Rules {
     bool mixed_rank_tactics{};
     bool sustained_melee{};
     bool controlled_arrow_aim{};
+    bool individual_rout{};
+    bool meeting_engagement{};
+    bool formed_fire_on_skirmishers{};
 };
 struct ScenarioObjective {
     bool operator==(const ScenarioObjective &) const = default;

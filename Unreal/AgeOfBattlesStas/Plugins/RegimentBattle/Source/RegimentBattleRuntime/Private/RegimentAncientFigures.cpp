@@ -33,6 +33,32 @@ void Bar(FRegimentAncientFigure& Model, M Surface, FVector From, FVector To, dou
         FRotationMatrix::MakeFromZ(To - From).Rotator(), Feature);
 }
 
+// The neutral face is 150 cm above the feet in the 165 cm, X-forward outfit frame.
+// Lift a crown as a unit so its badge, brim and crest stay joined. Rear guards
+// and narrow nasal guards may extend below the eye line outside the eye openings.
+void FitOpenHeadgear(FRegimentAncientFigure& Model, int32 FirstPart, double EyeHeight = 150.0)
+{
+    const FBox PrimitiveBounds(FVector(-.5), FVector(.5));
+    double Lift = 0.0;
+    for (int32 Index = FirstPart; Index < Model.Parts.Num(); ++Index)
+    {
+        const FBox Bounds = PrimitiveBounds.TransformBy(Model.Parts[Index].Transform);
+        const bool bInFront = Bounds.Max.X >= 15.0 && Bounds.Min.X <= 46.0;
+        const bool bInEyeCorridor = (Bounds.Min.Y <= 17.0 && Bounds.Max.Y >= 6.0) ||
+            (Bounds.Min.Y <= -6.0 && Bounds.Max.Y >= -17.0);
+        if (bInFront && bInEyeCorridor && Bounds.Max.Z >= EyeHeight - 3.0)
+            Lift = FMath::Max(Lift, EyeHeight + 7.5 - Bounds.Min.Z);
+    }
+    if (Lift <= UE_DOUBLE_SMALL_NUMBER)
+        return;
+
+    for (int32 Index = FirstPart; Index < Model.Parts.Num(); ++Index)
+        Model.Parts[Index].Transform.AddToTranslation(FVector(0, 0, Lift));
+    Model.Bounds = FBox(ForceInit);
+    for (const auto& Piece : Model.Parts)
+        Model.Bounds += PrimitiveBounds.TransformBy(Piece.Transform);
+}
+
 void Soldier(FRegimentAncientFigure& Model, FVector Feet, double Yaw, F Role, bool bSeated = false)
 {
     const FTransform Pose(FRotator(0, Yaw, 0), Feet);
@@ -53,9 +79,9 @@ void Soldier(FRegimentAncientFigure& Model, FVector Feet, double Yaw, F Role, bo
     Body(P::BeveledBlock, M::Paint, {0, 0, Seat + 33}, {31, 45, 62}, -5);
     Body(P::Block, M::Leather, {0, 0, Seat + 10}, {33, 45, 8});
     Body(P::Ellipsoid, M::Skin, {4, 0, Seat + 78}, {27, 24, 29}, 0, Role);
-    Body(P::Ellipsoid, M::Bronze, {1, 0, Seat + 88}, {31, 28, 25});
+    Body(P::Ellipsoid, M::Bronze, {-2, 0, Seat + 94}, {30, 28, 19});
     if (!bSeated)
-        Body(P::BeveledBlock, M::Paint, {-4, 0, Seat + 102}, {25, 12, 13});
+        Body(P::BeveledBlock, M::Paint, {-4, 0, Seat + 105}, {25, 12, 13});
 }
 
 FRegimentAncientFigure Elephant(bool bAfrican)
@@ -904,8 +930,10 @@ FRegimentAncientFigure RefreshedDress(HistoricalFigure Style, bool bSimplified)
             Add(P::Taper, M::Iron, {-1, 0, 172}, {39, 38, 32});
         else
             Add(P::Ellipsoid, M::Iron, {-2, 0, 159}, {45, 37, 32}, FRotator(-9, 0, 0));
-        if (Helmet == H::GreatHelm || Helmet == H::Sallet)
+        if (Helmet == H::GreatHelm || (Helmet == H::Sallet && Style != S::SwissPike))
             Add(P::BeveledBlock, M::Dark, {23, 0, 157}, {5, 27, 4}, FRotator(3, 0, 0));
+        else if (Helmet == H::Sallet)
+            Add(P::Disc, M::Iron, {1, 0, 159}, {45, 39, 5});
         else
             Add(P::BeveledBlock, M::Iron, {16, 0, 153}, {7, 5, 22});
         if (Helmet != H::GreatHelm)
@@ -936,6 +964,9 @@ FRegimentAncientFigure RefreshedDress(HistoricalFigure Style, bool bSimplified)
             Add(P::Disc, Outfit.Trim, {0, 0, 185}, {36, 37, 5});
         Add(P::BeveledBlock, Outfit.Trim, {17, 0, 170}, {5, 12, 12});
     }
+    const bool bClosed = Helmet == H::GreatHelm || (Helmet == H::Sallet && Style != S::SwissPike);
+    if (!bClosed)
+        FitOpenHeadgear(Model, 0);
 
     const auto Coat = Outfit.Coat;
     const bool bCuirass = Coat == C::Cuirass;
@@ -1025,19 +1056,23 @@ FRegimentAncientFigure SengokuDress(HistoricalFigure Style, bool bSimplified)
         if (bArmoured && !bSimplified)
             Part(Model, P::Block, M::Linen, {21, 0, Z - 2}, {2.5, 34, 1.5});
     }
+    const int32 FirstHeadgear = Model.Parts.Num();
     if (bArmoured)
     {
         Part(Model, P::Ellipsoid, M::Dark, {-2, 0, 163}, {38, 36, 28}, FRotator::ZeroRotator, F::Kabuto);
         Part(Model, P::Disc, M::Iron, {0, 0, 153}, {45, 49, 5});
         for (double Z : {143., 149.})
             Part(Model, P::BeveledBlock, M::Paint, {-12, 0, Z}, {24, 43 + (149. - Z) * .8, 6}, FRotator(-10, 0, 0));
-        Part(Model, P::BeveledBlock, M::Dark, {15, 0, 140}, {12, 26, 13}, FRotator(-8, 0, 0));
         // A compact frontal crest leaves the head silhouette distinct from the broad ashigaru brim.
         Part(Model, P::Disc, M::Bronze, {17, 0, 168}, {13, 13, 3}, FRotator(90, 0, 0));
+        if (bMounted)
+            for (double Side : {-1.0, 1.0})
+                Bar(Model, M::Bronze, {17, Side * 3, 168}, {16, Side * 14, 181}, 5, P::Taper);
+        FitOpenHeadgear(Model, FirstHeadgear);
+        // The menpo remains a lower-face guard with open eyes above it.
+        Part(Model, P::BeveledBlock, M::Dark, {14, 0, 137}, {12, 25, 10}, FRotator(-8, 0, 0));
         for (double Side : {-1.0, 1.0})
         {
-            if (bMounted)
-                Bar(Model, M::Bronze, {17, Side * 3, 168}, {16, Side * 14, 181}, 5, P::Taper);
             Part(Model, P::BeveledBlock, M::Paint, {-1, Side * 27, 115}, {29, 9, 32},
                 FRotator(0, 0, Side * 19), F::Sode);
             if (!bSimplified)
@@ -1053,6 +1088,7 @@ FRegimentAncientFigure SengokuDress(HistoricalFigure Style, bool bSimplified)
     {
         Part(Model, P::Taper, M::Dark, {1, 0, 161}, {59, 59, 21}, FRotator(-5, 0, 0), F::Jingasa);
         Part(Model, P::Disc, M::Leather, {0, 0, 151}, {58, 57, 4}, FRotator(-5, 0, 0));
+        FitOpenHeadgear(Model, FirstHeadgear);
         Part(Model, P::BeveledBlock, M::Linen, {16, 0, 124}, {9, 35, 11});
         for (double Side : {-1.0, 1.0})
             Part(Model, P::BeveledBlock, M::Paint, {16, Side * 13, 70}, {8, 20, 23}, FRotator(17, 0, Side * 7));
@@ -1093,12 +1129,14 @@ FRegimentAncientFigure BuildRegimentHistoricalDress(ERegimentHistoricalFigure St
             Add(P::BeveledBlock, Metal, {1, Side * 13, 144}, {18, 8, 21}, FRotator(-15, 0, Side * 13));
         if (bCrest)
             Add(P::Ellipsoid, M::Paint, {-4, 0, 174}, {38, 9, 17}, FRotator(-12, 0, 0));
+        FitOpenHeadgear(Model, 0);
     };
     const auto SoftCap = [&](M Cloth)
     {
         Add(P::Ellipsoid, Cloth, {-3, 0, 155}, {36, 35, 23});
         Add(P::Taper, Cloth, {-6, 0, 167}, {32, 30, 26}, FRotator(-29, 0, 0));
         Add(P::BeveledBlock, Cloth, {-12, 0, 145}, {15, 33, 25});
+        FitOpenHeadgear(Model, 0);
     };
 
     switch (Style)
@@ -1146,6 +1184,7 @@ FRegimentAncientFigure BuildRegimentHistoricalDress(ERegimentHistoricalFigure St
         // Boeotian helmet with a projecting brim and an unshielded lance arm.
         Add(P::Disc, M::Bronze, {0, 0, 153}, {51, 47, 7}, FRotator(-8, 0, 0));
         Add(P::Ellipsoid, M::Bronze, {-2, 0, 162}, {33, 34, 25});
+        FitOpenHeadgear(Model, 0);
         Add(P::BeveledBlock, M::Linen, {0, 0, 108}, {45, 54, 50});
         Add(P::BeveledBlock, M::Paint, {-17, 0, 110}, {20, 45, 56}, FRotator(-15, 0, 0));
         Add(P::Disc, M::Bronze, {22, -14, 120}, {11, 11, 4}, FRotator(90, 0, 0));
@@ -1166,6 +1205,7 @@ FRegimentAncientFigure BuildRegimentHistoricalDress(ERegimentHistoricalFigure St
     case S::Numidian:
         Add(P::Ellipsoid, M::Dark, {-5, 0, 154}, {32, 31, 19});
         Add(P::Disc, M::Linen, {-2, 0, 157}, {34, 34, 7});
+        FitOpenHeadgear(Model, 0);
         Add(P::BeveledBlock, M::Linen, {0, 0, 106}, {38, 50, 51});
         Bar(Model, M::Leather, {20, -19, 124}, {19, 20, 89}, 5);
         return Model;
@@ -1173,7 +1213,10 @@ FRegimentAncientFigure BuildRegimentHistoricalDress(ERegimentHistoricalFigure St
     case S::LooseSling:
     case S::LooseJavelin:
         if (Style == S::LooseSling)
+        {
             Add(P::Disc, M::Linen, {0, 0, 156}, {34, 35, 8});
+            FitOpenHeadgear(Model, 0);
+        }
         else
             SoftCap(Style == S::LooseJavelin ? M::Linen : M::Paint);
         Add(P::BeveledBlock, M::Linen, {0, 0, 103}, {37, 47, 43});
@@ -1220,6 +1263,7 @@ FRegimentAncientFigure BuildRegimentHistoricalDress(ERegimentHistoricalFigure St
         if (Style == S::BritishLine)
             Add(P::Ellipsoid, M::Scarlet, {6, -10, 177}, {11, 11, 7});
     }
+    FitOpenHeadgear(Model, 0);
     Add(P::BeveledBlock, Coat, {0, 0, 107}, {42, 54, 48});
     Add(P::BeveledBlock, bBritish ? M::Dark : M::Scarlet, {5, 0, 130}, {31, 40, 9});
     if (!bBritish && !bRussian)
@@ -1589,7 +1633,7 @@ FRegimentAncientFigure BuildRegimentEraHeadgear(ERegimentEraVisual Style)
         break;
     case ERegimentEraVisual::Dwarven:
         Piece(P::BeveledBlock, M::Bronze, {0, 0, 8}, {43, 43, 27});
-        Piece(P::BeveledBlock, M::Paint, {16, 0, -16}, {15, 31, 26});
+        Piece(P::BeveledBlock, M::Paint, {12, 0, -21}, {12, 30, 12});
         Piece(P::BeveledBlock, M::Iron, {0, 0, 25}, {39, 12, 10});
         break;
     case ERegimentEraVisual::Giant:
@@ -1605,6 +1649,8 @@ FRegimentAncientFigure BuildRegimentEraHeadgear(ERegimentEraVisual Style)
     default:
         break;
     }
+    if (Style != ERegimentEraVisual::Undead)
+        FitOpenHeadgear(Figure, 0, 150.0 - RegimentEraHeadgearAnchorHeight);
     return Figure;
 }
 

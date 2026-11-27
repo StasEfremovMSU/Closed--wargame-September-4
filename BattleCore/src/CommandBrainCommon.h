@@ -4,6 +4,7 @@ namespace battle {
 struct World;
 }
 namespace battle::command::detail {
+bool IsAutomaticAreaAttack(const CommandTask &);
 Tick Later(Tick, Tick);
 std::optional<Tick> TaskExpiry(const CommandTask &, Tick received);
 bool ValidTask(const CommandTask &);

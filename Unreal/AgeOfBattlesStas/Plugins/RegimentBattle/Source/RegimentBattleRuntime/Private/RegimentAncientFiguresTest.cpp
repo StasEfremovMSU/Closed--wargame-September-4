@@ -125,6 +125,71 @@ bool FRegimentAdditionalEraStyleTest::RunTest(const FString&)
     return !HasAnyErrors();
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentHeadgearClearanceTest, "RegimentBattle.Presentation.HeadgearFaceClearance",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+
+bool FRegimentHeadgearClearanceTest::RunTest(const FString&)
+{
+    using H = ERegimentHistoricalFigure;
+    using V = ERegimentEraVisual;
+    const auto BlocksEye = [](const FRegimentAncientFigure& Figure, FVector Shift)
+    {
+        const FBox UnitBox(FVector(-.5), FVector(.5));
+        for (const double Side : {-1.0, 1.0})
+        {
+            const FVector Eye = Shift + FVector(15.0, Side * 6.0, 150.0);
+            // Keep the probe inside the helmet envelope, behind the ears of taller horses.
+            const FVector Front = Eye + FVector(25.0, 0.0, 0.0);
+            const FVector ThreeQuarter = Eye + FVector(25.0, Side * 11.0, 6.0);
+            for (const auto& Piece : Figure.Parts)
+            {
+                if (Piece.Material == ERegimentAncientMaterial::Skin)
+                    continue;
+                const FVector Start = Piece.Transform.InverseTransformPosition(Eye);
+                for (const FVector& View : {Front, ThreeQuarter})
+                {
+                    const FVector End = Piece.Transform.InverseTransformPosition(View);
+                    if (FMath::LineBoxIntersection(UnitBox, Start, End, End - Start))
+                        return true;
+                }
+            }
+        }
+        return false;
+    };
+    for (int32 Index = int32(H::Legionary); Index <= int32(H::NorthernCuirassier); ++Index)
+    {
+        const auto Style = H(Index);
+        const bool bVisoredHelm = Style == H::MedievalKnight || Style == H::LivonianKnight ||
+            Style == H::GothicPlate || Style == H::LateKnight;
+        const auto Dress = BuildRegimentHistoricalDress(Style);
+        const auto Proxy = BuildRegimentHistoricalProxy(Style);
+        const auto* Head = Proxy.Parts.FindByPredicate([](const FRegimentAncientPart& Piece)
+        {
+            return Piece.Material == ERegimentAncientMaterial::Skin && Piece.Transform.GetScale3D().Z == 27.0;
+        });
+        if (!TestNotNull(TEXT("The historical proxy has a head"), Head))
+            continue;
+        const FVector Offset(0, 0, Head->Transform.GetLocation().Z - 144.0);
+        TestEqual(FString::Printf(TEXT("Historical dress %d respects the visor policy"), Index),
+            BlocksEye(Dress, FVector::ZeroVector), bVisoredHelm);
+        TestEqual(FString::Printf(TEXT("Historical proxy %d matches the dress eye clearance at its own height"), Index),
+            BlocksEye(Proxy, Offset), bVisoredHelm);
+    }
+    for (int32 Index = 1; Index < int32(V::Count); ++Index)
+    {
+        const auto Style = V(Index);
+        const auto Hat = BuildRegimentEraHeadgear(Style);
+        const FVector Shift = -RegimentEraHeadgearPose(FTransform::Identity).GetTranslation();
+        TestEqual(FString::Printf(TEXT("Fallback headgear %d respects the face opening"), Index),
+            BlocksEye(Hat, Shift), Style == V::Undead);
+    }
+    const FTransform MovingRider(FRotator(13, 155, -8), FVector(200, -130, 105), FVector(1.2));
+    const FTransform HatOnRider = RegimentEraHeadgearPose(MovingRider);
+    TestTrue(TEXT("An officer hat follows the same local attachment after yaw, lean, saddle height and rank scaling"),
+        HatOnRider.GetRelativeTransform(MovingRider).Equals(RegimentEraHeadgearPose(FTransform::Identity), .001));
+    return !HasAnyErrors();
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentHistoricalFigureTest, "RegimentBattle.Presentation.HistoricalFigureProfiles",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
