@@ -3,14 +3,14 @@
   "product": "Age of Battles",
   "channel": "alpha",
   "available": true,
-  "version": "2026.11.27.2",
-  "publishedAt": "2026-11-27",
+  "version": "2026.11.28.1",
+  "publishedAt": "2026-11-28",
   "platforms": {
     "windows-x64": {
-      "fileName": "AgeOfBattles-Windows-x64-Setup-2026.11.27.2.exe",
-      "sha256": "099482400da29fae5c0b6ce20b27c20536ffe0ebb161499c2ba9b971f5abaede",
-      "size": 356056128,
-      "url": "https://wargamesrealms.ru/ageofbattles/AgeOfBattles-Windows-x64-Setup-2026.11.27.2.exe"
+      "fileName": "AgeOfBattles-Windows-x64-Setup-2026.11.28.1.exe",
+      "size": 356056936,
+      "sha256": "5b3dab7677c54770253d189b3857ff9056b02f9430045537a626d1b2b134f824",
+      "url": "https://wargamesrealms.ru/ageofbattles/AgeOfBattles-Windows-x64-Setup-2026.11.28.1.exe"
     }
   }
 }

@@ -1,0 +1,135 @@
+{
+  "base_commit": "cb53974a03357e76f6bc0c92acc20e37705e584a",
+  "device": "NVIDIA GeForce RTX 3070",
+  "optimization_seconds": 10800.017815398052,
+  "architecture": [
+    33,
+    24,
+    1
+  ],
+  "selection": {
+    "name": "candidate-6598",
+    "configuration": {
+      "index": 6598,
+      "learning_rate": 0.004,
+      "decay": 0.003,
+      "seed": 33780,
+      "warm": false,
+      "visits": true,
+      "balance_power": 0.25,
+      "bootstrap": 0.15
+    },
+    "epochs": 392,
+    "selected_epoch": 8,
+    "train_rows": 39672,
+    "validation_rows": 4208
+  },
+  "validation_seed_block": 951,
+  "holdout_seed_block": 953,
+  "release_mode": "experimental",
+  "launch_flag": "-RegimentExperimentalGroupAI",
+  "default_promotion": false,
+  "reason": "The selected V3 checkpoint completed 55 of 800 held-out tasks. The default FSM completed 60.",
+  "holdout": {
+    "continuation": {
+      "weights_sha256": "1541616cb24cd3ad4b45a674cfb543182ee9f973c03ed1050ecf798c55d0499c",
+      "paired_starts": 800,
+      "fsm": {
+        "primary_cleared": 141,
+        "objective_reached": 75,
+        "preserved": 662,
+        "victory": 0,
+        "primary_lost": 2578,
+        "blue_lost": 3987,
+        "wing_lost": 820,
+        "red_lost": 3478,
+        "orders_issued": 5855,
+        "order_changes": 5055,
+        "decisions": 2913,
+        "policy_overrides": 0,
+        "mission_success": 60,
+        "meaningful_order_changes": 2786,
+        "early_order_changes": 1815,
+        "emergency_order_changes": 1669
+      },
+      "policy": {
+        "primary_cleared": 157,
+        "objective_reached": 78,
+        "preserved": 692,
+        "victory": 0,
+        "primary_lost": 2639,
+        "blue_lost": 3638,
+        "wing_lost": 552,
+        "red_lost": 3158,
+        "orders_issued": 5555,
+        "order_changes": 4755,
+        "decisions": 4147,
+        "policy_overrides": 3442,
+        "mission_success": 55,
+        "meaningful_order_changes": 2414,
+        "early_order_changes": 1761,
+        "emergency_order_changes": 1604
+      },
+      "trained_vs_fsm": {
+        "mean_paired_utility_delta": 0.040836609043414115,
+        "paired_bootstrap_95_percent_interval": [
+          0.027856731984599113,
+          0.05308511176628197
+        ],
+        "higher_utility": 541,
+        "lower_utility": 230,
+        "ties": 29
+      }
+    },
+    "published-v3": {
+      "weights_sha256": "1f906bbbc785bce97f4405de78e453860a06b2c6e47798055da20a8f1c14744b",
+      "paired_starts": 800,
+      "fsm": {
+        "primary_cleared": 141,
+        "objective_reached": 75,
+        "preserved": 662,
+        "victory": 0,
+        "primary_lost": 2578,
+        "blue_lost": 3987,
+        "wing_lost": 820,
+        "red_lost": 3478,
+        "orders_issued": 5855,
+        "order_changes": 5055,
+        "decisions": 2913,
+        "policy_overrides": 0,
+        "mission_success": 60,
+        "meaningful_order_changes": 2786,
+        "early_order_changes": 1815,
+        "emergency_order_changes": 1669
+      },
+      "policy": {
+        "primary_cleared": 142,
+        "objective_reached": 75,
+        "preserved": 688,
+        "victory": 0,
+        "primary_lost": 2577,
+        "blue_lost": 3655,
+        "wing_lost": 535,
+        "red_lost": 3189,
+        "orders_issued": 5912,
+        "order_changes": 5112,
+        "decisions": 4006,
+        "policy_overrides": 3190,
+        "mission_success": 53,
+        "meaningful_order_changes": 2785,
+        "early_order_changes": 1735,
+        "emergency_order_changes": 1598
+      },
+      "trained_vs_fsm": {
+        "mean_paired_utility_delta": 0.032964807682182865,
+        "paired_bootstrap_95_percent_interval": [
+          0.02029644371599911,
+          0.04493770037710448
+        ],
+        "higher_utility": 532,
+        "lower_utility": 221,
+        "ties": 47
+      }
+    }
+  }
+}
