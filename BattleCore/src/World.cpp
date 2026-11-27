@@ -35,6 +35,7 @@ Result<Scenario> ValidateScenario(Scenario s) {
             r.formation.columns == 0 || !std::isfinite(r.formation.spacing_m) ||
             r.formation.spacing_m <= 0 || !std::isfinite(r.formation.body_radius_m) ||
             r.formation.body_radius_m <= 0 || r.formation.shape > FormationShape::Circle ||
+            !ValidSlotStagger(r.formation.slot_stagger) ||
             !std::isfinite(r.speed) || r.speed < 0 ||
             !std::isfinite(r.turn_rate) || r.turn_rate <= 0)
             return bad("invalid or duplicate regiment");

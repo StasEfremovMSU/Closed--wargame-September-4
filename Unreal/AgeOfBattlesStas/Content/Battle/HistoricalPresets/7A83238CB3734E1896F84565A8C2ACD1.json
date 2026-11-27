@@ -61,9 +61,9 @@
       "group": 2,
       "start_x": -143,
       "start_y": 0,
-      "swords": 19,
+      "swords": 31,
       "archers": 6,
-      "spearmen": 38,
+      "spearmen": 26,
       "mounted": 0
     },
     {
@@ -72,9 +72,9 @@
       "group": 1,
       "start_x": -98,
       "start_y": -74,
-      "swords": 12,
+      "swords": 0,
       "archers": 13,
-      "spearmen": 18,
+      "spearmen": 30,
       "mounted": 0,
       "ranged_class": "javelin"
     },

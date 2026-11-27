@@ -37,9 +37,9 @@
       "group": 2,
       "start_x": -62,
       "start_y": 0,
-      "swords": 26,
-      "archers": 9,
-      "spearmen": 27,
+      "swords": 62,
+      "archers": 0,
+      "spearmen": 0,
       "mounted": 0
     },
     {
@@ -48,9 +48,9 @@
       "group": 1,
       "start_x": -75,
       "start_y": -45,
-      "swords": 19,
+      "swords": 26,
       "archers": 16,
-      "spearmen": 25,
+      "spearmen": 18,
       "mounted": 0,
       "ranged_class": "crossbow"
     },
@@ -60,9 +60,9 @@
       "group": 3,
       "start_x": -75,
       "start_y": 45,
-      "swords": 21,
-      "archers": 9,
-      "spearmen": 27,
+      "swords": 0,
+      "archers": 26,
+      "spearmen": 31,
       "mounted": 0
     },
     {
@@ -93,9 +93,9 @@
       "group": 2,
       "start_x": -143,
       "start_y": 0,
-      "swords": 22,
-      "archers": 8,
-      "spearmen": 31,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 61,
       "mounted": 0
     },
     {
@@ -126,9 +126,9 @@
       "group": 2,
       "start_x": 63,
       "start_y": -29,
-      "swords": 13,
-      "archers": 20,
-      "spearmen": 18,
+      "swords": 25,
+      "archers": 0,
+      "spearmen": 26,
       "mounted": 0
     },
     {
@@ -137,9 +137,9 @@
       "group": 2,
       "start_x": 63,
       "start_y": 29,
-      "swords": 12,
-      "archers": 20,
-      "spearmen": 18,
+      "swords": 0,
+      "archers": 40,
+      "spearmen": 10,
       "mounted": 0
     },
     {

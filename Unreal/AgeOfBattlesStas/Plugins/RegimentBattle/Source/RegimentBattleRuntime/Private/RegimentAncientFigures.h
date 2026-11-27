@@ -82,6 +82,7 @@ TOptional<ERegimentAncientShield> RegimentHistoricalShield(ERegimentHistoricalFi
 TOptional<ERegimentAncientShield> RegimentHistoricalShield(ERegimentHistoricalFigure Style, ERegimentEraShield FactionShield);
 double RegimentHistoricalSpearLength(ERegimentHistoricalFigure Style);
 inline constexpr double RegimentHistoricalRiderHeight = 54.0;
+inline constexpr double RegimentSengokuSaddleHeight = 140.0;
 double RegimentHistoricalSeatOffset(ERegimentHistoricalFigure Style);
 FRegimentAncientFigure BuildRegimentHistoricalDress(ERegimentHistoricalFigure Style);
 FRegimentAncientFigure BuildRegimentHistoricalProxy(ERegimentHistoricalFigure Style);
@@ -89,6 +90,8 @@ FRegimentAncientFigure BuildRegimentHistoricalTack(ERegimentHistoricalFigure Sty
 FRegimentAncientFigure BuildRegimentHistoricalMount(ERegimentHistoricalFigure Style);
 FRegimentAncientFigure BuildRegimentLooseWeapon(battle::RangedWeapon Weapon);
 FRegimentAncientFigure BuildRegimentSengokuWeapon(ERegimentHistoricalFigure Style);
-FRegimentAncientFigure BuildRegimentSengokuBanner();
+inline constexpr int32 RegimentSengokuBannerVariantCount = 4;
+int32 RegimentSengokuBannerVariant(uint64 UnitId);
+FRegimentAncientFigure BuildRegimentSengokuBanner(int32 Variant);
 UStaticMesh* MakeRegimentAncientMesh(UObject& Owner, const FRegimentAncientFigure& Figure,
     UMaterialInterface* MaterialParent, int32& PaintSlot, int32* HideSlot = nullptr);

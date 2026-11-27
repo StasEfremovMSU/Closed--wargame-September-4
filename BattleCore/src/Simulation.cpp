@@ -48,8 +48,11 @@ Result<TickResult> Step(World &w, std::span<const CommandEnvelope> input,
             continue;
         if (!e.sequence || !Finite(e.command.pose) || !Finite(e.command.velocity) ||
             !ValidOrderShape(e.command.order) || e.tick < w.tick ||
-            uint8_t(e.command.kind) > uint8_t(CommandKind::FireFieldGun) ||
+            uint8_t(e.command.kind) > uint8_t(CommandKind::SetRankPriority) ||
             e.command.formation.shape > FormationShape::Circle ||
+            !ValidSlotStagger(e.command.formation.slot_stagger) ||
+            (e.command.kind == CommandKind::SetRankPriority &&
+             e.command.rank_priority > RankPriority::MeleeFront) ||
             (e.command.kind == CommandKind::IssueCommandTask &&
              !command::ValidTaskRequest(e.command.command_task)) ||
             (e.command.kind == CommandKind::ExternalPoseSample && e.command.sample_tick != e.tick))
@@ -106,6 +109,8 @@ Result<TickResult> Step(World &w, std::span<const CommandEnvelope> input,
             }
         } else if (e.command.kind == CommandKind::SetSkirmishers)
             status = SetSkirmishers(w, e.command.regiment, e.command.skirmishers_enabled);
+        else if (e.command.kind == CommandKind::SetRankPriority)
+            status = SetRegimentRankPriority(w, e.command.regiment, e.command.rank_priority);
         else if (e.command.kind == CommandKind::IssueCommandTask) {
             auto submitted = command::SubmitTask(w, e.command.command_task);
             status =

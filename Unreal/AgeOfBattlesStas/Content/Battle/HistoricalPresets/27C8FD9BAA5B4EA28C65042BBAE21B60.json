@@ -30,11 +30,10 @@
       "group": 2,
       "start_x": -50,
       "start_y": 0,
-      "swords": 5,
-      "archers": 10,
-      "spearmen": 9,
-      "mounted": 0,
-      "ranged_class": "gunpowder"
+      "swords": 13,
+      "archers": 0,
+      "spearmen": 11,
+      "mounted": 0
     },
     {
       "type": "Infantry",
@@ -42,9 +41,9 @@
       "group": 1,
       "start_x": -76,
       "start_y": -50,
-      "swords": 3,
-      "archers": 10,
-      "spearmen": 5,
+      "swords": 18,
+      "archers": 0,
+      "spearmen": 0,
       "mounted": 0
     },
     {
@@ -53,9 +52,9 @@
       "group": 3,
       "start_x": -67,
       "start_y": 50,
-      "swords": 4,
-      "archers": 6,
-      "spearmen": 10,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 20,
       "mounted": 0
     },
     {
@@ -64,9 +63,9 @@
       "group": 2,
       "start_x": -101,
       "start_y": 10,
-      "swords": 4,
-      "archers": 7,
-      "spearmen": 14,
+      "swords": 0,
+      "archers": 25,
+      "spearmen": 0,
       "mounted": 0
     },
     {
@@ -109,9 +108,9 @@
       "group": 1,
       "start_x": 70,
       "start_y": -50,
-      "swords": 5,
+      "swords": 0,
       "archers": 5,
-      "spearmen": 13,
+      "spearmen": 18,
       "mounted": 0
     },
     {
@@ -120,9 +119,9 @@
       "group": 3,
       "start_x": 64,
       "start_y": 50,
-      "swords": 6,
-      "archers": 4,
-      "spearmen": 14,
+      "swords": 9,
+      "archers": 0,
+      "spearmen": 15,
       "mounted": 0
     },
     {
@@ -131,9 +130,9 @@
       "group": 2,
       "start_x": 109,
       "start_y": 17,
-      "swords": 8,
-      "archers": 7,
-      "spearmen": 11,
+      "swords": 26,
+      "archers": 0,
+      "spearmen": 0,
       "mounted": 0
     },
     {
@@ -163,9 +162,9 @@
       "group": 2,
       "start_x": -82,
       "start_y": 23,
-      "swords": 4,
-      "archers": 9,
-      "spearmen": 8,
+      "swords": 0,
+      "archers": 1,
+      "spearmen": 20,
       "mounted": 0,
       "ranged_class": "gunpowder"
     },
@@ -175,10 +174,11 @@
       "group": 1,
       "start_x": -111,
       "start_y": -76,
-      "swords": 3,
-      "archers": 10,
-      "spearmen": 5,
-      "mounted": 0
+      "swords": 0,
+      "archers": 18,
+      "spearmen": 0,
+      "mounted": 0,
+      "ranged_class": "gunpowder"
     },
     {
       "type": "Infantry",
@@ -186,9 +186,9 @@
       "group": 3,
       "start_x": -105,
       "start_y": 73,
-      "swords": 4,
-      "archers": 6,
-      "spearmen": 10,
+      "swords": 0,
+      "archers": 20,
+      "spearmen": 0,
       "mounted": 0
     },
     {
@@ -197,9 +197,9 @@
       "group": 2,
       "start_x": -133,
       "start_y": 36,
-      "swords": 4,
-      "archers": 6,
-      "spearmen": 13,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 23,
       "mounted": 0
     },
     {
@@ -242,9 +242,9 @@
       "group": 1,
       "start_x": 105,
       "start_y": -76,
-      "swords": 4,
-      "archers": 4,
-      "spearmen": 13,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 21,
       "mounted": 0
     },
     {
@@ -253,9 +253,9 @@
       "group": 3,
       "start_x": 102,
       "start_y": 73,
-      "swords": 5,
-      "archers": 3,
-      "spearmen": 14,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 22,
       "mounted": 0
     },
     {
@@ -264,9 +264,9 @@
       "group": 2,
       "start_x": 141,
       "start_y": 43,
-      "swords": 7,
-      "archers": 6,
-      "spearmen": 11,
+      "swords": 0,
+      "archers": 24,
+      "spearmen": 0,
       "mounted": 0
     },
     {

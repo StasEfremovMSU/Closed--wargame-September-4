@@ -79,9 +79,13 @@ int32 SRegimentFieldOverlay::OnPaint(const FPaintArgs&, const FGeometry& Geometr
     const auto Font = FCoreStyle::GetDefaultFontStyle("Bold", 13);
     const auto Measure = FSlateApplication::Get().GetRenderer()->GetFontMeasureService();
     TArray<FBox2D, TInlineAllocator<12>> Used;
-    for (const auto& Card : Units)
+    const auto* Battle = Cast<ARegimentBattleField>(Owner.Get());
+    const uint64 Focus = Battle ? Battle->GetCameraRegiment() : 0;
+    const auto* Followed = Units.FindByPredicate([Focus](const auto& Card) { return Card.Id == Focus; });
+    for (int32 Index = Followed ? -1 : 0; Index < Units.Num(); ++Index)
     {
-        if (Card.Living <= 0)
+        const auto& Card = Index < 0 ? *Followed : Units[Index];
+        if (Card.Living <= 0 || (Index >= 0 && Card.Id == Focus))
             continue;
         FVector2D Point;
         if (!Controller->ProjectWorldLocationToScreen(Card.Location, Point, true))
@@ -89,9 +93,13 @@ int32 SRegimentFieldOverlay::OnPaint(const FPaintArgs&, const FGeometry& Geometr
         Point *= Scale;
         if (Point.X < 60 || Point.X > Size.X - 60 || Point.Y < 106 || Point.Y > Size.Y - 190)
             continue;
-        const FText Symbol = FText::Format(LOCTEXT("FlagRegiment", "{0} · {1}"), Card.Id,
-            !Card.FlagState.IsEmpty() ? Card.FlagState : Card.bDisordered ? LOCTEXT("FlagBroken", "Строй нарушен") :
-            Card.bContact ? LOCTEXT("FlagContact", "Контакт") : LOCTEXT("FlagReady", "В строю"));
+        const auto State = !Card.FlagState.IsEmpty() ? Card.FlagState
+            : Card.bDisordered ? LOCTEXT("FlagBroken", "Строй нарушен")
+            : Card.bContact ? LOCTEXT("FlagContact", "Контакт") : LOCTEXT("FlagReady", "В строю");
+        const bool bFocused = Card.Id == Focus;
+        const auto Symbol = bFocused
+            ? FText::Format(LOCTEXT("FocusedFlagRegiment", "{0} · {1}"), Card.Name, State)
+            : FText::Format(LOCTEXT("FlagRegiment", "{0} · {1}"), Card.Id, State);
         const FVector2D TextSize = Measure->Measure(Symbol, Font);
         const FVector2D FlagSize = TextSize + FVector2D(16, 8);
         const FVector2D At = Point - FVector2D(FlagSize.X * .5, FlagSize.Y + 12);
@@ -99,7 +107,8 @@ int32 SRegimentFieldOverlay::OnPaint(const FPaintArgs&, const FGeometry& Geometr
         if (Used.ContainsByPredicate([&Bounds](const auto& Other) { return Other.Intersect(Bounds); }))
             continue;
         Used.Add(Bounds);
-        const FLinearColor Tint = Card.bDisordered ? FLinearColor(FColor::FromHex(TEXT("FFAF92"))) :
+        const FLinearColor Tint = bFocused ? FLinearColor(FColor::FromHex(TEXT("EEF4FF"))) :
+            Card.bDisordered ? FLinearColor(FColor::FromHex(TEXT("FFAF92"))) :
             Card.bContact ? FLinearColor(FColor::FromHex(TEXT("F4D49A"))) :
             FLinearColor(FColor::FromHex(TEXT("84CDFA")));
         FSlateDrawElement::MakeLines(Elements, Layer + 2, Geometry.ToPaintGeometry(),

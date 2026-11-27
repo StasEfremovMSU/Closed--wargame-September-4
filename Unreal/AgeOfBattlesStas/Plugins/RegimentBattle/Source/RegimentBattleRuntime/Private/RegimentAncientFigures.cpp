@@ -771,6 +771,9 @@ bool IsHistoricalRider(HistoricalFigure Style)
     }
 }
 
+// The simplified rider's hips sit at this height in the unmounted recipe.
+constexpr double SengokuProxyPelvisHeight = 65.0;
+
 struct FHistoricalMountProportions
 {
     FVector Scale;
@@ -787,6 +790,8 @@ TOptional<FHistoricalMountProportions> HistoricalMountProportions(HistoricalFigu
         return FHistoricalMountProportions{{.82, 1.10, 1.09}, 62.0};
     case S::CossackRider: return FHistoricalMountProportions{{.71, .90, .93}, 46.0};
     case S::Numidian: return FHistoricalMountProportions{{.67, .82, .87}, 40.0};
+    case S::SengokuCavalry:
+        return FHistoricalMountProportions{{.72, 1.0, 1.0}, RegimentSengokuSaddleHeight - SengokuProxyPelvisHeight};
     default: return {};
     }
 }
@@ -1255,7 +1260,7 @@ FRegimentAncientFigure BuildRegimentHistoricalTack(ERegimentHistoricalFigure Sty
 {
     using S = ERegimentHistoricalFigure;
     FRegimentAncientFigure Model;
-    if (const auto Proportions = HistoricalMountProportions(Style))
+    if (const auto Proportions = HistoricalMountProportions(Style); Proportions && Style != S::SengokuCavalry)
     {
         FRegimentAncientFigure Tack;
         if (Style == S::Numidian)
@@ -1306,13 +1311,15 @@ FRegimentAncientFigure BuildRegimentHistoricalTack(ERegimentHistoricalFigure Sty
     }
     if (Style == S::SengokuCavalry)
     {
-        Part(Model, P::BeveledBlock, M::Paint, {-5, 0, 112}, {71, 58, 17});
+        Part(Model, P::BeveledBlock, M::Paint, {-5, 0, 127}, {71, 58, 14});
+        Part(Model, P::BeveledBlock, M::Leather, {-5, 0, RegimentSengokuSaddleHeight - 4}, {48, 38, 8});
         for (double X : {-24., 21.})
-            Part(Model, P::BeveledBlock, M::Dark, {X, 0, 120}, {10, 47, 19}, FRotator(X > 0 ? -13 : 13, 0, 0));
+            Part(Model, P::BeveledBlock, M::Dark, {X, 0, RegimentSengokuSaddleHeight}, {10, 47, 14},
+                FRotator(X > 0 ? -13 : 13, 0, 0));
         for (double Side : {-1., 1.})
         {
-            Bar(Model, M::Leather, {1, Side * 24, 111}, {5, Side * 29, 74}, 4);
-            Part(Model, P::BeveledBlock, M::Iron, {11, Side * 29, 72}, {24, 10, 5}, FRotator(7, 0, 0));
+            Bar(Model, M::Leather, {1, Side * 20, 135}, {7, Side * 29, 102}, 4);
+            Part(Model, P::BeveledBlock, M::Iron, {11, Side * 29, 100}, {24, 10, 5}, FRotator(7, 0, 0));
         }
     }
     if (IsRefreshedFigure(Style) && IsHistoricalRider(Style))
@@ -1395,11 +1402,22 @@ FRegimentAncientFigure BuildRegimentHistoricalProxy(ERegimentHistoricalFigure St
     {
         Part(Model, P::BeveledBlock, Coat, {9, Side * 26, 110 + RideHeight}, {22, 14, 35}, FRotator(-22, 0, 0));
         Part(Model, P::BeveledBlock, M::Skin, {19, Side * 29, 93 + RideHeight}, {13, 13, 17});
-        Part(Model, P::BeveledBlock, Trousers, {bMounted ? 12.0 : 0.0, Side * (bMounted ? 23.0 : 12.0), 38 + RideHeight},
-            {18, 17, bMounted ? 48.0 : 55.0}, FRotator(bMounted ? -22.0 : 0.0, 0, 0));
-        Part(Model, P::BeveledBlock, Style == S::Numidian ? M::Skin : M::Dark,
-            {bMounted ? 13.0 : 3.0, Side * (bMounted ? 25.0 : 12.0), (bMounted ? 25.0 : 15.0) + RideHeight},
-            {22, 17, bKilt ? 30.0 : 27.0});
+        if (Style == S::SengokuCavalry)
+        {
+            // The thighs follow the saddle and the boots rest just above the stirrups.
+            Bar(Model, Trousers, {0, Side * 15, RideHeight + SengokuProxyPelvisHeight},
+                {24, Side * 31, RideHeight + 48}, 17, P::BeveledBlock);
+            Bar(Model, M::Dark, {24, Side * 31, RideHeight + 48}, {10, Side * 30, 110}, 14, P::BeveledBlock);
+            Part(Model, P::BeveledBlock, M::Dark, {13, Side * 30, 107}, {23, 16, 12});
+        }
+        else
+        {
+            Part(Model, P::BeveledBlock, Trousers, {bMounted ? 12.0 : 0.0, Side * (bMounted ? 23.0 : 12.0), 38 + RideHeight},
+                {18, 17, bMounted ? 48.0 : 55.0}, FRotator(bMounted ? -22.0 : 0.0, 0, 0));
+            Part(Model, P::BeveledBlock, Style == S::Numidian ? M::Skin : M::Dark,
+                {bMounted ? 13.0 : 3.0, Side * (bMounted ? 25.0 : 12.0), (bMounted ? 25.0 : 15.0) + RideHeight},
+                {22, 17, bKilt ? 30.0 : 27.0});
+        }
     }
     return Model;
 }
@@ -1437,15 +1455,31 @@ FRegimentAncientFigure BuildRegimentSengokuWeapon(ERegimentHistoricalFigure Styl
     return Model;
 }
 
-FRegimentAncientFigure BuildRegimentSengokuBanner()
+int32 RegimentSengokuBannerVariant(uint64 UnitId)
 {
+    return int32(RegimentFigureHash(UnitId ^ 0x7b148ba19d48b79full) % RegimentSengokuBannerVariantCount);
+}
+
+FRegimentAncientFigure BuildRegimentSengokuBanner(int32 Variant)
+{
+    // Rectangular cloth on a common back mount, with different lengths of pole and crossarm.
+    struct FDimensions { double Width, Height, PoleTop; };
+    static constexpr FDimensions Sizes[RegimentSengokuBannerVariantCount] = {
+        {26, 54, 222}, {31, 64, 238}, {27, 78, 254}, {39, 62, 242}
+    };
+    const auto [Width, Height, PoleTop] = Sizes[Variant];
+    constexpr double Hoist = 10.0;
+    constexpr double PoleX = -34.0;
+    const double CenterY = Hoist + Width * .5;
     FRegimentAncientFigure Model;
     Model.bSimplified = true;
-    Bar(Model, M::Wood, {-24, 10, 92}, {-34, 10, 231}, 3.5);
-    Bar(Model, M::Wood, {-34, 9, 231}, {-34, 44, 231}, 3.0);
-    Part(Model, P::BeveledBlock, M::Paint, {-35, 28, 207}, {4, 31, 45}, FRotator(-4, 0, 0), F::Sashimono);
-    for (double X : {-38., -32.})
-        Part(Model, P::Disc, M::Linen, {X, 28, 212}, {15, 15, 2.6}, FRotator(90, 0, 0));
+    Bar(Model, M::Wood, {-17, Hoist, 93}, {PoleX, Hoist, PoleTop}, 3.5);
+    Bar(Model, M::Wood, {PoleX, Hoist - 1, PoleTop}, {PoleX, Hoist + Width + 3, PoleTop}, 3.0);
+    Part(Model, P::BeveledBlock, M::Paint, {PoleX, CenterY, PoleTop - 1 - Height * .5},
+        {4, Width, Height}, FRotator::ZeroRotator, F::Sashimono);
+    const double MonSize = FMath::Min(Width * .47, 17.0);
+    for (double X : {PoleX - 2.5, PoleX + 2.5})
+        Part(Model, P::Disc, M::Linen, {X, CenterY, PoleTop - Height * .35}, {MonSize, MonSize, 2.6}, FRotator(90, 0, 0));
     return Model;
 }
 

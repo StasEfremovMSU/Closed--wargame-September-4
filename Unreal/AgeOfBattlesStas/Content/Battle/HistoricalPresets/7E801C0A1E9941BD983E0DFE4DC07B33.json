@@ -57,9 +57,9 @@
       "group": 3,
       "start_x": -76,
       "start_y": 82,
-      "swords": 2,
+      "swords": 1,
       "archers": 10,
-      "spearmen": 0,
+      "spearmen": 1,
       "mounted": 0,
       "ranged_class": "musket"
     },
@@ -106,8 +106,8 @@
       "group": 2,
       "start_x": 87,
       "start_y": 12,
-      "swords": 2,
-      "archers": 10,
+      "swords": 0,
+      "archers": 12,
       "spearmen": 0,
       "mounted": 0,
       "ranged_class": "musket"
@@ -142,8 +142,8 @@
       "group": 2,
       "start_x": 128,
       "start_y": 11,
-      "swords": 3,
-      "archers": 8,
+      "swords": 0,
+      "archers": 11,
       "spearmen": 0,
       "mounted": 0,
       "ranged_class": "musket"
@@ -179,11 +179,10 @@
       "group": 2,
       "start_x": -104,
       "start_y": 35,
-      "swords": 8,
-      "archers": 2,
-      "spearmen": 1,
-      "mounted": 0,
-      "ranged_class": "musket"
+      "swords": 11,
+      "archers": 0,
+      "spearmen": 0,
+      "mounted": 0
     },
     {
       "type": "Infantry",
@@ -203,8 +202,8 @@
       "group": 3,
       "start_x": -114,
       "start_y": 105,
-      "swords": 2,
-      "archers": 9,
+      "swords": 0,
+      "archers": 11,
       "spearmen": 0,
       "mounted": 0,
       "ranged_class": "musket"
@@ -252,8 +251,8 @@
       "group": 2,
       "start_x": 119,
       "start_y": 35,
-      "swords": 2,
-      "archers": 9,
+      "swords": 0,
+      "archers": 11,
       "spearmen": 0,
       "mounted": 0,
       "ranged_class": "musket"
@@ -288,11 +287,10 @@
       "group": 2,
       "start_x": 160,
       "start_y": 37,
-      "swords": 3,
-      "archers": 7,
+      "swords": 10,
+      "archers": 0,
       "spearmen": 0,
-      "mounted": 0,
-      "ranged_class": "musket"
+      "mounted": 0
     },
     {
       "type": "Cavalry",

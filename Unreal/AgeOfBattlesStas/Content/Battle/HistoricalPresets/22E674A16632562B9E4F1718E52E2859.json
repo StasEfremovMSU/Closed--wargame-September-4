@@ -34,9 +34,9 @@
       "start_x": -58,
       "start_y": -10,
       "formation_files": 24,
-      "swords": 19,
-      "archers": 20,
-      "spearmen": 13,
+      "swords": 0,
+      "archers": 52,
+      "spearmen": 0,
       "mounted": 0
     },
     {
@@ -46,9 +46,9 @@
       "start_x": -75,
       "start_y": -68,
       "formation_files": 20,
-      "swords": 22,
-      "archers": 16,
-      "spearmen": 15,
+      "swords": 53,
+      "archers": 0,
+      "spearmen": 0,
       "mounted": 0
     },
     {
@@ -58,9 +58,9 @@
       "start_x": -72,
       "start_y": 70,
       "formation_files": 20,
-      "swords": 17,
-      "archers": 18,
-      "spearmen": 15,
+      "swords": 0,
+      "archers": 17,
+      "spearmen": 33,
       "mounted": 0
     },
     {
@@ -70,9 +70,9 @@
       "start_x": -112,
       "start_y": -8,
       "formation_files": 21,
-      "swords": 21,
-      "archers": 15,
-      "spearmen": 15,
+      "swords": 26,
+      "archers": 0,
+      "spearmen": 25,
       "mounted": 0
     },
     {
@@ -106,9 +106,9 @@
       "start_x": 60,
       "start_y": -4,
       "formation_files": 25,
-      "swords": 22,
-      "archers": 20,
-      "spearmen": 15,
+      "swords": 0,
+      "archers": 19,
+      "spearmen": 38,
       "mounted": 0
     },
     {
@@ -118,9 +118,9 @@
       "start_x": 68,
       "start_y": -152,
       "formation_files": 21,
-      "swords": 23,
-      "archers": 19,
-      "spearmen": 14,
+      "swords": 56,
+      "archers": 0,
+      "spearmen": 0,
       "mounted": 0
     },
     {
@@ -142,9 +142,9 @@
       "start_x": 110,
       "start_y": -4,
       "formation_files": 22,
-      "swords": 24,
-      "archers": 17,
-      "spearmen": 16,
+      "swords": 35,
+      "archers": 0,
+      "spearmen": 22,
       "mounted": 0
     },
     {
@@ -166,9 +166,9 @@
       "start_x": 126,
       "start_y": 64,
       "formation_files": 19,
-      "swords": 22,
-      "archers": 16,
-      "spearmen": 15,
+      "swords": 0,
+      "archers": 53,
+      "spearmen": 0,
       "mounted": 0
     }
   ],

@@ -17,6 +17,15 @@ FRotator RegimentStandardFlutter(double Seconds, float Phase, double DistanceSqu
         (5.4 * FMath::Sin(Wave) + 1.6 * FMath::Sin(Wave * 1.7)) * Weight, 0.0);
 }
 
+FTransform RegimentHistoricalDressPose(const FTransform& FigureTransform, double MeshForwardYaw,
+    double FeetOffset, double FigureHeight)
+{
+    // Dress is authored in a 165 cm, X-forward frame on the wearer's feet.
+    const FQuat Rotation = FigureTransform.GetRotation() * FQuat(FVector::UpVector, MeshForwardYaw);
+    const FVector Feet = FigureTransform.GetTranslation() - Rotation.RotateVector(FVector(0, 0, FeetOffset));
+    return FTransform(Rotation, Feet, FVector(FigureHeight / RegimentFigureReferenceHeight));
+}
+
 FRegimentFigureRig::FRegimentFigureRig(const FReferenceSkeleton& Skeleton)
     : BindPose(Skeleton.GetRefBonePose())
 {
@@ -31,6 +40,10 @@ FRegimentFigureRig::FRegimentFigureRig(const FReferenceSkeleton& Skeleton)
         RestSpace.Add(Parent == INDEX_NONE ? BindPose[Bone] : BindPose[Bone] * RestSpace[Parent]);
     }
 
+    // The LOWPO rig names the hips at the base of the spine chain "spine".
+    const int32 PelvisBone = Skeleton.FindBoneIndex(TEXT("spine"));
+    if (RestSpace.IsValidIndex(PelvisBone))
+        Pelvis = RestSpace[PelvisBone].GetTranslation();
     const int32 Foot = Skeleton.FindBoneIndex(TEXT("foot_L"));
     const int32 Toe = Skeleton.FindBoneIndex(TEXT("toe_L"));
     LeftHand = Skeleton.FindBoneIndex(TEXT("hand_L"));
@@ -64,6 +77,15 @@ FRegimentFigureRig::FRegimentFigureRig(const FReferenceSkeleton& Skeleton)
         JointByBone[Bone] = static_cast<int8>(Joint);
     }
     bValid = true;
+}
+
+FVector FRegimentFigureRig::SeatMountedRider(const FTransform& HorseTransform,
+    const FTransform& FigureTransform, double SaddleHeight) const
+{
+    if (!Pelvis)
+        return FigureTransform.GetTranslation();
+    const FVector Saddle = HorseTransform.TransformPosition(FVector(0, 0, SaddleHeight));
+    return Saddle - FigureTransform.TransformVector(*Pelvis);
 }
 
 FTransform FRegimentFigureRig::Evaluate(const FRegimentFigureMotion& Motion, TArray<FTransform>& LocalPose) const

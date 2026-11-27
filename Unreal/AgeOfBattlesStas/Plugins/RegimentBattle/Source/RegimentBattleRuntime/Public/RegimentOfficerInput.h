@@ -45,22 +45,12 @@ struct FRegimentOfficerInput
         return Actions;
     }
 
-    void ShowMissedSwing() { SwingAge = 0.0; }
-    void Advance(double DeltaSeconds) { SwingAge = FMath::Min(SwingAge + DeltaSeconds, SwingDuration); }
-
-    float SwingPhase() const
-    {
-        return SwingAge < SwingDuration ? float(SwingAge / SwingDuration) : 0.f;
-    }
-
     static float Speed(float Maximum, bool bRunning)
     {
         return Maximum * (bRunning ? 1.f : .54f);
     }
 
 private:
-    static constexpr double SwingDuration = .36;
-    double SwingAge = SwingDuration;
     bool bStrikePressed = false;
     bool bParryPressed = false;
     bool bJumpPressed = false;

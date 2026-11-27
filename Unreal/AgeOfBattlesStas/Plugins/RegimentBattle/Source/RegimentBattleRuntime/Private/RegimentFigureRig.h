@@ -7,6 +7,10 @@ struct FReferenceSkeleton;
 float RegimentInitialStridePhase(uint64 UnitId);
 FRotator RegimentStandardFlutter(double Seconds, float Phase, double DistanceSquared);
 
+inline constexpr double RegimentFigureReferenceHeight = 165.0;
+FTransform RegimentHistoricalDressPose(const FTransform& FigureTransform, double MeshForwardYaw,
+    double FeetOffset, double FigureHeight);
+
 struct FRegimentFigureMotion
 {
     float StridePhase = 0.f;
@@ -28,6 +32,7 @@ public:
     bool IsValid() const { return bValid; }
     FVector GetMeshForward() const { return Forward; }
     double GetMeshForwardYaw() const { return FMath::Atan2(Forward.Y, Forward.X); }
+    FVector SeatMountedRider(const FTransform& HorseTransform, const FTransform& FigureTransform, double SaddleHeight) const;
     FTransform Evaluate(const FRegimentFigureMotion& Motion, TArray<FTransform>& LocalPose) const;
 
 private:
@@ -42,6 +47,7 @@ private:
     FVector BoneDirection[JointCount] = {};
     FVector Forward = FVector::ForwardVector;
     FVector Right = FVector::RightVector;
+    TOptional<FVector> Pelvis;
     int32 LeftHand = INDEX_NONE;
     int32 RightHand = INDEX_NONE;
     bool bValid = false;

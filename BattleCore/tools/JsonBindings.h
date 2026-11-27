@@ -12,7 +12,7 @@ inline void from_json(const nlohmann::json &j, CommandKind &value) {
         raw = uint64_t(j.get<int64_t>());
     else
         throw std::invalid_argument("CommandKind must be a nonnegative integer");
-    if (raw > uint8_t(CommandKind::FireFieldGun))
+    if (raw > uint8_t(CommandKind::SetRankPriority))
         throw std::invalid_argument("invalid CommandKind value");
     value = CommandKind(raw);
 }
@@ -22,6 +22,10 @@ inline uint64_t ReadJsonUnsigned(const nlohmann::json &j, uint64_t maximum, cons
         j.get<uint64_t>() > maximum)
         throw std::invalid_argument(error);
     return j.get<uint64_t>();
+}
+inline void to_json(nlohmann::json &j, RankPriority value) { j = uint8_t(value); }
+inline void from_json(const nlohmann::json &j, RankPriority &value) {
+    value = RankPriority(ReadJsonUnsigned(j, uint8_t(RankPriority::MeleeFront), "invalid RankPriority value"));
 }
 inline void to_json(nlohmann::json &j, UnitTroop value) { j = uint8_t(value); }
 inline void from_json(const nlohmann::json &j, UnitTroop &value) {
@@ -66,11 +70,14 @@ inline void to_json(nlohmann::json &j, const FormationSpec &formation) {
          {"body_radius_m", formation.body_radius_m}};
     if (formation.shape != FormationShape::Rectangle)
         j["shape"] = formation.shape;
+    if (formation.slot_stagger != 0.f)
+        j["slot_stagger"] = formation.slot_stagger;
 }
 inline void from_json(const nlohmann::json &j, FormationSpec &formation) {
     const FormationSpec defaults;
     formation = {j.value("columns", defaults.columns), j.value("spacing_m", defaults.spacing_m),
-                 j.value("body_radius_m", defaults.body_radius_m), j.value("shape", defaults.shape)};
+                 j.value("body_radius_m", defaults.body_radius_m), j.value("shape", defaults.shape),
+                 j.value("slot_stagger", defaults.slot_stagger)};
 }
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(WeaponSpec, damage, range, cooldown_ticks,
                                                 windup_ticks, projectile_speed_mps, base_accuracy)
@@ -152,6 +159,12 @@ inline void to_json(nlohmann::json &j, const Rules &r) {
         j["adaptive_battle"] = true;
     if (r.linear_infantry)
         j["linear_infantry"] = true;
+    if (r.mixed_rank_tactics)
+        j["mixed_rank_tactics"] = true;
+    if (r.sustained_melee)
+        j["sustained_melee"] = true;
+    if (r.controlled_arrow_aim)
+        j["controlled_arrow_aim"] = true;
 }
 inline void from_json(const nlohmann::json &j, Rules &r) {
     const Rules defaults;
@@ -164,6 +177,9 @@ inline void from_json(const nlohmann::json &j, Rules &r) {
     r.risky_volley = j.value("risky_volley", defaults.risky_volley);
     r.adaptive_battle = j.value("adaptive_battle", defaults.adaptive_battle);
     r.linear_infantry = j.value("linear_infantry", defaults.linear_infantry);
+    r.mixed_rank_tactics = j.value("mixed_rank_tactics", defaults.mixed_rank_tactics);
+    r.sustained_melee = j.value("sustained_melee", defaults.sustained_melee);
+    r.controlled_arrow_aim = j.value("controlled_arrow_aim", defaults.controlled_arrow_aim);
     r.ranged_cohorts = defaults.ranged_cohorts;
     if (!j.contains("ranged_cohorts"))
         return;
@@ -290,6 +306,8 @@ inline void to_json(nlohmann::json &j, const Command &c) {
          {"command_task", c.command_task}, {"skirmishers_enabled", c.skirmishers_enabled}};
     if (c.kind == CommandKind::SetRegimentFollowing)
         j["follow_enabled"] = c.follow_enabled;
+    if (c.kind == CommandKind::SetRankPriority)
+        j["rank_priority"] = c.rank_priority;
 }
 inline void from_json(const nlohmann::json &j, Command &c) {
     const Command defaults;
@@ -306,6 +324,8 @@ inline void from_json(const nlohmann::json &j, Command &c) {
     c.skirmishers_enabled = j.value("skirmishers_enabled", defaults.skirmishers_enabled);
     c.follow_enabled = c.kind == CommandKind::SetRegimentFollowing &&
                        j.at("follow_enabled").get<bool>();
+    c.rank_priority = c.kind == CommandKind::SetRankPriority
+        ? j.at("rank_priority").get<RankPriority>() : defaults.rank_priority;
 }
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CommandEnvelope, tick, sequence, command)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(BattleEvent, id, tick, kind, source, target,
@@ -409,6 +429,10 @@ inline void to_json(nlohmann::json &j, const RegimentState &r) {
     j["decision_until"] = r.decision_until;
     j["ai_action"] = r.ai_action;
     j["ai_target"] = r.ai_target;
+    if (r.rank_priority != RankPriority::Automatic)
+        j["rank_priority"] = r.rank_priority;
+    if (r.rank_layout != RankPriority::Automatic)
+        j["rank_layout"] = r.rank_layout;
     j["panic_loss_count"] = r.panic_loss_count;
     j["melee_engaged"] = r.melee_engaged;
     j["skirmishers_enabled"] = r.skirmishers_enabled;
@@ -440,6 +464,10 @@ inline void to_json(nlohmann::json &j, const RegimentState &r) {
         j["separate_since"] = r.separate_since;
     if (r.contact_end_tick)
         j["contact_end_tick"] = r.contact_end_tick;
+    if (r.melee_contact_since)
+        j["melee_contact_since"] = r.melee_contact_since;
+    if (r.melee_recovery_until)
+        j["melee_recovery_until"] = r.melee_recovery_until;
     if (r.braced)
         j["braced"] = r.braced;
     if (r.discipline_window_count)
@@ -491,6 +519,8 @@ inline void from_json(const nlohmann::json &j, RegimentState &r) {
     r.decision_until = j.at("decision_until");
     r.ai_action = j.at("ai_action");
     r.ai_target = j.at("ai_target");
+    r.rank_priority = j.value("rank_priority", RankPriority::Automatic);
+    r.rank_layout = j.value("rank_layout", RankPriority::Automatic);
     r.panic_loss_count = j.at("panic_loss_count");
     r.melee_engaged = j.value("melee_engaged", false);
     r.skirmishers_enabled = j.value("skirmishers_enabled", false);
@@ -513,6 +543,8 @@ inline void from_json(const nlohmann::json &j, RegimentState &r) {
     r.pursuit_check_tick = j.value("pursuit_check_tick", Tick{});
     r.separate_since = j.value("separate_since", Tick{});
     r.contact_end_tick = j.value("contact_end_tick", Tick{});
+    r.melee_contact_since = j.value("melee_contact_since", Tick{});
+    r.melee_recovery_until = j.value("melee_recovery_until", Tick{});
     r.braced = j.value("braced", false);
     r.discipline_window_count = j.value("discipline_window_count", uint64_t{});
     r.discipline_window_until = j.value("discipline_window_until", Tick{});
@@ -537,6 +569,8 @@ inline void to_json(nlohmann::json &j, const PendingAttack &a) {
         j["pursuit"] = true;
     if (a.round_shot)
         j["round_shot"] = {{"origin", a.round_shot->origin}, {"aim", a.round_shot->aim}};
+    if (a.officer_arrow)
+        j["officer_arrow"] = {{"origin", a.officer_arrow->origin}, {"aim", a.officer_arrow->aim}};
 }
 inline void from_json(const nlohmann::json &j, PendingAttack &a) {
     const PendingAttack defaults;
@@ -553,6 +587,9 @@ inline void from_json(const nlohmann::json &j, PendingAttack &a) {
     a.round_shot.reset();
     if (const auto shot = j.find("round_shot"); shot != j.end())
         a.round_shot = RoundShotTrajectory{shot->at("origin").get<Vec3>(), shot->at("aim").get<Vec3>()};
+    a.officer_arrow.reset();
+    if (const auto arrow = j.find("officer_arrow"); arrow != j.end())
+        a.officer_arrow = OfficerArrowTrajectory{arrow->at("origin").get<Vec3>(), arrow->at("aim").get<Vec3>()};
 }
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(SmokeCloud, center, radius_m, expires_tick)
 inline void to_json(nlohmann::json &j, const World &w) {

@@ -59,9 +59,9 @@
       "group": 2,
       "start_x": -135,
       "start_y": -38,
-      "swords": 41,
+      "swords": 60,
       "archers": 0,
-      "spearmen": 19,
+      "spearmen": 0,
       "mounted": 0
     },
     {
@@ -70,9 +70,9 @@
       "group": 2,
       "start_x": -135,
       "start_y": 38,
-      "swords": 37,
+      "swords": 18,
       "archers": 2,
-      "spearmen": 21,
+      "spearmen": 40,
       "mounted": 0
     },
     {

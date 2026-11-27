@@ -96,6 +96,52 @@ Perception ObserveRegiment(const World &w, const RegimentState &r) {
     return p;
 }
 
+void UpdateMixedRanks(World &world, RegimentState &regiment, const Perception &perception) {
+    if (regiment.panic || regiment.disordered || regiment.melee_engaged ||
+        !SupportsRankPriority(world, regiment))
+        return;
+    RankPriority automatic = RankPriority::RangedFront;
+    if (regiment.rank_priority == RankPriority::Automatic) {
+        if (UsesLinearInfantry(world, regiment)) {
+            // Linear doctrine already distinguishes firing lines from assault columns.
+            UpdateRegimentRankLayout(world, regiment, RankPriority::Automatic);
+            return;
+        }
+        const auto own = Footprint(regiment);
+        for (const auto &contact : perception.enemies) {
+            const auto &enemy = *FindRegiment(world, contact.id);
+            if (enemy.panic)
+                continue;
+            const auto delta = enemy.pose.position - regiment.pose.position;
+            const float distance = std::hypot(delta.x, delta.y);
+            const auto axis = distance > .001f ? Vec3{delta.x / distance, delta.y / distance, 0.f}
+                                                : Forward(regiment.pose.yaw);
+            const auto edge = [&](Pose pose, FormationFootprint size) {
+                return .5f * (std::abs(Dot(axis, Forward(pose.yaw))) * size.depth_m +
+                              std::abs(Dot(axis, Right(pose.yaw))) * size.width_m);
+            };
+            const float gap = distance - edge(regiment.pose, own) - edge(enemy.pose, Footprint(enemy));
+            // Allow time to cross into rank. Keep the screen up until the enemy is clearly away.
+            const float approach = std::max(8.f, 2.5f * FormationTravelSpeed(world, enemy));
+            const float buffer = regiment.rank_layout == RankPriority::MeleeFront ? 5.f : 0.f;
+            if (gap <= approach + buffer) {
+                automatic = RankPriority::MeleeFront;
+                break;
+            }
+        }
+    }
+    UpdateRegimentRankLayout(world, regiment, automatic);
+}
+
+void UpdateManeuverRanks(World &world, RegimentState &regiment, bool automatic_due) {
+    if (regiment.rank_priority != RankPriority::Automatic) {
+        UpdateRegimentRankLayout(world, regiment, regiment.rank_layout);
+    } else if (automatic_due && !regiment.melee_engaged && !regiment.panic &&
+               !regiment.disordered && SupportsRankPriority(world, regiment)) {
+        UpdateMixedRanks(world, regiment, ObserveRegiment(world, regiment));
+    }
+}
+
 std::optional<Pose> HoldingThreatFacing(const World &world, const RegimentState &regiment,
                                         const Perception &perception) {
     const auto size = Footprint(regiment);
@@ -422,7 +468,9 @@ void UpdateOfficers(World &w, const NavigationService &nav) {
             shared_maneuver[FindRegiment(w, id) - w.regiments.data()] = true;
     }
     for (auto &r : w.regiments) {
+        const bool follow_replan_due = w.tick >= r.follow_replan_tick;
         if (r.following_officer && UpdateRegimentFollowing(w, r, nav)) {
+            UpdateManeuverRanks(w, r, follow_replan_due);
             if (r.order && r.order->expiry_tick && r.order->expiry_tick <= w.tick)
                 r.order->status = OrderStatus::Cancelled;
             continue;
@@ -432,6 +480,11 @@ void UpdateOfficers(World &w, const NavigationService &nav) {
         if (shared_maneuver[&r - w.regiments.data()]) {
             r.ai_action = OrderType::MoveTo;
             r.ai_target = {};
+            // Long shared routes keep their route plan. Stagger the independent rank decisions.
+            constexpr Tick RankDecisionInterval = 10;
+            const bool rank_decision_due = w.tick % RankDecisionInterval == r.id.value % RankDecisionInterval ||
+                                           (r.separate_since && r.separate_since == w.tick);
+            UpdateManeuverRanks(w, r, rank_decision_due);
             continue;
         }
         bool emergency = false;
@@ -498,6 +551,7 @@ void UpdateOfficers(World &w, const NavigationService &nav) {
         if (!emergency && !active && w.tick < r.decision_tick)
             continue;
         auto p = ObserveRegiment(w, r);
+        UpdateMixedRanks(w, r, p);
         OfficerTraits traits;
         for (auto &o : w.officers)
             if (o.id == commander)

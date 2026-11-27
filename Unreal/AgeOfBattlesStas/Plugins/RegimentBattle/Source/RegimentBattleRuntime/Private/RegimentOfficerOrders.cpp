@@ -189,6 +189,26 @@ FText OrderAction(battle::OrderType Type)
     return {};
 }
 
+ERegimentPlayerOrder RankOrder(battle::RankPriority Priority)
+{
+    switch (Priority)
+    {
+    case battle::RankPriority::RangedFront: return ERegimentPlayerOrder::RankRanged;
+    case battle::RankPriority::MeleeFront: return ERegimentPlayerOrder::RankMelee;
+    default: return ERegimentPlayerOrder::RankAuto;
+    }
+}
+
+FText RankActivity(battle::RankPriority Priority)
+{
+    switch (Priority)
+    {
+    case battle::RankPriority::RangedFront: return LOCTEXT("RanksRangedFront", "Стрелки впереди");
+    case battle::RankPriority::MeleeFront: return LOCTEXT("RanksMeleeFront", "Стрелки под прикрытием");
+    default: return LOCTEXT("RanksFromFormation", "По исходному строю");
+    }
+}
+
 FText PendingRegimentAction(const battle::Command& Command, battle::UnitId Officer,
     battle::OfficerId Issuer, battle::RegimentId Regiment)
 {
@@ -204,6 +224,9 @@ FText PendingRegimentAction(const battle::Command& Command, battle::UnitId Offic
     case battle::CommandKind::ReformRegiment:
         return Command.formation.shape == battle::FormationShape::Rectangle ? LOCTEXT("OrderReformAction", "Перестроение")
                                                                           : FormationName(Command.formation.shape);
+    case battle::CommandKind::SetRankPriority:
+        return Command.rank_priority == battle::RankPriority::Automatic
+            ? LOCTEXT("OrderAutoRanks", "Шеренги по обстановке") : RankActivity(Command.rank_priority);
     case battle::CommandKind::SetSkirmishers:
         return Command.skirmishers_enabled ? LOCTEXT("OrderSkirmisherAction", "Выслать застрельщиков")
                                           : LOCTEXT("OrderRecallAction", "Отозвать застрельщиков");
@@ -362,6 +385,10 @@ FRegimentOrderPresentation DescribeOrder(const battle::World& World, const battl
     FRegimentOrderPresentation Result;
     const auto* Record = OfficerRecord(World, World.controlled);
     const bool bDeploying = battle::IsDeploying(World, Regiment);
+    Result.bCanSetRanks = battle::SupportsRankPriority(World, Regiment);
+    Result.RankOrder = RankOrder(Regiment.rank_priority);
+    if (Result.bCanSetRanks)
+        Result.RankActivity = RankActivity(Regiment.rank_layout);
     const auto Address = Regiment.team == 0 ? CourierAddress(World, Regiment.id) : std::nullopt;
     using Delivery = ERegimentOrderDelivery;
     if (Record)
@@ -376,6 +403,8 @@ FRegimentOrderPresentation DescribeOrder(const battle::World& World, const battl
             if (!Result.Action.IsEmpty())
             {
                 Result.Delivery = bPaused ? Delivery::Paused : Delivery::Queued;
+                if (Command.kind == battle::CommandKind::SetRankPriority)
+                    Result.RankOrder = RankOrder(Command.rank_priority);
                 break;
             }
         }
@@ -471,6 +500,11 @@ FRegimentOrderPresentation DescribeOrder(const battle::World& World, const battl
         Result.Follow = bFollowing ? ERegimentFollowStatus::Melee : ERegimentFollowStatus::Off;
         Result.Activity = bFollowing ? LOCTEXT("FollowMelee", "Следование приостановлено · рукопашная")
                                     : LOCTEXT("ActivityMelee", "В рукопашной");
+    }
+    else if (battle::IsRecoveringFromMelee(World, Regiment))
+    {
+        Result.Follow = bFollowing ? ERegimentFollowStatus::Active : ERegimentFollowStatus::Off;
+        Result.Activity = LOCTEXT("ActivityMeleeRecovery", "Собирается после рукопашной");
     }
     else if (bFollowing)
     {
@@ -699,6 +733,20 @@ FText QueueOrder(const battle::World& World, const battle::NavigationService&,
 
     switch (Order)
     {
+    case ERegimentPlayerOrder::RankAuto:
+    case ERegimentPlayerOrder::RankRanged:
+    case ERegimentPlayerOrder::RankMelee:
+    {
+        if (!battle::SupportsRankPriority(World, *Regiment))
+            return LOCTEXT("RanksNeedMixedRegiment", "Для смены шеренг в полку нужны стрелки и прикрытие.");
+        const auto Priority = Order == ERegimentPlayerOrder::RankRanged ? battle::RankPriority::RangedFront
+            : Order == ERegimentPlayerOrder::RankMelee ? battle::RankPriority::MeleeFront : battle::RankPriority::Automatic;
+        battle::Command Command;
+        Command.kind = battle::CommandKind::SetRankPriority;
+        Command.rank_priority = Priority;
+        Queue(Command);
+        return FText::GetEmpty();
+    }
     case ERegimentPlayerOrder::Line:
     case ERegimentPlayerOrder::Column:
     case ERegimentPlayerOrder::Wedge:

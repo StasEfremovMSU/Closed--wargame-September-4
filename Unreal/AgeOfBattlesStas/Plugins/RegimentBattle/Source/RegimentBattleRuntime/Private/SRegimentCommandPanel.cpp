@@ -20,9 +20,9 @@ namespace
 const FLinearColor CommandInk(FColor::FromHex(TEXT("F7F3EB")));
 const FLinearColor CommandMuted(FColor::FromHex(TEXT("BDC8D0")));
 const FLinearColor CommandGold(FColor::FromHex(TEXT("F0C98E")));
-const FSlateRoundedBoxBrush CommandBackground(FLinearColor(FColor::FromHex(TEXT("101923FA"))),
+const FSlateRoundedBoxBrush CommandBackground(FLinearColor(FColor::FromHex(TEXT("101725FA"))),
     10.f, FLinearColor(FColor::FromHex(TEXT("4A5A65"))), 1.f);
-const FSlateRoundedBoxBrush BranchBackground(FLinearColor(FColor::FromHex(TEXT("202D38EF"))), 4.f);
+const FSlateRoundedBoxBrush BranchBackground(FLinearColor(FColor::FromHex(TEXT("202D40EF"))), 4.f);
 const FSlateRoundedBoxBrush LabelBackground(FLinearColor(FColor::FromHex(TEXT("101923E8"))), 4.f);
 const FSlateRoundedBoxBrush GeneralLabelBackground(FLinearColor(FColor::FromHex(TEXT("101923E8"))),
     4.f, CommandGold, 1.f);
@@ -310,9 +310,9 @@ void SRegimentCommandPanel::Construct(const FArguments& InArgs)
         SNew(SOverlay)
         .Visibility(EVisibility::SelfHitTestInvisible)
         + SOverlay::Slot()[Markers]
-        + SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Bottom).Padding(0, 0, 20, 86)
+        + SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Top).Padding(0, 60, 18, 0)
         [
-            SNew(SBox).WidthOverride(386.f)
+            SNew(SBox).WidthOverride(326.f)
             [
                 SNew(SExpandableArea)
                 .InitiallyCollapsed(true)

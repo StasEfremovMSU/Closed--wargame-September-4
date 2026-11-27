@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreTypes.h"
+#include "Math/UnrealMathUtility.h"
 
 enum class ERegimentBattleSpeed : uint8
 {
@@ -32,6 +33,8 @@ public:
         Accumulator -= StepSeconds;
         return true;
     }
+
+    double RenderAlpha() const { return FMath::Clamp(Accumulator / StepSeconds, 0.0, 1.0); }
 
     bool IsPaused() const { return bPaused || bOfficerSelection; }
     bool IsSelectingOfficer() const { return bOfficerSelection; }

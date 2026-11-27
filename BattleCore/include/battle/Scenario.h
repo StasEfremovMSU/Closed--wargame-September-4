@@ -10,7 +10,9 @@ struct FormationSpec {
     float spacing_m{2};
     float body_radius_m{0.3f};
     FormationShape shape{FormationShape::Rectangle};
+    float slot_stagger{}; // [0, 1] of the allowed variation within a rectangular slot grid.
 };
+constexpr bool ValidSlotStagger(float value) { return value >= 0.f && value <= 1.f; }
 constexpr bool HasOutwardRanks(FormationShape shape) {
     return shape == FormationShape::Square || shape == FormationShape::Circle;
 }
@@ -96,6 +98,9 @@ struct Rules {
     bool risky_volley{};
     bool adaptive_battle{};
     bool linear_infantry{};
+    bool mixed_rank_tactics{};
+    bool sustained_melee{};
+    bool controlled_arrow_aim{};
 };
 struct ScenarioObjective {
     bool operator==(const ScenarioObjective &) const = default;

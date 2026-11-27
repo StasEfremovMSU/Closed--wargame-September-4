@@ -34,9 +34,9 @@
       "start_x": -74,
       "start_y": 0,
       "formation_files": 10,
-      "swords": 5,
-      "archers": 7,
-      "spearmen": 7,
+      "swords": 9,
+      "archers": 0,
+      "spearmen": 10,
       "mounted": 0
     },
     {
@@ -185,9 +185,9 @@
       "start_x": -106,
       "start_y": 23,
       "formation_files": 10,
-      "swords": 4,
-      "archers": 7,
-      "spearmen": 6,
+      "swords": 0,
+      "archers": 14,
+      "spearmen": 3,
       "mounted": 0
     },
     {

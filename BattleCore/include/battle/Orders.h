@@ -4,6 +4,7 @@ namespace battle {
 enum class OrderType : uint8_t { Hold, MoveTo, Attack, Withdraw, Rally, HoldLine, FallBack, Brace, Pursue };
 enum class OrderStatus : uint8_t { Pending, Active, Completed, Failed, Cancelled };
 enum class MovementPace : uint8_t { Walk, March, Run };
+enum class RankPriority : uint8_t { Automatic, RangedFront, MeleeFront };
 
 inline bool IsHolding(OrderType type) {
     return type == OrderType::Hold || type == OrderType::HoldLine || type == OrderType::Brace;
@@ -46,7 +47,8 @@ enum class CommandKind : uint8_t {
     SetRegimentFollowing,
     JumpControlledUnit,
     ParryControlledUnit,
-    FireFieldGun
+    FireFieldGun,
+    SetRankPriority
 };
 // A tagged wire record; only fields belonging to kind are consumed.
 struct Command {
@@ -60,6 +62,7 @@ struct Command {
     Tick sample_tick{};
     command::CommandTask command_task{};
     bool skirmishers_enabled{}, follow_enabled{};
+    RankPriority rank_priority{RankPriority::Automatic};
 };
 struct CommandEnvelope {
     Tick tick{};

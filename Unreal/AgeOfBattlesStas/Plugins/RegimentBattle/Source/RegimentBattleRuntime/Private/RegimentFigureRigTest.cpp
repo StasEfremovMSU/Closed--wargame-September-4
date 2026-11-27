@@ -37,8 +37,38 @@ bool FRegimentFigureRigTest::RunTest(const FString& Parameters)
         TestFalse(TEXT("Movement drives the legs"), Walking[Leg].Equals(Idle[Leg]));
         TestFalse(TEXT("Attack animates the weapon grip"), AttackGrip.Equals(IdleGrip, 0.1));
         TestFalse(TEXT("Attack changes the arm pose"), Attacking[Arm].Equals(Idle[Arm]));
+
+        const int32 Pelvis = Skeleton.FindBoneIndex(TEXT("spine"));
+        if (!TestTrue(TEXT("The character mesh has a pelvis bone"), Pelvis != INDEX_NONE))
+            continue;
+        FTransform PelvisPose = Skeleton.GetRefBonePose()[Pelvis];
+        for (int32 Parent = Skeleton.GetParentIndex(Pelvis); Parent != INDEX_NONE; Parent = Skeleton.GetParentIndex(Parent))
+            PelvisPose *= Skeleton.GetRefBonePose()[Parent];
+        const FTransform Horse(FRotator(0, 48, 0), FVector(130, 260, 9), FVector(.93));
+        FTransform Rider(FRotator(14, 48, -8), FVector::ZeroVector, FVector(1.12));
+        Rider.SetTranslation(Rig.SeatMountedRider(Horse, Rider, 140.0));
+        const FVector SeatedPelvis = Rider.TransformPosition(PelvisPose.GetTranslation());
+        TestTrue(TEXT("The rider's hips stay in the saddle when the figure leans"),
+            SeatedPelvis.Equals(Horse.TransformPosition(FVector(0, 0, 140)), .01));
     }
     return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentDressPoseTest, "RegimentBattle.Graphics.HistoricalDressPose",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+
+bool FRegimentDressPoseTest::RunTest(const FString&)
+{
+    const FQuat Lean = FRotator(14, 51, -8).Quaternion();
+    const FQuat MeshYaw(FVector::UpVector, HALF_PI);
+    const FVector Feet(807, 190, 35);
+    const FTransform Figure(Lean * MeshYaw.Inverse(), Feet + Lean.RotateVector(FVector(0, 0, 4)), FVector(1.1));
+    const auto Dress = RegimentHistoricalDressPose(Figure, HALF_PI, 4.0, 198.0);
+    TestTrue(TEXT("The clothing uses the same ground pivot after translation and lean"), Dress.GetTranslation().Equals(Feet));
+    TestTrue(TEXT("A tall officer's headwear and armor inherit both the lean and stature"),
+        Dress.TransformPosition(FVector(-5, 8, 153)).Equals(Feet + Lean.RotateVector(FVector(-6, 9.6, 183.6)), .01) &&
+        Dress.TransformPosition(FVector(0, 0, 107)).Equals(Feet + Lean.RotateVector(FVector(0, 0, 128.4)), .01));
+    return !HasAnyErrors();
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentFigureAppearanceTest, "RegimentBattle.Graphics.FigureAppearance",

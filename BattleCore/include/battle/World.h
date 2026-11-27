@@ -52,6 +52,8 @@ struct RegimentState : RegimentSpec {
     float morale{1.f}, cohesion{1.f}, fatigue{}, artillery_pressure{};
     bool disordered{};
     bool manual_frontage{};
+    RankPriority rank_priority{RankPriority::Automatic};
+    RankPriority rank_layout{RankPriority::Automatic};
     UnitId following_officer{};
     Tick follow_replan_tick{}; // Nonzero while follow owns the regiment's route.
     CavalryPhase cavalry_phase{CavalryPhase::None};
@@ -59,6 +61,7 @@ struct RegimentState : RegimentSpec {
     float charge_runup_m{};
     Tick cavalry_phase_until{}, brace_ready_tick{}, pursuit_check_tick{}, separate_since{};
     Tick contact_end_tick{};
+    Tick melee_contact_since{}, melee_recovery_until{};
     bool braced{};
     uint64_t discipline_window_count{};
     Tick discipline_window_until{};
@@ -75,6 +78,9 @@ struct SmokeCloud {
 struct RoundShotTrajectory {
     Vec3 origin{}, aim{};
 };
+struct OfficerArrowTrajectory {
+    Vec3 origin{}, aim{};
+};
 struct PendingAttack {
     EventId id{};
     UnitId source{}, target{};
@@ -85,6 +91,7 @@ struct PendingAttack {
     bool projectile{};
     bool charge{}, pursuit{};
     std::optional<RoundShotTrajectory> round_shot;
+    std::optional<OfficerArrowTrajectory> officer_arrow;
 };
 struct World {
     Tick tick{};

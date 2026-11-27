@@ -8,6 +8,42 @@
 #include <set>
 using namespace battle;
 
+TEST_CASE("formation.opt_in_rectangle_stagger_is_stable_within_the_existing_footprint") {
+    constexpr uint32_t count = 23;
+    const FormationSpec tight{7, 1.2f, .32f};
+    const Pose centre{{10.f, -4.f, 0.f}, .71f};
+    auto json = nlohmann::json(tight);
+    CHECK_FALSE(json.contains("slot_stagger"));
+    json["slot_stagger"] = .8f;
+    auto staggered = json.get<FormationSpec>();
+    const auto slots = BuildFormationSlots(staggered, centre, count);
+    const auto straight = BuildFormationSlots(tight, centre, count);
+    REQUIRE(slots.size() == count);
+    CHECK(slots != straight);
+    CHECK(BuildFormationSlots(staggered, centre, count) == slots);
+    const auto footprint = Footprint(staggered, count);
+    CHECK(footprint.width_m == Footprint(tight, count).width_m);
+    CHECK(footprint.depth_m == Footprint(tight, count).depth_m);
+    bool front_offsets = false;
+    for (uint32_t i = 0; i < count; ++i) {
+        const auto offset = slots[i].position - centre.position;
+        CHECK(slots[i].yaw == centre.yaw);
+        CHECK(std::abs(Dot(offset, Forward(centre.yaw))) + tight.body_radius_m <= footprint.depth_m * .5f + .001f);
+        CHECK(std::abs(Dot(offset, Right(centre.yaw))) + tight.body_radius_m <= footprint.width_m * .5f + .001f);
+        if (i < tight.columns)
+            front_offsets |= std::abs(Dot(slots[i].position - straight[i].position, Forward(centre.yaw))) > .05f;
+        for (uint32_t j = i + 1; j < count; ++j)
+            CHECK(Distance(slots[i].position, slots[j].position) > 2.f * tight.body_radius_m);
+    }
+    CHECK(front_offsets);
+    CHECK(TravelColumnFormation(staggered) == TravelColumnFormation(tight));
+    for (const auto shape : {FormationShape::Testudo, FormationShape::Wedge, FormationShape::Square, FormationShape::Circle}) {
+        auto shaped_tight = tight;
+        shaped_tight.shape = staggered.shape = shape;
+        CHECK(BuildFormationSlots(staggered, centre, count) == BuildFormationSlots(shaped_tight, centre, count));
+    }
+}
+
 TEST_CASE("formation.special_layouts_use_real_slots_and_fit_their_footprint") {
     constexpr uint32_t count = 31;
     const Pose centre{{10.f, -4.f, 0.f}, .73f};
@@ -122,6 +158,26 @@ TEST_CASE("replay.formation_shapes_roundtrip_with_legacy_rectangle_defaults") {
     REQUIRE(restored);
     CHECK(restored.value.state.regiments[0].formation == shape);
     CHECK(StateHash(restored.value.state) == StateHash(original.value));
+}
+
+TEST_CASE("replay.formation_stagger_survives_snapshots_and_rejects_invalid_values") {
+    auto scenario = test::Duel(12);
+    scenario.regiments[0].formation.slot_stagger = .37f;
+    auto original = CreateWorld(scenario, 18);
+    REQUIRE(original);
+    const test::TempDir temp;
+    const auto snapshot = temp.path / "stagger-snapshot.json";
+    REQUIRE(io::SaveSnapshot(snapshot, Capture(original.value)));
+    auto restored = io::LoadSnapshot(snapshot);
+    REQUIRE(restored);
+    CHECK(restored.value.state.regiments.front().formation.slot_stagger == .37f);
+    CHECK(restored.value.state.scenario.regiments.front().formation.slot_stagger == .37f);
+    FlatNavigationService navigation;
+    REQUIRE(Step(original.value, {}, {}, navigation));
+    REQUIRE(Step(restored.value.state, {}, {}, navigation));
+    CHECK(StateHash(restored.value.state) == StateHash(original.value));
+    scenario.regiments[0].formation.slot_stagger = 1.01f;
+    CHECK(CreateWorld(scenario, 18).status == Status::InvalidInput);
 }
 
 TEST_CASE("formation.testudo_shields_only_formed_troops_from_front_and_side_missiles") {

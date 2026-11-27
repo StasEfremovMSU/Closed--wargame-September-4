@@ -44,25 +44,24 @@ using RegimentAudioSettings::PlayMenuSound;
 const FLinearColor Ink = FLinearColor(FColor::FromHex(TEXT("F7F3EB")));
 const FLinearColor Muted = FLinearColor(FColor::FromHex(TEXT("BDC8D0")));
 const FLinearColor Brass = FLinearColor(FColor::FromHex(TEXT("F0C98E")));
-const FLinearColor ControlTint = FLinearColor(FColor::FromHex(TEXT("353A2E")));
-const FLinearColor SelectedTint = FLinearColor(FColor::FromHex(TEXT("7A5527")));
-const FLinearColor RosterAccent = FLinearColor(FColor::FromHex(TEXT("CEDBA6")));
-const FLinearColor RosterInk = FLinearColor(FColor::FromHex(TEXT("182018")));
-const FLinearColor OfficerControlTint = FLinearColor(FColor::FromHex(TEXT("42352A")));
+const FLinearColor ControlTint = FLinearColor(FColor::FromHex(TEXT("273547")));
+const FLinearColor SelectedTint = FLinearColor(FColor::FromHex(TEXT("3D587B")));
+const FLinearColor RosterAccent = FLinearColor(FColor::FromHex(TEXT("C9D8EF")));
+const FLinearColor RosterInk = FLinearColor(FColor::FromHex(TEXT("142032")));
+const FLinearColor OfficerControlTint = FLinearColor(FColor::FromHex(TEXT("283649")));
 const FLinearColor Blue = FLinearColor(FColor::FromHex(TEXT("84CDFA")));
 const FLinearColor Orange = FLinearColor(FColor::FromHex(TEXT("FDB589")));
-const FLinearColor Edge = FLinearColor(FColor::FromHex(TEXT("4E5545")));
-const FLinearColor OfficerEdge = FLinearColor(FColor::FromHex(TEXT("5B4D3D")));
-const FSlateRoundedBoxBrush Panel(FLinearColor(FColor::FromHex(TEXT("121911F2"))), 7.f, Edge, 1.f);
-const FSlateRoundedBoxBrush OfficerPanel(FLinearColor(FColor::FromHex(TEXT("1B1611F5"))), 7.f, OfficerEdge, 1.f);
-const FSlateRoundedBoxBrush Track(FLinearColor(FColor::FromHex(TEXT("4E5144"))), 2.f);
+const FLinearColor Edge = FLinearColor(FColor::FromHex(TEXT("3A4B63")));
+const FLinearColor OfficerEdge = FLinearColor(FColor::FromHex(TEXT("4B5E78")));
+const FSlateRoundedBoxBrush Panel(FLinearColor(FColor::FromHex(TEXT("101725F5"))), 7.f, Edge, 1.f);
+const FSlateRoundedBoxBrush OfficerPanel(FLinearColor(FColor::FromHex(TEXT("141E2CF8"))), 7.f, OfficerEdge, 1.f);
+const FSlateRoundedBoxBrush Track(FLinearColor(FColor::FromHex(TEXT("3A4C64"))), 2.f);
 const FSlateRoundedBoxBrush Fill(FLinearColor::White, 2.f);
-const FSlateRoundedBoxBrush KeyBackground(FLinearColor(FColor::FromHex(TEXT("322922"))), 3.f);
+const FSlateRoundedBoxBrush KeyBackground(FLinearColor(FColor::FromHex(TEXT("192638"))), 3.f);
 const FSlateRoundedBoxBrush NoticePin(FLinearColor::White, 3.f, FLinearColor::Black, 1.f);
 const FSlateRoundedBoxBrush AimLine(Ink, 1.f, FLinearColor(0.f, 0.f, 0.f, .8f), .65f);
 constexpr float OfficerPanelWidth = 396.f;
 constexpr float BottomControlsHeight = 72.f;
-constexpr float DecisionPanelClearance = 400.f;
 
 TSharedRef<SWidget> MakeBattleRegimentRoster(TWeakObjectPtr<ARegimentBattleField> Field, bool bOfficerMode);
 
@@ -328,12 +327,8 @@ TSharedRef<SWidget> MakeRegimentPanel(TWeakObjectPtr<ARegimentBattleField> Field
     const FLinearColor Accent = bBlue ? Blue : Orange;
     const FText Name = bBlue ? LOCTEXT("BlueSide", "Синие") : LOCTEXT("OrangeSide", "Оранжевые");
     return SNew(SBox)
-        .WidthOverride(144.f)
-        .Visibility_Lambda([Field]
-        {
-            return Field.IsValid() && !Field->GetOfficerControlState().bActive
-                ? EVisibility::HitTestInvisible : EVisibility::Collapsed;
-        })
+        .WidthOverride(112.f)
+        .Visibility(EVisibility::HitTestInvisible)
         [
             SNew(SVerticalBox)
             + SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)
@@ -506,6 +501,8 @@ TSharedRef<SWidget> MakeOfficerOrder(TWeakObjectPtr<ARegimentBattleField> Field,
         .Visibility_Lambda([Field, Order]
         {
             const uint8 Special = RegimentSpecialFormationBit(Order);
+            if (IsRegimentRankOrder(Order) && !OfficerState(Field).Order.bCanSetRanks)
+                return EVisibility::Collapsed;
             if (Special && !(OfficerState(Field).SpecialFormations & Special))
                 return EVisibility::Collapsed;
             if ((Order == ERegimentPlayerOrder::CommandHold && OfficerState(Field).CommandTier < 2) ||
@@ -524,7 +521,8 @@ TSharedRef<SWidget> MakeOfficerOrder(TWeakObjectPtr<ARegimentBattleField> Field,
                 const auto& State = OfficerState(Field);
                 const bool bActiveFollow = Order == ERegimentPlayerOrder::Follow &&
                     State.Order.Follow != ERegimentFollowStatus::Off;
-                return bActiveFollow || (RegimentSpecialFormationBit(Order) & State.ActiveSpecialFormation)
+                const bool bActiveRank = IsRegimentRankOrder(Order) && State.Order.RankOrder == Order;
+                return bActiveFollow || bActiveRank || (RegimentSpecialFormationBit(Order) & State.ActiveSpecialFormation)
                     ? SelectedTint : OfficerControlTint;
             })
             .HAlign(HAlign_Fill)
@@ -792,9 +790,10 @@ TSharedRef<SWidget> MakeOfficerOrderFeedback(TWeakObjectPtr<ARegimentBattleField
 
 TSharedRef<SWidget> MakeOfficerCommandSheet(TWeakObjectPtr<ARegimentBattleField> Field)
 {
-    auto Common = SNew(SVerticalBox);
-    auto Tactics = SNew(SVerticalBox);
-    auto Movement = SNew(SVerticalBox);
+    auto Regiment = SNew(SVerticalBox);
+    auto Higher = SNew(SVerticalBox);
+    auto Formation = SNew(SVerticalBox);
+    auto Advanced = SNew(SVerticalBox);
     auto Navigation = SNew(SVerticalBox);
     const auto AddOrder = [Field](const TSharedRef<SVerticalBox>& Group, ERegimentPlayerOrder Order,
         const FText& Key, const FText& Label, const FText& Help)
@@ -804,69 +803,106 @@ TSharedRef<SWidget> MakeOfficerCommandSheet(TWeakObjectPtr<ARegimentBattleField>
             MakeOfficerOrder(Field, Order, Key, Label, Help)
         ];
     };
-    AddOrder(Common, ERegimentPlayerOrder::CommandHold, LOCTEXT("CommandHoldKey", "J"),
-        LOCTEXT("CommandHoldLabel", "Всем полкам стоять"), LOCTEXT("CommandHoldHelp", "Удерживать позицию всеми подчинёнными полками"));
-    AddOrder(Common, ERegimentPlayerOrder::WingHold, LOCTEXT("WingHoldKey", "K"),
-        LOCTEXT("WingHoldLabel", "Флангу стоять"), LOCTEXT("WingHoldHelp", "Приказ получит только группа, к которой относится выбранный полк"));
-    AddOrder(Common, ERegimentPlayerOrder::HoldLine, LOCTEXT("GuardKey", "7"), LOCTEXT("GuardButton", "Держать строй"),
-        LOCTEXT("GuardHelp", "Оборонять участок и оставаться в строю"));
-    AddOrder(Common, ERegimentPlayerOrder::Follow, LOCTEXT("FollowKey", "F"),
-        LOCTEXT("FollowOrder", "За мной"), LOCTEXT("FollowHelp", "Начать или прекратить движение полка за офицером"));
-    AddOrder(Common, ERegimentPlayerOrder::Line, LOCTEXT("LineKey", "1"),
-        LOCTEXT("LineOrder", "Линия"), LOCTEXT("LineHelp", "Развернуть полк в линию"));
-    AddOrder(Common, ERegimentPlayerOrder::Wedge, FText::GetEmpty(),
-        LOCTEXT("WedgeOrder", "Клин"), LOCTEXT("WedgeHelp", "Тяжёлая конница строится остриём вперёд. Наберите ход для атаки."));
-    AddOrder(Common, ERegimentPlayerOrder::Square, FText::GetEmpty(),
-        LOCTEXT("SquareOrder", "Каре"), LOCTEXT("SquareHelp", "Пехота разворачивается наружу. Остановитесь, чтобы встретить конницу."));
-    AddOrder(Common, ERegimentPlayerOrder::Testudo, FText::GetEmpty(),
-        LOCTEXT("TestudoOrder", "Черепаха"), LOCTEXT("TestudoHelp", "Легионеры поднимают щиты и медленнее идут под обстрелом."));
-    AddOrder(Common, ERegimentPlayerOrder::Circle, FText::GetEmpty(),
-        LOCTEXT("CircleOrder", "Круг"), LOCTEXT("CircleHelp", "Копейщики разворачиваются наружу по всей окружности."));
-    AddOrder(Common, ERegimentPlayerOrder::Withdraw, LOCTEXT("WithdrawKey", "5"),
-        LOCTEXT("WithdrawOrder", "Отход"), LOCTEXT("WithdrawHelp", "Отойти из боя и собраться"));
-    AddOrder(Tactics, ERegimentPlayerOrder::Hold, LOCTEXT("HoldKey", "3"),
-        LOCTEXT("HoldOrder", "Стоять"), LOCTEXT("HoldHelp", "Удерживать текущую позицию"));
-    AddOrder(Tactics, ERegimentPlayerOrder::Attack, LOCTEXT("AttackKey", "4"),
-        LOCTEXT("AttackOrder", "Атака"), LOCTEXT("AttackHelp", "Атаковать ближайший видимый вражеский полк. Чтобы выбрать цель, наведите на неё прицел и нажмите 4."));
-    AddOrder(Tactics, ERegimentPlayerOrder::Skirmishers, LOCTEXT("SkirmishersKey", "6"),
-        LOCTEXT("SkirmishersOrder", "Застрельщики"), LOCTEXT("SkirmishersHelp", "Выслать стрелков или отозвать их в строй"));
-    AddOrder(Tactics, ERegimentPlayerOrder::Brace, LOCTEXT("BraceKey", "8"), LOCTEXT("BraceButton", "Упор"),
-        LOCTEXT("BraceHelp", "Приготовить пехоту к атаке конницы"));
-    AddOrder(Tactics, ERegimentPlayerOrder::Pursue, LOCTEXT("PursueKey", "9"), LOCTEXT("PursueButton", "Погоня"),
-        LOCTEXT("PursueHelp", "Продолжить бой с бегущим противником"));
-    AddOrder(Movement, ERegimentPlayerOrder::Maneuver, LOCTEXT("ManeuverKey", "M"), LOCTEXT("MoveButton", "Манёвр"),
-        LOCTEXT("MoveHelp", "Щёлкните по цели или протяните линию фронта"));
-    AddOrder(Movement, ERegimentPlayerOrder::Column, LOCTEXT("ColumnKey", "2"),
-        LOCTEXT("ColumnOrder", "Колонна"), LOCTEXT("ColumnHelp", "Выстроить полк в колонну"));
-    AddOrder(Movement, ERegimentPlayerOrder::GroupManeuver, LOCTEXT("GroupManeuverKey", "H"),
-        LOCTEXT("GroupMoveButton", "Группой"), LOCTEXT("GroupMoveHelp", "Переместить группу с сохранением интервалов"));
-    AddOrder(Movement, ERegimentPlayerOrder::Pace, LOCTEXT("PaceKey", "T"), FText::GetEmpty(),
-        LOCTEXT("PaceHelp", "Переключить шаг, марш или бег"));
-    AddOrder(Movement, ERegimentPlayerOrder::Cover, LOCTEXT("CoverKey", "B"), LOCTEXT("CoverButton", "В укрытие"),
-        LOCTEXT("CoverHelp", "Выберите площадку редута, каменную стену или изгородь"));
-    AddOrder(Movement, ERegimentPlayerOrder::FireSector, LOCTEXT("FireSectorKey", "Y"), LOCTEXT("FireSectorButton", "Сектор"),
-        LOCTEXT("FireSectorHelp", "Показать сектор стрелков и препятствия на линии огня"));
 
+    AddOrder(Regiment, ERegimentPlayerOrder::HoldLine, LOCTEXT("GuardKey", "7"),
+        LOCTEXT("GuardButton", "Держать фронт"), LOCTEXT("GuardHelp", "Удерживать участок, оставаться в строю и встречать противника лицом."));
+    AddOrder(Regiment, ERegimentPlayerOrder::Follow, LOCTEXT("FollowKey", "F"),
+        LOCTEXT("FollowOrder", "Следовать за офицером"), LOCTEXT("FollowHelp", "Полк повторяет движение и направление офицера. Повторный приказ прекращает следование."));
+    AddOrder(Regiment, ERegimentPlayerOrder::Attack, LOCTEXT("AttackKey", "4"),
+        LOCTEXT("AttackOrder", "Атаковать противника"), LOCTEXT("AttackHelp", "Атаковать ближайший видимый полк. Для конкретной цели наведите прицел и нажмите 4."));
+    AddOrder(Regiment, ERegimentPlayerOrder::Maneuver, LOCTEXT("ManeuverKey", "M"),
+        LOCTEXT("MoveButton", "Переместить полк"), LOCTEXT("MoveHelp", "Щёлкните по местности. Перетаскивание задаёт ширину и направление фронта."));
+    AddOrder(Regiment, ERegimentPlayerOrder::Withdraw, LOCTEXT("WithdrawKey", "5"),
+        LOCTEXT("WithdrawOrder", "Отойти и собраться"), LOCTEXT("WithdrawHelp", "Выйти из боя и восстановить силы. Вне контакта можно задать точку отхода."));
+
+    AddOrder(Higher, ERegimentPlayerOrder::GroupManeuver, LOCTEXT("GroupManeuverKey", "H"),
+        LOCTEXT("GroupMoveButton", "Переместить группу"), LOCTEXT("GroupMoveHelp", "Переместить группу выбранного полка с сохранением интервалов."));
+    AddOrder(Higher, ERegimentPlayerOrder::CommandHold, LOCTEXT("CommandHoldKey", "J"),
+        LOCTEXT("CommandHoldLabel", "Удерживать позиции"), LOCTEXT("CommandHoldHelp", "Приказ получают все полки в вашем подчинении."));
+    AddOrder(Higher, ERegimentPlayerOrder::WingHold, LOCTEXT("WingHoldKey", "K"),
+        LOCTEXT("WingHoldLabel", "Флангу удерживать позиции"), LOCTEXT("WingHoldHelp", "Приказ получает группа выбранного полка."));
+
+    AddOrder(Formation, ERegimentPlayerOrder::Line, LOCTEXT("LineKey", "1"),
+        LOCTEXT("LineOrder", "Развернуть в линию"), LOCTEXT("LineHelp", "Расширить фронт полка."));
+    AddOrder(Formation, ERegimentPlayerOrder::Column, LOCTEXT("ColumnKey", "2"),
+        LOCTEXT("ColumnOrder", "Свернуть в колонну"), LOCTEXT("ColumnHelp", "Сузить фронт для движения и переправ."));
+    AddOrder(Formation, ERegimentPlayerOrder::Wedge, FText::GetEmpty(),
+        LOCTEXT("WedgeOrder", "Клин"), LOCTEXT("WedgeHelp", "Тяжёлая конница строится остриём вперёд."));
+    AddOrder(Formation, ERegimentPlayerOrder::Square, FText::GetEmpty(),
+        LOCTEXT("SquareOrder", "Каре"), LOCTEXT("SquareHelp", "Пехота разворачивается наружу, чтобы встретить конницу."));
+    AddOrder(Formation, ERegimentPlayerOrder::Testudo, FText::GetEmpty(),
+        LOCTEXT("TestudoOrder", "Черепаха"), LOCTEXT("TestudoHelp", "Легионеры поднимают щиты и медленнее идут под обстрелом."));
+    AddOrder(Formation, ERegimentPlayerOrder::Circle, FText::GetEmpty(),
+        LOCTEXT("CircleOrder", "Круг"), LOCTEXT("CircleHelp", "Копейщики разворачиваются наружу по всей окружности."));
+    Formation->AddSlot().AutoHeight().Padding(0, 5, 0, 4)
+    [
+        SNew(STextBlock)
+        .Visibility_Lambda([Field]
+        {
+            return OfficerState(Field).Order.bCanSetRanks ? EVisibility::HitTestInvisible : EVisibility::Collapsed;
+        })
+        .Text_Lambda([Field] { return OfficerState(Field).Order.RankActivity; })
+        .ColorAndOpacity(Muted)
+        .Font(FCoreStyle::GetDefaultFontStyle("Regular", 13))
+    ];
+    AddOrder(Formation, ERegimentPlayerOrder::RankRanged, FText::GetEmpty(),
+        LOCTEXT("RankRanged", "Стрелков вперёд"),
+        LOCTEXT("RankRangedHelp", "Стрелки займут передние шеренги, когда полк сможет перестроиться."));
+    AddOrder(Formation, ERegimentPlayerOrder::RankMelee, FText::GetEmpty(),
+        LOCTEXT("RankMelee", "Прикрыть стрелков"),
+        LOCTEXT("RankMeleeHelp", "Вывести мечников и копейщиков вперёд. Лучники сзади смогут стрелять навесом."));
+    AddOrder(Formation, ERegimentPlayerOrder::RankAuto, FText::GetEmpty(),
+        LOCTEXT("RankAuto", "Шеренги по обстановке"),
+        LOCTEXT("RankAutoHelp", "Офицер сам решает, когда выводить стрелков вперёд и когда прикрывать их."));
+    AddOrder(Formation, ERegimentPlayerOrder::Skirmishers, LOCTEXT("SkirmishersKey", "6"),
+        LOCTEXT("SkirmishersOrder", "Выслать или отозвать застрельщиков"),
+        LOCTEXT("SkirmishersHelp", "Развернуть застрельщиков перед полком или вернуть их в строй."));
+    AddOrder(Formation, ERegimentPlayerOrder::FireSector, LOCTEXT("FireSectorKey", "Y"),
+        LOCTEXT("FireSectorButton", "Показать сектор огня"),
+        LOCTEXT("FireSectorHelp", "Показать, где стрелкам мешают свои войска, рельеф и рукопашная."));
+
+    AddOrder(Advanced, ERegimentPlayerOrder::Hold, LOCTEXT("HoldKey", "3"),
+        LOCTEXT("HoldOrder", "Стоять на месте"), LOCTEXT("HoldHelp", "Остановить перемещение на текущей позиции."));
+    AddOrder(Advanced, ERegimentPlayerOrder::Brace, LOCTEXT("BraceKey", "8"),
+        LOCTEXT("BraceButton", "Приготовиться к атаке конницы"), LOCTEXT("BraceHelp", "Пехота останавливается и встречает конницу строем."));
+    AddOrder(Advanced, ERegimentPlayerOrder::Pursue, LOCTEXT("PursueKey", "9"),
+        LOCTEXT("PursueButton", "Преследовать бегущих"), LOCTEXT("PursueHelp", "Продолжить бой с отступающим противником."));
+    AddOrder(Advanced, ERegimentPlayerOrder::Cover, LOCTEXT("CoverKey", "B"),
+        LOCTEXT("CoverButton", "Занять укрытие"), LOCTEXT("CoverHelp", "Выберите редут, каменную стену или изгородь."));
+    AddOrder(Advanced, ERegimentPlayerOrder::Pace, LOCTEXT("PaceKey", "T"), FText::GetEmpty(),
+        LOCTEXT("PaceHelp", "Переключить шаг, марш или бег."));
 
     AddOrder(Navigation, ERegimentPlayerOrder::NextRegiment, LOCTEXT("NextRegimentKey", "R"),
-        LOCTEXT("NextRegimentOrder", "Сменить полк"),
-        LOCTEXT("NextRegimentHelp", "Выбрать следующий подчинённый полк"));
+        LOCTEXT("NextRegimentOrder", "Сменить полк"), LOCTEXT("NextRegimentHelp", "Выбрать следующий подчинённый полк."));
     Navigation->AddSlot().AutoHeight().Padding(0, 0, 0, 3)
     [
         MakeControl(LOCTEXT("ChooseOtherOfficer", "Сменить офицера"),
-            LOCTEXT("ChooseOtherHelp", "Остановить бой и выбрать другого командира"),
-            145.f, FSlateColor(OfficerControlTint), FOnClicked::CreateLambda([Field]
+            LOCTEXT("ChooseOtherHelp", "Приостановить бой и выбрать другого командира."),
+            150.f, FSlateColor(OfficerControlTint), FOnClicked::CreateLambda([Field]
             {
                 if (auto* Battle = Field.Get()) Battle->OpenOfficerPicker();
                 return FReply::Handled();
             }))
     ];
     AddOrder(Navigation, ERegimentPlayerOrder::Release, LOCTEXT("ReleaseKey", "G"),
-        LOCTEXT("ReleaseOrder", "Общий вид"),
-        LOCTEXT("ReleaseHelp", "Вернуться к обзору поля и передать управление офицером ИИ"));
+        LOCTEXT("ReleaseOrder", "Вернуться к обзору"),
+        LOCTEXT("ReleaseHelp", "Перейти к обзору поля и передать управление офицером ИИ."));
+
+    const auto OptionalGroup = [](FText Title, const TSharedRef<SVerticalBox>& Content)
+    {
+        return SNew(SExpandableArea)
+            .InitiallyCollapsed(true)
+            .AllowAnimatedTransition(false)
+            .AreaTitle(Title)
+            .AreaTitleFont(FCoreStyle::GetDefaultFontStyle("Bold", 14))
+            .BorderImage(&Panel)
+            .HeaderPadding(FMargin(7, 6))
+            .Padding(FMargin(5, 4))
+            .BodyContent()[Content];
+    };
 
     return SNew(SBox)
-        .WidthOverride(OfficerPanelWidth)
+        .MaxDesiredWidth(OfficerPanelWidth)
         .Visibility_Lambda([Field]
         {
             return Field.IsValid() && Field->OfficerCommandsOpen() && OfficerState(Field).bActive
@@ -945,26 +981,37 @@ TSharedRef<SWidget> MakeOfficerCommandSheet(TWeakObjectPtr<ARegimentBattleField>
                 ]
                 + SVerticalBox::Slot().FillHeight(1.f)
                 [
-                    SNew(SBox).HeightOverride(252.f)
+                    SNew(SBox).HeightOverride(305.f)
                     [
                         SNew(SScrollBox).AllowOverscroll(EAllowOverscroll::No)
                         .ScrollBarThickness(FVector2D(5, 5))
                         .ConsumeMouseWheel(EConsumeMouseWheel::Always)
                         + SScrollBox::Slot().Padding(0, 0, 4, 8)
                         [
-                            MakeOfficerCommandGroup(LOCTEXT("CommonOrderGroup", "Основные"), Common)
+                            SNew(SBox)
+                            .Visibility_Lambda([Field]
+                            {
+                                return OfficerState(Field).CommandTier >= 2 ? EVisibility::SelfHitTestInvisible : EVisibility::Collapsed;
+                            })
+                            [
+                                MakeOfficerCommandGroup(LOCTEXT("HigherOrders", "Подчинённым полкам"), Higher)
+                            ]
                         ]
                         + SScrollBox::Slot().Padding(0, 0, 4, 8)
                         [
-                            MakeOfficerCommandGroup(LOCTEXT("TacticsGroup", "Тактика"), Tactics)
+                            MakeOfficerCommandGroup(LOCTEXT("RegimentOrders", "Выбранному полку"), Regiment)
+                        ]
+                        + SScrollBox::Slot().Padding(0, 0, 4, 5)
+                        [
+                            OptionalGroup(LOCTEXT("FormationOrders", "Строй и стрельба"), Formation)
+                        ]
+                        + SScrollBox::Slot().Padding(0, 0, 4, 5)
+                        [
+                            OptionalGroup(LOCTEXT("AdvancedOrders", "Движение и тактика"), Advanced)
                         ]
                         + SScrollBox::Slot().Padding(0, 0, 4, 8)
                         [
-                            MakeOfficerCommandGroup(LOCTEXT("ManeuverGroup", "Манёвр"), Movement)
-                        ]
-                        + SScrollBox::Slot().Padding(0, 0, 4, 8)
-                        [
-                            MakeOfficerCommandGroup(LOCTEXT("OfficerNavigationGroup", "Полк и камера"), Navigation)
+                            OptionalGroup(LOCTEXT("OfficerNavigationGroup", "Сменить полк или офицера"), Navigation)
                         ]
                         + SScrollBox::Slot().Padding(0, 0, 4, 6)
                         [
@@ -1197,6 +1244,142 @@ TSharedRef<SWidget> MakeCompactOfficerHud(TWeakObjectPtr<ARegimentBattleField> F
         ];
 }
 
+EVisibility OfficerCombatVisibility(TWeakObjectPtr<ARegimentBattleField> Field)
+{
+    const auto* Battle = Field.Get();
+    return Battle && OfficerState(Field).bActive && !OfficerState(Field).bPlanning &&
+        !Battle->IsBattlePaused() && !Battle->OfficerCommandsOpen()
+        ? EVisibility::HitTestInvisible : EVisibility::Collapsed;
+}
+
+FLinearColor OfficerCombatTint(const FRegimentOfficerHudState& State)
+{
+    switch (State.CombatCue)
+    {
+    case ERegimentOfficerCombatCue::Hit:
+        return FLinearColor(1.f, .79f, .28f);
+    case ERegimentOfficerCombatCue::Parried:
+    case ERegimentOfficerCombatCue::ArrowDodged:
+        return Blue;
+    case ERegimentOfficerCombatCue::Wounded:
+        return FLinearColor(1.f, .31f, .27f);
+    case ERegimentOfficerCombatCue::Blocked:
+    case ERegimentOfficerCombatCue::Armour:
+        return FLinearColor(1.f, .61f, .32f);
+    case ERegimentOfficerCombatCue::Miss:
+        return Muted;
+    default:
+        return State.AimPoint ? Brass : Ink;
+    }
+}
+
+class SRegimentOfficerContactMarker final : public SLeafWidget
+{
+public:
+    SLATE_BEGIN_ARGS(SRegimentOfficerContactMarker) {}
+        SLATE_ARGUMENT(TWeakObjectPtr<ARegimentBattleField>, Field)
+    SLATE_END_ARGS()
+
+    void Construct(const FArguments& Args)
+    {
+        Field = Args._Field;
+        SetVisibility(EVisibility::HitTestInvisible);
+        ForceVolatile(true);
+    }
+
+    FVector2D ComputeDesiredSize(float) const override { return FVector2D::ZeroVector; }
+
+    int32 OnPaint(const FPaintArgs&, const FGeometry& Geometry, const FSlateRect&,
+        FSlateWindowElementList& Elements, int32 Layer, const FWidgetStyle&, bool) const override
+    {
+        if (OfficerCombatVisibility(Field) == EVisibility::Collapsed)
+            return Layer;
+        const auto& State = OfficerState(Field);
+        const bool bImpact = State.ImpactPoint.IsSet();
+        const auto& Point = bImpact ? State.ImpactPoint : State.AimPoint;
+        const auto* Battle = Field.Get();
+        const auto* World = Battle ? Battle->GetWorld() : nullptr;
+        const auto* Controller = World ? World->GetFirstPlayerController() : nullptr;
+        FVector2D Pixel;
+        int32 Width = 0, Height = 0;
+        if (!Point || !Controller || !Controller->ProjectWorldLocationToScreen(*Point, Pixel, true) || Pixel.ContainsNaN())
+            return Layer;
+        Controller->GetViewportSize(Width, Height);
+        if (Width <= 0 || Height <= 0)
+            return Layer;
+
+        const FVector2D Size = Geometry.GetLocalSize();
+        const FVector2D Anchor = Pixel * Size / FVector2D(Width, Height);
+        if (Anchor.X < 18 || Anchor.Y < 18 || Anchor.X > Size.X - 18 || Anchor.Y > Size.Y - 18 ||
+            FVector2D::DistSquared(Anchor, Size * .5) < FMath::Square(15.0))
+            return Layer;
+        const FLinearColor Tint = bImpact ? OfficerCombatTint(State) : Brass;
+        const double Radius = bImpact ? 10.0 : 6.0;
+        const TArray<FVector2D> Points{Anchor + FVector2D(0, -Radius), Anchor + FVector2D(Radius, 0),
+            Anchor + FVector2D(0, Radius), Anchor + FVector2D(-Radius, 0), Anchor + FVector2D(0, -Radius)};
+        FSlateDrawElement::MakeLines(Elements, Layer, Geometry.ToPaintGeometry(), Points,
+            ESlateDrawEffect::None, FLinearColor(0, 0, 0, .8f), true, 3.5f);
+        FSlateDrawElement::MakeLines(Elements, Layer + 1, Geometry.ToPaintGeometry(), Points,
+            ESlateDrawEffect::None, Tint, true, 1.5f);
+        return Layer + 1;
+    }
+
+private:
+    TWeakObjectPtr<ARegimentBattleField> Field;
+};
+
+TSharedRef<SWidget> MakeOfficerCombatReticle(TWeakObjectPtr<ARegimentBattleField> Field)
+{
+    const auto Tint = [Field] { return FSlateColor(OfficerCombatTint(OfficerState(Field))); };
+    return SNew(SVerticalBox)
+        .Visibility_Lambda([Field] { return OfficerCombatVisibility(Field); })
+        + SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)
+        [
+            SNew(SBox).HeightOverride(38.f).VAlign(VAlign_Top)
+            [
+                SNew(SBorder).BorderImage(&OfficerPanel).Padding(FMargin(8, 4))
+                .Visibility_Lambda([Field] { return OfficerState(Field).bIncomingArrow
+                    ? EVisibility::HitTestInvisible : EVisibility::Hidden; })
+                [
+                    SNew(STextBlock).Text(LOCTEXT("OfficerArrowWarning", "Стрела летит в вас · уйдите в сторону"))
+                    .ColorAndOpacity(FLinearColor(1.f, .66f, .34f)).Font(FCoreStyle::GetDefaultFontStyle("Bold", 15))
+                    .Justification(ETextJustify::Center)
+                ]
+            ]
+        ]
+        + SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)
+        [
+            SNew(SBox).WidthOverride(14.f).HeightOverride(14.f)
+            [
+                SNew(SOverlay)
+                + SOverlay::Slot().VAlign(VAlign_Center)
+                [
+                    SNew(SBox).HeightOverride(2.f)
+                    [SNew(SBorder).BorderImage(&AimLine).BorderBackgroundColor_Lambda(Tint).Padding(0)]
+                ]
+                + SOverlay::Slot().HAlign(HAlign_Center)
+                [
+                    SNew(SBox).WidthOverride(2.f)
+                    [SNew(SBorder).BorderImage(&AimLine).BorderBackgroundColor_Lambda(Tint).Padding(0)]
+                ]
+            ]
+        ]
+        + SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)
+        [
+            SNew(SBox).HeightOverride(38.f).VAlign(VAlign_Bottom)
+            [
+                SNew(SBorder).BorderImage(&OfficerPanel).Padding(FMargin(8, 4))
+                .Visibility_Lambda([Field] { return OfficerState(Field).CombatText.IsEmpty()
+                    ? EVisibility::Hidden : EVisibility::HitTestInvisible; })
+                [
+                    SNew(STextBlock).Text_Lambda([Field] { return OfficerState(Field).CombatText; })
+                    .ColorAndOpacity_Lambda(Tint)
+                    .Font(FCoreStyle::GetDefaultFontStyle("Bold", 16)).Justification(ETextJustify::Center)
+                ]
+            ]
+        ];
+}
+
 TSharedRef<SWidget> MakeOfficerCombatHints(TWeakObjectPtr<ARegimentBattleField> Field)
 {
     using Action = ERegimentOfficerInputAction;
@@ -1238,13 +1421,7 @@ TSharedRef<SWidget> MakeOfficerCombatHints(TWeakObjectPtr<ARegimentBattleField> 
             ];
     };
     return SNew(SHorizontalBox)
-        .Visibility_Lambda([Field]
-        {
-            const auto* Battle = Field.Get();
-            return Battle && OfficerState(Field).bActive && !OfficerState(Field).bPlanning &&
-                !Battle->IsBattlePaused() && !Battle->OfficerCommandsOpen()
-                ? EVisibility::HitTestInvisible : EVisibility::Collapsed;
-        })
+        .Visibility_Lambda([Field] { return OfficerCombatVisibility(Field); })
         + SHorizontalBox::Slot().AutoWidth().Padding(0, 0, 6, 0)[ActionPrompt(Action::Attack)]
         + SHorizontalBox::Slot().AutoWidth()[ActionPrompt(Action::Parry)];
 }
@@ -1285,30 +1462,15 @@ public:
         {
             ChildSlot
             [
-                SNew(SBorder).BorderImage(&Panel).Padding(FMargin(9))
+                SNew(SHorizontalBox)
                 .Visibility(EVisibility::SelfHitTestInvisible)
+                + SHorizontalBox::Slot().FillWidth(.36f).HAlign(HAlign_Left).VAlign(VAlign_Bottom).Padding(0, 0, 12, 0)
                 [
-                    SNew(SVerticalBox)
-                    + SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 6)
-                    [
-                        SNew(SHorizontalBox)
-                        .Visibility_Lambda([this]
-                        {
-                            return FindCard(OverviewSelection) ? EVisibility::SelfHitTestInvisible : EVisibility::Collapsed;
-                        })
-                        + SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center).Padding(0, 0, 7, 0)
-                        [
-                            SNew(STextBlock).Text_Lambda([this] { return OverviewDetails(); })
-                            .ToolTipText_Lambda([this] { return OverviewDetails(); })
-                            .ColorAndOpacity(Ink).Font(FCoreStyle::GetDefaultFontStyle("Regular", 13))
-                            .OverflowPolicy(ETextOverflowPolicy::Ellipsis)
-                        ]
-                        + SHorizontalBox::Slot().AutoWidth()
-                        [
-                            MakeOfficerTransfer(0)
-                        ]
-                    ]
-                    + SVerticalBox::Slot().AutoHeight()
+                    MakeOverviewDetails()
+                ]
+                + SHorizontalBox::Slot().FillWidth(.64f).HAlign(HAlign_Right).VAlign(VAlign_Bottom)
+                [
+                    SNew(SBox).MaxDesiredWidth(565.f)
                     [
                         SAssignNew(OverviewCards, SScrollBox).Orientation(Orient_Horizontal)
                         .AllowOverscroll(EAllowOverscroll::No)
@@ -1318,10 +1480,6 @@ public:
                         {
                             return Ids.IsEmpty() ? EVisibility::Collapsed : EVisibility::Visible;
                         })
-                    ]
-                    + SVerticalBox::Slot().AutoHeight().Padding(3, 3)
-                    [
-                        MakeEmptyState()
                     ]
                 ]
             ];
@@ -1347,15 +1505,88 @@ private:
         return ReadCards().FindByPredicate([Id](const auto& Card) { return Card.Id == Id; });
     }
 
+    TSharedRef<SWidget> MakeOverviewDetails()
+    {
+        return SNew(SBox).MaxDesiredWidth(322.f)
+            .Visibility_Lambda([this]
+            {
+                return FindCard(OverviewSelection) ? EVisibility::SelfHitTestInvisible : EVisibility::Collapsed;
+            })
+            [
+                SNew(SBorder)
+                .BorderImage(&Panel)
+                .Padding(FMargin(12, 9))
+                [
+                    SNew(SVerticalBox)
+                    + SVerticalBox::Slot().AutoHeight()
+                    [
+                        SNew(STextBlock)
+                        .Text_Lambda([this]
+                        {
+                            const auto* Card = FindCard(OverviewSelection);
+                            return Card ? Card->Name : FText::GetEmpty();
+                        })
+                        .ColorAndOpacity(Ink).Font(FCoreStyle::GetDefaultFontStyle("Bold", 15))
+                        .AutoWrapText(true)
+                    ]
+                    + SVerticalBox::Slot().AutoHeight().Padding(0, 4, 0, 7)
+                    [
+                        SNew(STextBlock).Text_Lambda([this] { return OverviewDetails(); })
+                        .ColorAndOpacity(Muted).Font(FCoreStyle::GetDefaultFontStyle("Regular", 12))
+                        .AutoWrapText(true)
+                    ]
+                    + SVerticalBox::Slot().AutoHeight()
+                    [
+                        SNew(SHorizontalBox)
+                        + SHorizontalBox::Slot().AutoWidth().Padding(0, 0, 5, 0)
+                        [
+                            SNew(SButton)
+                            .ButtonStyle(&ControlStyle()).IsFocusable(false)
+                            .ButtonColorAndOpacity(ControlTint)
+                            .ContentPadding(FMargin(8, 5))
+                            .IsEnabled_Lambda([this]
+                            {
+                                const auto* Card = FindCard(OverviewSelection);
+                                return Card && Card->Living > 0;
+                            })
+                            .OnClicked_Lambda([this]
+                            {
+                                if (auto* Battle = Field.Get())
+                                {
+                                    if (Battle->GetCameraRegiment() == OverviewSelection)
+                                        Battle->StopFollowingRegiment();
+                                    else
+                                        Battle->SelectRegimentCard(OverviewSelection);
+                                }
+                                return FReply::Handled();
+                            })
+                            [
+                                SNew(STextBlock)
+                                .Text_Lambda([this]
+                                {
+                                    const auto* Battle = Field.Get();
+                                    return Battle && Battle->GetCameraRegiment() == OverviewSelection
+                                        ? LOCTEXT("ReleaseRegimentView", "Свободная камера")
+                                        : LOCTEXT("FollowRegimentView", "Камера к полку");
+                                })
+                                .ColorAndOpacity(Ink).Font(FCoreStyle::GetDefaultFontStyle("Bold", 12))
+                            ]
+                        ]
+                        + SHorizontalBox::Slot().AutoWidth()[MakeOfficerTransfer(0)]
+                    ]
+                ]
+            ];
+    }
+
     FText OverviewDetails() const
     {
         const auto* Card = FindCard(OverviewSelection);
         if (!Card)
             return FText::GetEmpty();
-        const auto Summary = FText::Format(LOCTEXT("RegimentDetails", "{0} · {1} · Дух {2}% · Усталость {3}%"),
-            Card->Name, Card->Activity, Card->Morale, Card->Fatigue);
+        const auto Summary = FText::Format(LOCTEXT("RegimentDetails", "{0}\nДух {1}% · Усталость {2}%"),
+            Card->Activity, Card->Morale, Card->Fatigue);
         return Card->bFiniteAmmo
-            ? FText::Format(LOCTEXT("RegimentDetailsAmmo", "{0} · Боезапас {1}"), Summary, Card->Ammo)
+            ? FText::Format(LOCTEXT("RegimentDetailsAmmo", "{0}\nБоезапас {1}"), Summary, Card->Ammo)
             : Summary;
     }
 
@@ -1405,13 +1636,17 @@ private:
             const auto* Battle = Field.Get();
             return bOfficerMode ? Battle && Battle->GetSelectedRegimentCard() == Id : OverviewSelection == Id;
         };
+        static const FButtonStyle TileStyle = FButtonStyle(ControlStyle())
+            .SetNormal(FSlateRoundedBoxBrush(FLinearColor::White, 5.f))
+            .SetHovered(FSlateRoundedBoxBrush(FLinearColor(.92f, .95f, 1.f), 5.f))
+            .SetPressed(FSlateRoundedBoxBrush(FLinearColor(.83f, .89f, .98f), 5.f));
         return SNew(SButton)
-            .ButtonStyle(&ControlStyle()).IsFocusable(false)
+            .ButtonStyle(&TileStyle).IsFocusable(false)
             .HAlign(HAlign_Fill).ContentPadding(FMargin(9, 6))
             .IsEnabled_Lambda([this, Read]
             {
                 const auto* Card = Read();
-                return Card && (!bOfficerMode || (Card->Living > 0 && Card->bInCommand));
+                return Card && Card->Living > 0 && (!bOfficerMode || Card->bInCommand);
             })
             .ToolTipText_Lambda([Read] { const auto* Card = Read(); return Card ? Card->Name : FText::GetEmpty(); })
             .ButtonColorAndOpacity_Lambda([this, Selected]() -> FSlateColor
@@ -1424,10 +1659,9 @@ private:
             {
                 if (auto* Battle = Field.Get())
                 {
-                    if (bOfficerMode)
-                        Battle->SelectRegimentCard(Id);
-                    else
+                    if (!bOfficerMode)
                         OverviewSelection = Id;
+                    Battle->SelectRegimentCard(Id);
                 }
                 return FReply::Handled();
             })
@@ -1435,37 +1669,19 @@ private:
                 SNew(SVerticalBox)
                 + SVerticalBox::Slot().AutoHeight()
                 [
-                    SNew(SHorizontalBox)
-                    + SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0, 0, 5, 0)
-                    [
-                        SNew(STextBlock)
-                        .Text_Lambda([Read]
-                        {
-                            const auto* Card = Read();
-                            return Card ? FText::Format(LOCTEXT("RosterRegimentNumber", "№{0}"), Card->Id)
-                                        : FText::GetEmpty();
-                        })
-                        .ColorAndOpacity_Lambda([this, Selected]() -> FSlateColor
-                        {
-                            return !bOfficerMode && Selected() ? RosterInk : Brass;
-                        })
-                        .Font(FCoreStyle::GetDefaultFontStyle("Bold", 13))
-                    ]
-                    + SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)
-                    [
-                        SNew(STextBlock)
-                        .Text_Lambda([this, Read]
-                        {
-                            const auto* Card = Read();
-                            return Card ? ShortFriendlyRegimentName(Field, Card->Name) : FText::GetEmpty();
-                        })
-                        .Font(FCoreStyle::GetDefaultFontStyle("Bold", 14))
-                        .ColorAndOpacity_Lambda([this, Selected]() -> FSlateColor
-                        {
-                            return !bOfficerMode && Selected() ? RosterInk : Ink;
-                        })
-                        .OverflowPolicy(ETextOverflowPolicy::Ellipsis)
-                    ]
+                    SNew(STextBlock)
+                    .Text_Lambda([this, Read]
+                    {
+                        const auto* Card = Read();
+                        return Card ? ShortFriendlyRegimentName(Field, Card->Name) : FText::GetEmpty();
+                    })
+                    .Font(FCoreStyle::GetDefaultFontStyle("Bold", 14))
+                    .ColorAndOpacity_Lambda([this, Selected]() -> FSlateColor
+                    {
+                        return !bOfficerMode && Selected() ? RosterInk : Ink;
+                    })
+                    .AutoWrapText(true)
+                    .WrapTextAt(bOfficerMode ? 250.f : 145.f)
                 ]
                 + SVerticalBox::Slot().AutoHeight().Padding(0, 2, 0, 3)
                 [
@@ -1473,8 +1689,7 @@ private:
                     .Text_Lambda([Read]
                     {
                         const auto* Card = Read();
-                        return Card ? FText::Format(LOCTEXT("RosterLiving", "{0} в строю"), StrengthText(Card->Living, Card->Starting))
-                                    : FText::GetEmpty();
+                            return Card ? StrengthText(Card->Living, Card->Starting) : FText::GetEmpty();
                     })
                     .ColorAndOpacity_Lambda([this, Selected]() -> FSlateColor
                     {
@@ -1543,7 +1758,7 @@ private:
             {
                 OverviewCards->AddSlot().Padding(0, 0, 5, 0)
                 [
-                    SNew(SBox).WidthOverride(148.f)[MakeCard(Card.Id)]
+                    SNew(SBox).WidthOverride(164.f).MinDesiredHeight(58.f)[MakeCard(Card.Id)]
                 ];
             }
         }
@@ -1699,7 +1914,7 @@ TSharedRef<SWidget> MakeMissionCard(TWeakObjectPtr<ARegimentBattleField> Field)
         .Visibility_Lambda([Field]
         {
             const auto* Battle = Field.Get();
-            return Battle && !Battle->GetMissionObjectiveText().IsEmpty()
+            return Battle && (!Battle->GetMissionName().IsEmpty() || !Battle->GetMissionObjectiveText().IsEmpty())
                 ? EVisibility::HitTestInvisible : EVisibility::Collapsed;
         })
         [
@@ -1710,14 +1925,29 @@ TSharedRef<SWidget> MakeMissionCard(TWeakObjectPtr<ARegimentBattleField> Field)
                 SNew(SVerticalBox)
                 + SVerticalBox::Slot().AutoHeight()
                 [
+                    SNew(STextBlock).Text_Lambda([Field]
+                    {
+                        const auto* Battle = Field.Get();
+                        return Battle ? Battle->GetMissionName() : FText::GetEmpty();
+                    })
+                    .AutoWrapText(true).ColorAndOpacity(Ink)
+                    .Font(FCoreStyle::GetDefaultFontStyle("Bold", 15))
+                ]
+                + SVerticalBox::Slot().AutoHeight().Padding(0, 4, 0, 0)
+                [
                     SNew(STextBlock)
+                    .Visibility_Lambda([Field]
+                    {
+                        return Field.IsValid() && !Field->GetMissionObjectiveText().IsEmpty()
+                            ? EVisibility::HitTestInvisible : EVisibility::Collapsed;
+                    })
                     .Text_Lambda([Field]
                     {
                         const auto* Battle = Field.Get();
                         return Battle ? Battle->GetMissionObjectiveText() : FText::GetEmpty();
                     })
-                    .AutoWrapText(true).ColorAndOpacity(Ink)
-                    .Font(FCoreStyle::GetDefaultFontStyle("Bold", 14))
+                    .AutoWrapText(true).ColorAndOpacity(Muted)
+                    .Font(FCoreStyle::GetDefaultFontStyle("Regular", 13))
                 ]
                 + SVerticalBox::Slot().AutoHeight().Padding(0, 5, 0, 0)
                 [
@@ -1752,12 +1982,7 @@ TSharedRef<SWidget> MakeBattleScore(TWeakObjectPtr<ARegimentBattleField> Field)
             + SHorizontalBox::Slot().AutoWidth()[MakeRegimentPanel(Field, true)]
             + SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
             [
-                SNew(SBox).WidthOverride_Lambda([Field]
-                {
-                    const auto* Battle = Field.Get();
-                    return FOptionalSize(OfficerState(Field).bActive && Battle &&
-                        Battle->GetHudState().Status == ERegimentBattleStatus::Running ? 98.f : 132.f);
-                })
+                SNew(SBox).WidthOverride(96.f)
                 [
                     SNew(SVerticalBox)
                     + SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)
@@ -1834,15 +2059,22 @@ void SRegimentBattleHud::Construct(const FArguments& InArgs)
         + SOverlay::Slot().VAlign(VAlign_Top).Padding(18, 14, 18, 0)
         [
             SNew(SHorizontalBox).Visibility(EVisibility::SelfHitTestInvisible)
-            + SHorizontalBox::Slot().FillWidth(1.f).HAlign(HAlign_Left).VAlign(VAlign_Top).Padding(0, 0, 8, 0)
+            + SHorizontalBox::Slot().FillWidth(.52f).HAlign(HAlign_Left).VAlign(VAlign_Top).Padding(0, 0, 8, 0)
             [
-                MakeMissionCard(Field)
+                SNew(SScaleBox).Stretch(EStretch::ScaleToFitX).StretchDirection(EStretchDirection::DownOnly)
+                [
+                    SNew(SVerticalBox)
+                    + SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Left)
+                    [
+                        MakeBattleScore(Field)
+                    ]
+                    + SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Left).Padding(0, 7, 0, 0)
+                    [
+                        MakeMissionCard(Field)
+                    ]
+                ]
             ]
-            + SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Top)
-            [
-                MakeBattleScore(Field)
-            ]
-            + SHorizontalBox::Slot().FillWidth(1.f).HAlign(HAlign_Right).VAlign(VAlign_Top).Padding(8, 0, 0, 0)
+            + SHorizontalBox::Slot().FillWidth(.48f).HAlign(HAlign_Right).VAlign(VAlign_Top).Padding(8, 0, 0, 0)
             [
                 SNew(SScaleBox).Stretch(EStretch::ScaleToFitX).StretchDirection(EStretchDirection::DownOnly)
                 .Visibility(EVisibility::SelfHitTestInvisible)
@@ -1855,23 +2087,14 @@ void SRegimentBattleHud::Construct(const FArguments& InArgs)
         ]
         + SOverlay::Slot().VAlign(VAlign_Bottom).Padding(18, 0, 18, BottomControlsHeight)
         [
-            SNew(SHorizontalBox)
+            SNew(SBox)
             .Visibility_Lambda([Field]
             {
                 return Field.IsValid() && !OfficerState(Field).bActive && !PendingOfficer(Field)
                     ? EVisibility::SelfHitTestInvisible : EVisibility::Collapsed;
             })
-            + SHorizontalBox::Slot().FillWidth(1.f).HAlign(HAlign_Left)
             [
-                SNew(SBox).MaxDesiredWidth(784.f).Visibility(EVisibility::SelfHitTestInvisible)
-                [
-                    MakeBattleRegimentRoster(Field, false)
-                ]
-            ]
-            + SHorizontalBox::Slot().AutoWidth()
-            [
-                SNew(SBox).WidthOverride(DecisionPanelClearance).Visibility(EVisibility::HitTestInvisible)
-                [SNullWidget::NullWidget]
+                MakeBattleRegimentRoster(Field, false)
             ]
         ]
         + SOverlay::Slot().Padding(TAttribute<FMargin>::CreateLambda([Field]
@@ -1891,28 +2114,18 @@ void SRegimentBattleHud::Construct(const FArguments& InArgs)
             [
                 MakeOfficerCombatHints(Field)
             ]
-            + SHorizontalBox::Slot().FillWidth(1.f).HAlign(HAlign_Right).VAlign(VAlign_Bottom).Padding(8, 0, 0, 0)
+            + SHorizontalBox::Slot().FillWidth(1.f).HAlign(HAlign_Right).VAlign(VAlign_Top).Padding(8, 0, 0, 0)
             [
                 MakeOfficerCommandSheet(Field)
             ]
         ]
+        + SOverlay::Slot()
+        [
+            SNew(SRegimentOfficerContactMarker).Field(Field)
+        ]
         + SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center)
         [
-            SNew(SBox).WidthOverride(14.f).HeightOverride(14.f)
-            .Visibility_Lambda([Field]
-            {
-                const auto& State = OfficerState(Field);
-                return Field.IsValid() && State.bActive && !State.bPlanning &&
-                    !Field->IsBattlePaused() && !Field->OfficerCommandsOpen()
-                    ? EVisibility::HitTestInvisible : EVisibility::Collapsed;
-            })
-            [
-                SNew(SOverlay)
-                + SOverlay::Slot().VAlign(VAlign_Center)
-                [SNew(SBox).HeightOverride(2.f)[SNew(SBorder).BorderImage(&AimLine).Padding(0)]]
-                + SOverlay::Slot().HAlign(HAlign_Center)
-                [SNew(SBox).WidthOverride(2.f)[SNew(SBorder).BorderImage(&AimLine).Padding(0)]]
-            ]
+            MakeOfficerCombatReticle(Field)
         ]
         + SOverlay::Slot().HAlign(HAlign_Fill).VAlign(VAlign_Bottom).Padding(12, 0, 12, 14)
         [

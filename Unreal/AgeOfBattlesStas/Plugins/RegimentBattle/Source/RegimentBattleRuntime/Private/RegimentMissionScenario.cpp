@@ -464,6 +464,9 @@ battle::Scenario BuildMissionBattle(const FMissionRoster& Roster, std::span<cons
         Scenario.units.reserve(FigureTarget);
     Scenario.rules.local_melee = true;
     Scenario.rules.regiment_tactics = bRegimentTactics;
+    Scenario.rules.mixed_rank_tactics = bRegimentTactics;
+    Scenario.rules.sustained_melee = bRegimentTactics;
+    Scenario.rules.controlled_arrow_aim = true;
     Scenario.obstacles = battle::MarchTerrainAreas(Terrain, Field);
     Scenario.hill = battle::MarchHill(Terrain, Field);
     Scenario.field_bounds = battle::TerrainFieldBounds{Field.HalfWidth(), Field.HalfHeight()};
@@ -815,6 +818,9 @@ battle::Scenario BuildPresetBattle(const FMissionPreset& Preset, std::span<const
     {
         Scenario.rules = Era->Rules;
         Scenario.rules.regiment_tactics = Preset.bRegimentTactics;
+        Scenario.rules.mixed_rank_tactics = Preset.bRegimentTactics;
+        Scenario.rules.sustained_melee = Preset.bRegimentTactics;
+        Scenario.rules.controlled_arrow_aim = true;
         struct FSlotTroops
         {
             const FRegimentEraFaction* Faction{};
@@ -939,6 +945,30 @@ battle::Scenario BuildPresetBattle(const FMissionPreset& Preset, std::span<const
                         Node.name = Regiment.name;
             }
     }
+    if (Preset.Tutorial == ERegimentTutorial::None && !Preset.bSmokeExercise)
+        for (auto& Regiment : Scenario.regiments)
+        {
+            const auto Entry = Preset.Roster[Regiment.id.value - 1].Clamped();
+            if (Entry.Platform != battle::BattlePlatform::None)
+                continue;
+            if (Entry.bCavalry)
+            {
+                Regiment.formation.slot_stagger = .88f;
+                continue;
+            }
+            const auto* Faction = Factions[Regiment.team];
+            const bool bSpearMajority = Entry.Spearmen >= FMath::Max(Entry.Swords, Entry.Archers);
+            const bool bSwordMajority = Entry.Swords > Entry.Spearmen && Entry.Swords >= Entry.Archers;
+            const bool bAncientDrill = Era && Era->Id == TEXT("ancient") &&
+                (Entry.InfantryProfile == TEXT("legionaries") || Entry.InfantryProfile == TEXT("hoplites") ||
+                    Entry.InfantryProfile == TEXT("sarissa_phalanx") ||
+                    (Entry.InfantryProfile.IsEmpty() && Faction &&
+                        ((bSwordMajority && Faction->Id == TEXT("rome")) ||
+                            (bSpearMajority && (Faction->Id == TEXT("greece") || Faction->Id == TEXT("sparta") ||
+                                Faction->Id == TEXT("macedon"))))));
+            const bool bLinearDrill = Era && (Era->Rules.linear_infantry || Era->Id == TEXT("great_northern_war"));
+            Regiment.formation.slot_stagger = bAncientDrill || bLinearDrill ? 0.f : .37f;
+        }
     Scenario.rules.risky_volley = Preset.bRiskyVolley;
     Scenario.rules.adaptive_battle = Preset.bAdaptiveBattle;
     RegimentCommanderProfiles::Apply(Scenario, Preset);

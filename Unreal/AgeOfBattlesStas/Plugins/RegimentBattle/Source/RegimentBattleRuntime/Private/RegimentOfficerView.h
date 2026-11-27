@@ -19,4 +19,14 @@ inline float FieldOfView(bool bFirstPerson)
 {
     return bFirstPerson ? 90.f : 76.f;
 }
+
+inline double BladeReach(double Age, double Windup)
+{
+    const double Draw = .45 * Windup;
+    if (Age < Draw)
+        return -.26 * FMath::SmoothStep(0.0, Draw, Age);
+    if (Age < Windup)
+        return FMath::Lerp(-.26, 1.0, FMath::SmoothStep(Draw, Windup, Age));
+    return 1.0 - FMath::SmoothStep(Windup, Windup + .24, Age);
+}
 }

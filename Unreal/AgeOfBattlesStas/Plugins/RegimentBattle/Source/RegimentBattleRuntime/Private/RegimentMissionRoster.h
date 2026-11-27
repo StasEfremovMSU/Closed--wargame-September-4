@@ -16,9 +16,9 @@ inline constexpr int32 MissionGroupsPerTeam = 3;
 inline constexpr int32 MissionDefaultRegimentsPerGroup = MissionRegimentsPerTeam / MissionGroupsPerTeam;
 inline constexpr int32 MissionCommandStaffCount = 3;
 inline constexpr int32 MissionMaxSwords = 77;
-inline constexpr int32 MissionMaxArchers = 20;
 inline constexpr int32 MissionMaxRegiment = 100;
 inline constexpr int32 MissionMaxSpecialists = MissionMaxRegiment - MissionCommandStaffCount;
+inline constexpr int32 MissionMaxArchers = MissionMaxSpecialists;
 inline constexpr float MissionStartInset = 4.f;
 inline constexpr int32 MissionMaxPlatforms = 6;
 inline constexpr int32 MissionMaxFormationFiles = 100;
@@ -74,7 +74,7 @@ struct FMissionRosterEntry
             return Entry;
         }
         Entry.Swords = FMath::Clamp(Swords, 0, MissionMaxSwords);
-        Entry.Archers = FMath::Clamp(Archers, 0, MissionMaxArchers);
+        Entry.Archers = FMath::Clamp(Archers, 0, MissionMaxSpecialists - Entry.Swords);
         Entry.Spearmen = FMath::Clamp(Spearmen, 0, MissionMaxSpecialists - Entry.Swords - Entry.Archers);
         Entry.Mounted = 0;
         return Entry;

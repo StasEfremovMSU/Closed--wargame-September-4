@@ -32,9 +32,9 @@
       "start_x": -80,
       "start_y": 0,
       "formation_files": 16,
-      "swords": 4,
-      "archers": 10,
-      "spearmen": 9,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 23,
       "mounted": 0
     },
     {
@@ -44,9 +44,9 @@
       "start_x": -94,
       "start_y": -71,
       "formation_files": 15,
-      "swords": 3,
-      "archers": 8,
-      "spearmen": 8,
+      "swords": 10,
+      "archers": 9,
+      "spearmen": 0,
       "mounted": 0
     },
     {
@@ -68,9 +68,9 @@
       "start_x": -129,
       "start_y": 3,
       "formation_files": 14,
-      "swords": 5,
-      "archers": 8,
-      "spearmen": 8,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 21,
       "mounted": 0
     },
     {
@@ -92,9 +92,9 @@
       "start_x": -131,
       "start_y": 119,
       "formation_files": 13,
-      "swords": 3,
-      "archers": 9,
-      "spearmen": 7,
+      "swords": 0,
+      "archers": 19,
+      "spearmen": 0,
       "mounted": 0
     },
     {
@@ -104,9 +104,9 @@
       "start_x": 75,
       "start_y": 0,
       "formation_files": 17,
-      "swords": 4,
-      "archers": 8,
-      "spearmen": 13,
+      "swords": 11,
+      "archers": 0,
+      "spearmen": 14,
       "mounted": 0
     },
     {
@@ -140,9 +140,9 @@
       "start_x": 120,
       "start_y": 2,
       "formation_files": 15,
-      "swords": 5,
-      "archers": 8,
-      "spearmen": 11,
+      "swords": 0,
+      "archers": 24,
+      "spearmen": 0,
       "mounted": 0
     },
     {
@@ -152,9 +152,9 @@
       "start_x": 132,
       "start_y": -119,
       "formation_files": 13,
-      "swords": 3,
-      "archers": 8,
-      "spearmen": 9,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 20,
       "mounted": 0
     },
     {
@@ -164,9 +164,9 @@
       "start_x": 122,
       "start_y": 117,
       "formation_files": 12,
-      "swords": 3,
-      "archers": 8,
-      "spearmen": 8,
+      "swords": 0,
+      "archers": 19,
+      "spearmen": 0,
       "mounted": 0
     },
     {
@@ -176,9 +176,9 @@
       "start_x": -112,
       "start_y": 23,
       "formation_files": 16,
-      "swords": 3,
-      "archers": 10,
-      "spearmen": 9,
+      "swords": 0,
+      "archers": 22,
+      "spearmen": 0,
       "mounted": 0
     },
     {
@@ -188,9 +188,9 @@
       "start_x": -129,
       "start_y": -97,
       "formation_files": 15,
-      "swords": 3,
-      "archers": 8,
-      "spearmen": 8,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 19,
       "mounted": 0
     },
     {
@@ -212,9 +212,9 @@
       "start_x": -161,
       "start_y": 29,
       "formation_files": 14,
-      "swords": 4,
-      "archers": 7,
-      "spearmen": 7,
+      "swords": 18,
+      "archers": 0,
+      "spearmen": 0,
       "mounted": 0
     },
     {
@@ -236,9 +236,9 @@
       "start_x": -169,
       "start_y": 145,
       "formation_files": 13,
-      "swords": 3,
-      "archers": 8,
-      "spearmen": 7,
+      "swords": 0,
+      "archers": 18,
+      "spearmen": 0,
       "mounted": 0
     },
     {
@@ -248,9 +248,9 @@
       "start_x": 107,
       "start_y": 23,
       "formation_files": 17,
-      "swords": 4,
-      "archers": 7,
-      "spearmen": 12,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 23,
       "mounted": 0
     },
     {
@@ -284,9 +284,9 @@
       "start_x": 152,
       "start_y": 28,
       "formation_files": 15,
-      "swords": 4,
-      "archers": 8,
-      "spearmen": 10,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 22,
       "mounted": 0
     },
     {
@@ -296,9 +296,9 @@
       "start_x": 167,
       "start_y": -142,
       "formation_files": 13,
-      "swords": 2,
-      "archers": 8,
-      "spearmen": 9,
+      "swords": 0,
+      "archers": 19,
+      "spearmen": 0,
       "mounted": 0
     },
     {
@@ -308,9 +308,9 @@
       "start_x": 160,
       "start_y": 143,
       "formation_files": 12,
-      "swords": 2,
-      "archers": 7,
-      "spearmen": 7,
+      "swords": 16,
+      "archers": 0,
+      "spearmen": 0,
       "mounted": 0
     }
   ],

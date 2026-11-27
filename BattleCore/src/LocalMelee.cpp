@@ -9,6 +9,18 @@ namespace battle {
 namespace {
 constexpr float PlatformMeleeMargin = .25f;
 constexpr float PlatformContactMargin = .5f;
+constexpr Tick SustainedContactTicks = 30;
+
+Tick ContactDuration(const RegimentState &regiment, Tick now) {
+    return regiment.melee_contact_since && regiment.melee_contact_since < now
+        ? now - regiment.melee_contact_since : 0;
+}
+
+float ContactLooseness(const RegimentState &regiment, Tick now) {
+    const auto duration = ContactDuration(regiment, now);
+    return duration > SustainedContactTicks
+        ? std::min(1.f, float(duration - SustainedContactTicks) / 80.f) : 0.f;
+}
 
 Vec3 Ground(Vec3 p) {
     return {p.x, p.y, 0};
@@ -290,6 +302,7 @@ void LocalMelee::Refresh(World &w) {
     // Keep the start-of-step index for swept collision. The max movement margin finds
     // bodies inside that index even after they have advanced to their new positions.
     DetectContact();
+    const Tick now = w.tick + 1;
     for (auto &r : w.regiments) {
         const bool engaged = Engaged(r);
         if (w.scenario.rules.regiment_tactics) {
@@ -300,6 +313,24 @@ void LocalMelee::Refresh(World &w) {
                 r.separate_since = w.tick + 1;
                 r.contact_end_tick = w.tick + 1;
                 r.decision_tick = 0;
+            }
+            if (w.scenario.rules.sustained_melee) {
+                if (engaged) {
+                    if (!r.melee_contact_since)
+                        r.melee_contact_since = now;
+                    r.melee_recovery_until = 0;
+                    r.fatigue = std::min(1.f, r.fatigue + .00175f * ContactLooseness(r, now));
+                } else {
+                    if (r.melee_recovery_until <= now)
+                        r.melee_recovery_until = 0;
+                    const auto duration = ContactDuration(r, now);
+                    if (duration >= SustainedContactTicks) {
+                        r.fatigue = std::min(1.f, r.fatigue + .14f + .0005f * float(std::min(duration, Tick{120})));
+                        if (!r.panic)
+                            r.melee_recovery_until = now + std::clamp(duration / 3, Tick{18}, Tick{34});
+                    }
+                    r.melee_contact_since = 0;
+                }
             }
         }
         r.melee_engaged = engaged;
@@ -488,6 +519,25 @@ Vec3 LocalMelee::Constrain(const UnitState &u, Vec3 destination, float march_spe
     if (blocker && !blocker->regiment)
         if (const auto way_around = BypassStaff(u, *blocker, from, travel, march_speed, dt))
             return *way_around;
+    if (blocker && u.regiment && blocker->regiment == u.regiment &&
+        u.control == ControlMode::FormationControlled && !u.skirmisher && !u.skirmisher_returning) {
+        const auto &regiment = *Regiment(u);
+        if (regiment.rank_layout != RankPriority::Automatic &&
+            regiment.formation.shape == FormationShape::Rectangle && !regiment.melee_engaged) {
+            const auto to_slot = u.slot.position - from;
+            const float remaining_depth = Dot(to_slot, Forward(u.slot.yaw));
+            const auto side = Right(u.slot.yaw) * (remaining_depth > 0.f ? 1.f : -1.f);
+            const float passing_lane = regiment.formation.spacing_m * .25f;
+            const float sideways = passing_lane + Dot(to_slot, side);
+            if (std::abs(remaining_depth) > passing_lane && sideways > .002f) {
+                // The front and rear files pass on opposite sides of their original line.
+                const auto step = from + side * std::min(distance, sideways);
+                if (UnitTerrainLimit(world_, from, step, radii_[UnitIndex(u)]) >= 1.f &&
+                    ClearMove(u, step, nearby_))
+                    return step;
+            }
+        }
+    }
     float clear = 0.f;
     float blocked = 1.f;
     for (int attempt = 0; attempt < 5; ++attempt) {
@@ -706,22 +756,22 @@ LocalMelee::FindOpposingFront(const RegimentState &r, size_t columns) const {
 }
 
 bool LocalMelee::AdvanceWing(UnitState &u, const RegimentState &r, const Pose &lane,
-                             const OpposingFront &front, float dt) const {
+                             const OpposingFront &front, float dt, float looseness, float wing) const {
     const auto forward = Forward(lane.yaw);
     const auto right = Right(lane.yaw);
     const float lateral = Dot(lane.position, right);
-    const float edge = lateral < front.min_lateral ? front.min_lateral : front.max_lateral;
-    const float side = lateral < front.min_lateral ? -1.f : 1.f;
+    const float side = wing != 0.f ? wing : lateral < front.min_lateral ? -1.f : 1.f;
+    const float edge = side < 0.f ? front.min_lateral : front.max_lateral;
     const float overhang = (lateral - edge) * side;
     const float spacing = r.formation.spacing_m;
     const float radius = radii_[UnitIndex(u)];
     const float clearance = radius + front.body_radius + .18f;
-    const float shoulder = front.near_depth + std::clamp(.75f * overhang, .5f,
-                                                    std::max(.6f, front.far_depth - front.near_depth));
+    const float shoulder = front.near_depth + std::clamp(.75f * overhang + looseness, .5f,
+                                  std::max(.6f, front.far_depth - front.near_depth + looseness));
     const auto waypoint = forward * shoulder + right * (edge + side * clearance) +
                           Vec3{0.f, 0.f, lane.position.z};
-    const float leash = std::clamp(4.5f * spacing, 4.f, 7.f);
-    if (overhang < .55f * spacing || Distance(lane.position, waypoint) > leash ||
+    const float leash = std::clamp(4.5f * spacing, 4.f, 7.f) + 1.5f * looseness;
+    if (overhang < (.55f - .85f * looseness) * spacing || Distance(lane.position, waypoint) > leash ||
         Distance(lane.position, u.pose.position) > leash ||
         UnitTerrainLimit(world_, u.pose.position, waypoint, radius) < 1.f)
         return false;
@@ -739,12 +789,13 @@ bool LocalMelee::AdvanceWing(UnitState &u, const RegimentState &r, const Pose &l
 
 const UnitState *LocalMelee::AdvanceLead(
     UnitState &u, const RegimentState &r, const Pose &lane,
-    const std::optional<OpposingFront> &front, float dt) const {
+    const std::optional<OpposingFront> &front, float dt, float looseness, float wing) const {
     if (HoldForWindup(u))
         return WindupTarget(u);
     const auto *in_lane = EnemyAhead(u, r, lane);
     const bool holding_line = r.ai_action == OrderType::HoldLine || r.ai_action == OrderType::Brace;
-    if (!holding_line && front && !in_lane && AdvanceWing(u, r, lane, *front, dt))
+    if (!holding_line && front && (!in_lane || (wing != 0.f && looseness > 0.f)) &&
+        AdvanceWing(u, r, lane, *front, dt, looseness, wing))
         return nullptr;
     if (u.bypassing) {
         u.bypassing = false;
@@ -774,7 +825,8 @@ const UnitState *LocalMelee::AdvanceLead(
         const bool adjacent_lane = !holding_line &&
             std::abs(Dot(target->pose.position - lane.position, right)) >
                 std::max(.55f, .75f * r.formation.spacing_m);
-        const float half_lane = (adjacent_lane ? 1.45f : .42f) * r.formation.spacing_m;
+        const float half_lane = ((adjacent_lane ? 1.45f : .42f) +
+                                 (holding_line ? .18f : .65f) * looseness) * r.formation.spacing_m;
         const float depth = std::clamp(Dot(goal - lane.position, forward), -reach, reach);
         const float lateral = std::clamp(Dot(goal - lane.position, right), -half_lane, half_lane);
         MoveTowards(u, lane.position + forward * depth + right * lateral, u.speed * dt,
@@ -841,6 +893,8 @@ void LocalMelee::AdvanceLine(World &w, const RegimentState &r, float dt) const {
         return;
     }
     const auto opposing_front = FindOpposingFront(r, columns);
+    const float looseness = r.formation.shape == FormationShape::Rectangle
+        ? ContactLooseness(r, w.tick) : 0.f;
     std::vector<UnitState *> by_slot(r.slots.size());
     for (auto id : r.units) {
         auto *unit = FindUnit(w, id);
@@ -861,7 +915,9 @@ void LocalMelee::AdvanceLine(World &w, const RegimentState &r, float dt) const {
             if (IsSiegeEngine(unit->platform))
                 continue;
             if (!ahead) {
-                const auto *target = AdvanceLead(*unit, r, r.slots[column], opposing_front, dt);
+                const float wing = columns <= 1 || looseness == 0.f ? 0.f
+                    : column == 0 ? -1.f : column + 1 == columns ? 1.f : 0.f;
+                const auto *target = AdvanceLead(*unit, r, r.slots[column], opposing_front, dt, looseness, wing);
                 if (drives)
                     pressure_target = target;
             } else {

@@ -748,6 +748,16 @@ void FRegimentMissionRuntime::BeginTactical()
         Controller->SetViewTarget(Camera);
 }
 
+void FRegimentMissionRuntime::FollowRegiment(uint64 Regiment, int32 StartingStrength)
+{
+    const auto* Camera = TacticalCamera.Get();
+    if (!Camera || !Regiment || Regiment == FollowedRegiment)
+        return;
+    StopMapFlyover();
+    FollowedRegiment = Regiment;
+    FollowCamera.Frame(Camera->GetActorRotation().Yaw, StartingStrength);
+}
+
 bool FRegimentMissionRuntime::TickCamera(float DeltaSeconds)
 {
     auto* Controller = Owner.GetWorld()->GetFirstPlayerController();
@@ -795,9 +805,29 @@ bool FRegimentMissionRuntime::TickCamera(float DeltaSeconds)
     if (bManual)
     {
         MapFlight.Stop();
+        StopFollowingRegiment();
         CameraZoomTarget.Reset();
     }
-    else if (!FMath::IsNearlyZero(WheelSteps))
+    if (FollowedRegiment)
+    {
+        const auto* Battle = Cast<ARegimentBattleField>(&Owner);
+        const auto Cards = Battle ? Battle->GetRegimentCards() : TConstArrayView<FRegimentFieldCard>();
+        const auto* Card = Cards.FindByPredicate([this](const auto& Row)
+        {
+            return Row.Id == FollowedRegiment && Row.Living > 0;
+        });
+        if (Card)
+        {
+            if (!FMath::IsNearlyZero(WheelSteps))
+                FollowCamera.Zoom(WheelSteps);
+            const auto Pose = FollowCamera.Advance({Current, Rotation}, Card->Location - FVector(0, 0, 230),
+                DeltaSeconds, Origin, Preset.Field, Hill);
+            Camera->SetActorLocationAndRotation(Pose.Location, Pose.Rotation);
+            return false;
+        }
+        StopFollowingRegiment();
+    }
+    if (!bManual && !FMath::IsNearlyZero(WheelSteps))
     {
         MapFlight.Stop();
         CameraVelocity = FVector::ZeroVector;

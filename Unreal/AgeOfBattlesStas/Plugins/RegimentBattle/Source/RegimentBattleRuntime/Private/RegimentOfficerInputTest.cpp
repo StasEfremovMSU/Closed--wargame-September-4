@@ -1,7 +1,9 @@
 #include "Misc/AutomationTest.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
+#include "RegimentBattlePlayback.h"
 #include "RegimentOfficerInput.h"
+#include "RegimentOfficerView.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentOfficerInputTest, "RegimentBattle.Presentation.OfficerInput",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
@@ -47,6 +49,31 @@ bool FRegimentOfficerInputTest::RunTest(const FString& Parameters)
     TestFalse(TEXT("An idle subsequent step does not repeat the parry"), Input.ConsumeActions(true).bParry);
     TestTrue(TEXT("Shift uses the existing maximum speed"), FRegimentOfficerInput::Speed(4.f, true) == 4.f);
     TestTrue(TEXT("Walking is slower than running"), FRegimentOfficerInput::Speed(4.f, false) < 4.f);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentOfficerViewMotionTest, "RegimentBattle.Presentation.OfficerViewMotion",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+
+bool FRegimentOfficerViewMotionTest::RunTest(const FString&)
+{
+    FRegimentBattlePlayback Playback;
+    Playback.AddTime(.060);
+    TestTrue(TEXT("A simulation step advances the pose endpoints"), Playback.TakeStep());
+    TestEqual(TEXT("The residual time supplies a fractional pose"), Playback.RenderAlpha(), .2, 1e-6);
+    Playback.SetPaused(true);
+    Playback.AddTime(.040);
+    TestEqual(TEXT("Pausing freezes the rendered body at the same point"), Playback.RenderAlpha(), .2, 1e-6);
+    Playback.SetPaused(false);
+    Playback.AddTime(.10, 2);
+    TestEqual(TEXT("A dropped simulation step cannot extrapolate the rider"), Playback.RenderAlpha(), 1.0, 1e-6);
+
+    constexpr double Windup = .10;
+    TestEqual(TEXT("A new stroke begins at the resting grip"), RegimentOfficerView::BladeReach(0.0, Windup), 0.0, 1e-6);
+    TestTrue(TEXT("The grip draws back before swinging through"), RegimentOfficerView::BladeReach(.04, Windup) < 0.0);
+    TestEqual(TEXT("The blade reaches the target at the impact tick"), RegimentOfficerView::BladeReach(.10, Windup), 1.0, 1e-6);
+    TestTrue(TEXT("The hand recovers after it contacts the target"), RegimentOfficerView::BladeReach(.20, Windup) < 1.0);
+    TestEqual(TEXT("The recovered blade returns to rest"), RegimentOfficerView::BladeReach(.40, Windup), 0.0, 1e-6);
     return true;
 }
 #endif

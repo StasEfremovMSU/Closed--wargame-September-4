@@ -40,6 +40,10 @@ bool CanFireFromRank(const World &world, const UnitState &unit, const RegimentSt
         if (HasOutwardRanks(regiment->formation.shape) && unit.platform == BattlePlatform::None)
             return IsFormationFrontRank(*regiment, unit) && IsAtFormationPost(*regiment, unit) &&
                    regiment->waypoint >= regiment->route.size();
+        if (regiment->formation.shape == FormationShape::Rectangle &&
+            regiment->rank_layout != RankPriority::Automatic &&
+            unit.control != ControlMode::PlayerControlled && !IsAtFormationPost(*regiment, unit))
+            return false;
     }
     if (!regiment || !world.scenario.rules.regiment_tactics || !world.scenario.rules.linear_infantry ||
         unit.ranged_weapon != RangedWeapon::Musket || unit.platform != BattlePlatform::None ||
@@ -151,6 +155,7 @@ struct RangedAim {
     const UnitState *friendly{};
     bool contested{}, intercepted{}, arced{};
     int cover_modifier{};
+    bool bow_loft{};
 };
 
 class TacticalArchery {
@@ -248,9 +253,23 @@ class TacticalArchery {
             return terrain.shooting_modifier ? FireLaneMask::Cover : FireLaneMask::Clear;
         }
         index_.QueryRadiusPayloadsInto(from + line * .5f, length * .5f + max_radius_, lane_);
+        const auto *regiment = world_.scenario.rules.mixed_rank_tactics && !siege &&
+            shooter.archer && shooter.platform == BattlePlatform::None &&
+            shooter.troop != UnitTroop::Mounted && shooter.control == ControlMode::FormationControlled &&
+            (shooter.ranged_weapon == RangedWeapon::Bow || shooter.ranged_weapon == RangedWeapon::None)
+            ? FindRegiment(world_, shooter.regiment) : nullptr;
+        const bool rear_bow = regiment && regiment->formation.shape == FormationShape::Rectangle &&
+            !IsFormationFrontRank(*regiment, shooter) && IsAtFormationPost(*regiment, shooter);
+        const bool protected_ranks = rear_bow && regiment->rank_layout == RankPriority::MeleeFront;
+        const float rank_depth = rear_bow
+            ? float(shooter.slot_index / regiment->formation.columns) * regiment->formation.spacing_m : 0.f;
+        const bool bow_can_loft = rear_bow && length >= std::max(6.f, rank_depth + 4.f);
+        if (protected_ranks && !bow_can_loft)
+            return FireLaneMask::Friendly;
         const bool can_arc = !siege && !UsesGunpowder(shooter.ranged_weapon) &&
                              length >= std::max(8.f, .45f * FiringWeapon(shooter).range);
-        bool arced = false;
+        bool arced = protected_ranks;
+        bool bow_loft = protected_ranks;
         const UnitState *intercept = nullptr;
         float first = 1.f;
         for (auto index : lane_) {
@@ -274,14 +293,17 @@ class TacticalArchery {
                     intercept = &friendly;
                     first = t;
                 }
-            } else if (can_arc && shooter.regiment && friendly.regiment == shooter.regiment) {
+            } else if (shooter.regiment && friendly.regiment == shooter.regiment &&
+                       (can_arc || (bow_can_loft && (!friendly.archer || protected_ranks)))) {
                 // A lofted shot can clear ranks from the shooter's own formation at range.
                 arced = true;
+                bow_loft |= bow_can_loft && (!friendly.archer || protected_ranks);
             } else {
                 return FireLaneMask::Friendly;
             }
         }
         aim = {target, intercept, contested, intercept != nullptr, arced, terrain.shooting_modifier};
+        aim.bow_loft = bow_loft;
         if (intercept)
             aim.cover_modifier = EvaluateTerrainShot(shooter.pose.position, intercept->pose.position,
                                                      cover_).shooting_modifier;
@@ -896,6 +918,8 @@ void BuildCombatEvents(const World &w, std::vector<BattleEvent> &out, uint64_t *
             accuracy *= .8f;
         if (aim.arced)
             accuracy *= .8f;
+        if (aim.bow_loft)
+            damage *= .75f;
         if (tactics && target->skirmisher)
             accuracy *= .82f;
         if (projectile && (tactics || siege)) {
@@ -993,12 +1017,18 @@ void CommitCombatEvents(World &w, std::span<const BattleEvent> launches, const L
         const bool charge = e.reason.starts_with("cavalry impact");
         const bool pursuit = e.reason.starts_with("pursuit");
         auto &attack = w.attacks.emplace_back(PendingAttack{e.id, e.source, e.target, e.due_tick,
-            e.amount, e.hit, weapon.range, e.projectile, charge, pursuit, {}});
+            e.amount, e.hit, weapon.range, e.projectile, charge, pursuit, {}, {}});
         if (e.hit && e.projectile && u->platform == BattlePlatform::FieldGun &&
             e.reason == FieldGunRoundShotReason) {
             attack.round_shot = RoundShotTrajectory{u->pose.position, t->pose.position};
             attack.damage = weapon.damage;
         }
+        if (w.scenario.rules.controlled_arrow_aim && e.projectile && t->id == w.controlled &&
+            u->platform == BattlePlatform::None &&
+            UnitTeam(w, *u) != UnitTeam(w, *t) &&
+            (u->ranged_weapon == RangedWeapon::Bow || u->ranged_weapon == RangedWeapon::Crossbow ||
+             (u->archer && u->ranged_weapon == RangedWeapon::None)))
+            attack.officer_arrow = OfficerArrowTrajectory{u->pose.position, t->pose.position};
         if (e.projectile && u->platform == BattlePlatform::FieldGun && e.due_tick == w.tick + 1 &&
             e.reason == FieldGunCanisterReason)
             canister_launches.push_back(e.id);
@@ -1090,6 +1120,28 @@ void CommitCombatEvents(World &w, std::span<const BattleEvent> launches, const L
             continue;
         }
         bool hit = a.hit && t && t->alive && s;
+        if (hit && a.officer_arrow) {
+            const Vec3 aim = a.officer_arrow->aim;
+            const Vec3 feet = t->pose.position;
+            const Vec3 horizontal = Ground(feet - aim);
+            const bool mounted = t->troop == UnitTroop::Mounted;
+            const float radius = mounted ? .65f : .4f;
+            bool cleared = Dot(horizontal, horizontal) > radius * radius;
+            if (!cleared) {
+                // The rendered arrow ends 102 cm above the launch-time target footing.
+                constexpr float ArrowAimHeightM = 1.02f;
+                const auto &hill = w.scenario.hill;
+                const float impact_height = aim.z + ArrowAimHeightM + (hill ? HillHeight(*hill, aim) : 0.f);
+                const float feet_height = feet.z + (hill ? HillHeight(*hill, feet) : 0.f);
+                const float body_height = mounted ? 2.5f : 2.f;
+                cleared = impact_height < feet_height || impact_height > feet_height + body_height;
+            }
+            if (cleared) {
+                Emit(w, EventKind::Miss, a.source, a.target, t->regiment, 0,
+                     std::string(OfficerArrowDodgeReason), a.id, AttackAspect::Front, true);
+                continue;
+            }
+        }
         if (hit && !a.projectile) {
             const float reach = contact ? contact->MeleeReach(*s, *t, a.range_m) : a.range_m;
             hit = s->alive && Distance(s->pose.position, t->pose.position) <= reach + .0001f &&

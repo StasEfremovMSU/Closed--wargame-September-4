@@ -149,6 +149,14 @@ void SetOutwardSlots(std::vector<Pose> &slots, const FormationSpec &formation, P
     }
 }
 
+uint32_t FormationSlotPattern(uint32_t index) {
+    // An integer mix keeps offsets attached to slots as the regiment translates and rotates.
+    uint32_t value = index + 0x9e3779b9u;
+    value = (value ^ (value >> 16)) * 0x7feb352du;
+    value = (value ^ (value >> 15)) * 0x846ca68bu;
+    return value ^ (value >> 16);
+}
+
 void SetFormationSlots(std::vector<Pose> &slots, const FormationSpec &formation, Pose centre,
                        uint32_t count, bool routing = false) {
     if (!formation.columns || !count) {
@@ -177,7 +185,10 @@ void SetFormationSlots(std::vector<Pose> &slots, const FormationSpec &formation,
     const uint32_t rows = (count - 1) / formation.columns + 1;
     const float spacing = formation.shape == FormationShape::Testudo ? TestudoSpacing(formation)
                                                                      : formation.spacing_m;
-    const float rout_gap = routing ? std::max(0.f, spacing - 2.f * formation.body_radius_m) * .42f : 0.f;
+    const float free_gap = std::max(0.f, spacing - 2.f * formation.body_radius_m);
+    const float rout_gap = routing ? free_gap * .42f : 0.f;
+    const float stagger = formation.shape == FormationShape::Rectangle && !routing
+        ? free_gap * .4f * formation.slot_stagger : 0.f;
     const float half_depth = float(rows - 1) * .5f * spacing;
     const float half_width = float(formation.columns - 1) * .5f * spacing;
     for (uint32_t i = 0; i < count; ++i) {
@@ -188,6 +199,13 @@ void SetFormationSlots(std::vector<Pose> &slots, const FormationSpec &formation,
             // Break the standing alignment within the existing swept footprint and body clearance.
             x = std::clamp(x + ((i + rank) % 2 ? rout_gap : -rout_gap), -half_depth, half_depth);
             y = std::clamp(y + (float((i + rank) % 3) - 1.f) * rout_gap, -half_width, half_width);
+        } else if (stagger > 0.f) {
+            const uint32_t pattern = FormationSlotPattern(i);
+            const float ahead = float(pattern & 255u) * (2.f / 255.f) - 1.f;
+            const float aside = float((pattern >> 8) & 255u) * (2.f / 255.f) - 1.f;
+            x = std::clamp(x + ahead * stagger, -half_depth, half_depth);
+            // Leave extra space between files so mixed-rank troops can exchange positions.
+            y = std::clamp(y + aside * stagger * .45f, -half_width, half_width);
         }
         slots[i] = {centre.position + forward * x + right * y, centre.yaw};
     }
@@ -288,6 +306,7 @@ FormationSpec LinearInfantryFormation(FormationSpec spec, uint32_t count, bool f
     const uint32_t column = std::min(24u, count / 4);
     spec.columns = std::max(1u, firing_line ? line : column);
     spec.shape = FormationShape::Rectangle;
+    spec.slot_stagger = 0.f;
     return spec;
 }
 FormationSpec LinearInfantryFormation(const RegimentState &r, bool firing_line) {
@@ -299,8 +318,29 @@ bool IsLinearFiringLine(const RegimentState &r) {
            r.formation.columns >= LinearInfantryFormation(r.formation, layout_size, true).columns;
 }
 namespace {
-void PrioritizeMusketRanks(const World &w, const RegimentState &r,
-                           std::vector<UnitState *> &rank_order) {
+bool RankParticipant(const UnitState &unit) {
+    return unit.alive && unit.control == ControlMode::FormationControlled &&
+           !unit.skirmisher && !unit.skirmisher_returning;
+}
+
+bool RangedRankMember(const UnitState &unit) {
+    return unit.archer && (!unit.ammunition || unit.ammunition_remaining);
+}
+
+bool MeleeRankMember(const World &world, const UnitState &unit) {
+    return !unit.archer && std::ranges::find(world.officers, unit.id, &OfficerSpec::unit) ==
+                           world.officers.end();
+}
+
+void PrioritizeRanks(const World &w, const RegimentState &r,
+                     std::vector<UnitState *> &rank_order) {
+    if (r.rank_layout != RankPriority::Automatic && r.formation.shape == FormationShape::Rectangle) {
+        std::stable_partition(rank_order.begin(), rank_order.end(), [&](const auto *unit) {
+            return RankParticipant(*unit) && (r.rank_layout == RankPriority::RangedFront
+                                              ? RangedRankMember(*unit) : MeleeRankMember(w, *unit));
+        });
+        return;
+    }
     if (!IsDeploying(w, r) && UsesLinearInfantry(w, r) && IsLinearFiringLine(r))
         std::stable_partition(rank_order.begin(), rank_order.end(), [](const auto *unit) {
             return unit->ranged_weapon == RangedWeapon::Musket &&
@@ -339,6 +379,46 @@ void MatchNearestSlots(std::span<const Pose> slots, std::vector<UnitState *> &me
     }
 }
 } // namespace
+bool SupportsRankPriority(const World &w, const RegimentState &r) {
+    if (!w.scenario.rules.regiment_tactics || !w.scenario.rules.mixed_rank_tactics ||
+        r.formation.shape != FormationShape::Rectangle || r.loose_skirmish || r.units.size() < 2)
+        return false;
+    bool ranged = false, melee = false;
+    for (const auto id : r.units) {
+        const auto &unit = *FindUnit(w, id);
+        if (unit.troop == UnitTroop::Mounted || unit.platform != BattlePlatform::None)
+            return false;
+        if (!RankParticipant(unit))
+            continue;
+        ranged |= RangedRankMember(unit);
+        if (!melee)
+            melee = MeleeRankMember(w, unit);
+    }
+    return ranged && melee;
+}
+
+void UpdateRegimentRankLayout(World &w, RegimentState &r, RankPriority automatic) {
+    const auto desired = r.rank_priority == RankPriority::Automatic ? automatic : r.rank_priority;
+    if (desired == r.rank_layout || r.panic || r.disordered || r.melee_engaged || IsDeploying(w, r) ||
+        !SupportsRankPriority(w, r))
+        return;
+    r.rank_layout = desired;
+    ReformRegiment(w, r.id, r.formation);
+}
+
+Status SetRegimentRankPriority(World &w, RegimentId id, RankPriority priority) {
+    auto *r = FindRegiment(w, id);
+    if (!r)
+        return Status::NotFound;
+    if (priority > RankPriority::MeleeFront ||
+        (priority != RankPriority::Automatic && !SupportsRankPriority(w, *r)))
+        return Status::InvalidInput;
+    r->rank_priority = priority;
+    UpdateRegimentRankLayout(w, *r, r->rank_layout);
+    r->decision_tick = 0;
+    return Status::Ok;
+}
+
 bool RectanglesOverlap(Pose a, FormationFootprint af, Pose b, FormationFootprint bf) {
     if (af.width_m <= 0 || af.depth_m <= 0 || bf.width_m <= 0 || bf.depth_m <= 0)
         return false;
@@ -581,6 +661,7 @@ void InitializeFormations(World &w) {
         const bool battery = IsArtilleryBattery(w, r);
         if (battery) {
             r.formation.columns = uint32_t(r.units.size());
+            r.formation.slot_stagger = 0.f;
             r.deployment_ticks = 0;
         } else if (IsDeploying(w, r)) {
             r.formation = TravelColumnFormation(r.formation);
@@ -591,7 +672,7 @@ void InitializeFormations(World &w) {
         }
         r.slots = BuildFormationSlots(r.formation, r.pose, uint32_t(r.units.size()));
         auto ranks = RankMembers(w, r);
-        PrioritizeMusketRanks(w, r, ranks);
+        PrioritizeRanks(w, r, ranks);
         for (size_t i = 0; i < ranks.size(); ++i) {
             auto *u = ranks[i];
             u->slot_index = uint32_t(i);
@@ -603,6 +684,11 @@ void InitializeFormations(World &w) {
 }
 bool IsDeploying(const World &w, const RegimentState &r) {
     return w.scenario.rules.regiment_tactics && w.tick < r.deployment_ticks;
+}
+
+bool IsRecoveringFromMelee(const World &w, const RegimentState &r) {
+    return w.tick < r.melee_recovery_until && !r.units.empty() && !r.melee_engaged &&
+           !r.panic && !r.pursuit_target && !IsWithdrawing(r.ai_action);
 }
 
 void CompleteDeployments(World &w) {
@@ -627,7 +713,8 @@ void CompleteDeployments(World &w) {
 
 Status ReformRegiment(World &w, RegimentId id, FormationSpec s) {
     if (!s.columns || !std::isfinite(s.spacing_m) || s.spacing_m <= 0 ||
-        !std::isfinite(s.body_radius_m) || s.body_radius_m <= 0 || s.shape > FormationShape::Circle)
+        !std::isfinite(s.body_radius_m) || s.body_radius_m <= 0 || s.shape > FormationShape::Circle ||
+        !ValidSlotStagger(s.slot_stagger))
         return Status::InvalidInput;
     auto *r = FindRegiment(w, id);
     if (!r)
@@ -647,12 +734,14 @@ Status ReformRegiment(World &w, RegimentId id, FormationSpec s) {
         })));
         s.spacing_m = r->formation.spacing_m;
         s.body_radius_m = r->formation.body_radius_m;
+        s.slot_stagger = 0.f;
     }
     if (r->loose_skirmish && !IsDeploying(w, *r))
         OpenSkirmishSpacing(s);
     if (IsDeploying(w, *r) && (s.columns > r->formation.columns ||
                               s.spacing_m != r->formation.spacing_m ||
                               s.body_radius_m != r->formation.body_radius_m ||
+                              s.slot_stagger != r->formation.slot_stagger ||
                               s.shape != r->formation.shape))
         return Status::Conflict;
     const bool special_layout = r->formation.shape != FormationShape::Rectangle ||
@@ -698,8 +787,10 @@ Status ReformRegiment(World &w, RegimentId id, FormationSpec s) {
                 return Dot(RankPosition(*a), right) < Dot(RankPosition(*b), right);
             });
         }
+    } else if (r->rank_layout != RankPriority::Automatic) {
+        std::ranges::stable_sort(rank_order, {}, &UnitState::slot_index);
     }
-    PrioritizeMusketRanks(w, *r, rank_order);
+    PrioritizeRanks(w, *r, rank_order);
     for (size_t i = 0; i < rank_order.size(); ++i) {
         auto *u = rank_order[i];
         u->slot_index = uint32_t(i);
@@ -1041,6 +1132,7 @@ void AdvanceFormations(World &w, float dt, const LocalMelee *contact) {
             const auto &r = *FindRegiment(w, id);
             return r.ai_action == OrderType::MoveTo && r.waypoint < r.route.size() &&
                    (!contact || !contact->Engaged(r)) &&
+                   !IsRecoveringFromMelee(w, r) &&
                    (!regiment_tactics || !r.separate_since || r.pursuit_target);
         });
         if (!ready)
@@ -1114,7 +1206,7 @@ void AdvanceFormations(World &w, float dt, const LocalMelee *contact) {
             r.march_lane->waypoint != r.route[r.waypoint] || r.march_lane->goal != r.route.back()))
             r.march_lane.reset();
         const bool can_back_out = contact && ordered_retreat && (has_waypoint || contact->Engaged(r));
-        bool reassembling = false;
+        bool reassembling = IsRecoveringFromMelee(w, r);
         if (regiment_tactics && !withdrawing && !r.panic && !r.pursuit_target && r.separate_since) {
             constexpr Tick SeparationReformTicks = 12;
             const auto elapsed = w.tick - std::min(w.tick, r.separate_since);
@@ -1125,7 +1217,7 @@ void AdvanceFormations(World &w, float dt, const LocalMelee *contact) {
                        !unit.skirmisher_returning &&
                        Distance(unit.pose.position, unit.slot.position) > tolerance;
             });
-            reassembling = elapsed < SeparationReformTicks || (out_of_rank && elapsed < 40);
+            reassembling = reassembling || elapsed < SeparationReformTicks || (out_of_rank && elapsed < 40);
             if (!reassembling) {
                 r.separate_since = 0;
                 if (!out_of_rank)

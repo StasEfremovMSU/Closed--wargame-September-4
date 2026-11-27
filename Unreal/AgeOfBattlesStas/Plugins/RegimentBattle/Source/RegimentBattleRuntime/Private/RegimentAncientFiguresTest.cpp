@@ -433,7 +433,79 @@ bool FRegimentSengokuFigureTest::RunTest(const FString&)
         BuildRegimentSengokuWeapon(S::SengokuArquebusier).Bounds.GetSize().X > 100.0);
     TestTrue(TEXT("Mounted tack and a cloth field sign have individual shapes"),
         BuildRegimentHistoricalTack(S::SengokuCavalry).Parts.Num() > 3 &&
-        BuildRegimentSengokuBanner().Count(F::Sashimono) == 1);
+        BuildRegimentSengokuBanner(0).Count(F::Sashimono) == 1);
     return !HasAnyErrors();
 }
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentSengokuBannerTest, "RegimentBattle.Presentation.SengokuBannerSilhouettes",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+
+bool FRegimentSengokuBannerTest::RunTest(const FString&)
+{
+    using F = ERegimentAncientFeature;
+    TSet<double> Heights, Widths, PoleTops;
+    TSet<int32> Variants;
+    for (uint64 Id = 6; Id <= 240; Id += 6)
+    {
+        const int32 Variant = RegimentSengokuBannerVariant(Id);
+        TestEqual(TEXT("A wearer keeps the same flag across frames and LODs"), RegimentSengokuBannerVariant(Id), Variant);
+        if (!TestTrue(TEXT("A wearer maps to an available cached banner"), Variant >= 0 && Variant < RegimentSengokuBannerVariantCount))
+            continue;
+        Variants.Add(Variant);
+    }
+    TestEqual(TEXT("Wearers in one formation get all banner shapes"), Variants.Num(), RegimentSengokuBannerVariantCount);
+    for (const int32 Variant : Variants)
+    {
+        const auto Banner = BuildRegimentSengokuBanner(Variant);
+        const auto* Cloth = Banner.Parts.FindByPredicate([](const auto& Part) { return Part.Feature == F::Sashimono; });
+        if (!TestNotNull(TEXT("The back banner has an identifiable cloth panel"), Cloth))
+            continue;
+        const FVector Size = Cloth->Transform.GetScale3D();
+        TestTrue(TEXT("The clan color remains on a narrow, readable cloth panel"),
+            Cloth->Material == ERegimentAncientMaterial::Paint &&
+            Size.Y >= 25.0 && Size.Y <= 40.0 && Size.Z >= 50.0 && Size.Z <= 80.0);
+        TestTrue(TEXT("The L-shaped staff meets the cuirass at the same mounting point"),
+            Banner.Parts.ContainsByPredicate([](const auto& Part)
+            {
+                return Part.Material == ERegimentAncientMaterial::Wood &&
+                    Part.Transform.InverseTransformPosition(FVector(-17, 10, 94)).GetAbsMax() <= .5;
+            }));
+        Heights.Add(Size.Z);
+        Widths.Add(Size.Y);
+        PoleTops.Add(Banner.Bounds.Max.Z);
+    }
+    TestTrue(TEXT("Sashimono vary in cloth width, cloth height and pole height"),
+        Heights.Num() >= 3 && Widths.Num() >= 3 && PoleTops.Num() >= 3);
+    return !HasAnyErrors();
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentSengokuSaddleTest, "RegimentBattle.Presentation.SengokuSaddle",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+
+bool FRegimentSengokuSaddleTest::RunTest(const FString&)
+{
+    using S = ERegimentHistoricalFigure;
+    using F = ERegimentAncientFeature;
+    const auto Near = BuildRegimentHistoricalMount(S::SengokuCavalry);
+    const auto Far = BuildRegimentHistoricalProxy(S::SengokuCavalry);
+    TestEqual(TEXT("Mounted samurai use a Japanese mount with both rendering paths"), Near.Count(F::Horse), 1);
+    const auto IsHorse = [](const auto& Part) { return Part.Feature == F::Horse; };
+    const auto* NearHorse = Near.Parts.FindByPredicate(IsHorse);
+    const auto* FarHorse = Far.Parts.FindByPredicate(IsHorse);
+    if (!TestNotNull(TEXT("The near mounted samurai has a horse barrel"), NearHorse) ||
+        !TestNotNull(TEXT("The far mounted samurai has a horse barrel"), FarHorse))
+        return false;
+    TestTrue(TEXT("Both rendering paths use the same horse silhouette"), NearHorse->Transform.Equals(FarHorse->Transform));
+    const double Back = FarHorse->Transform.GetLocation().Z + FarHorse->Transform.GetScale3D().Z * .5;
+    TestTrue(TEXT("The seated proxy pelvis clears the back of the horse"),
+        RegimentHistoricalSeatOffset(S::SengokuCavalry) + 65.0 > Back);
+    const auto IsSeat = [](const auto& Part)
+    {
+        return Part.Material == ERegimentAncientMaterial::Leather &&
+            Part.Transform.InverseTransformPosition(FVector(0, 0, RegimentSengokuSaddleHeight - 1)).GetAbsMax() <= .5;
+    };
+    TestTrue(TEXT("The saddle has a surface beneath the rider in both meshes"),
+        Near.Parts.ContainsByPredicate(IsSeat) && Far.Parts.ContainsByPredicate(IsSeat));
+    return !HasAnyErrors();
+}
+
 #endif

@@ -23,9 +23,13 @@ struct FRegimentMissionRuntime
     void TickMarch(float DeltaSeconds);
     void BeginTactical();
     bool TickCamera(float DeltaSeconds);
+    void FollowRegiment(uint64 Regiment, int32 StartingStrength);
+    uint64 CameraRegiment() const { return FollowedRegiment; }
+    void StopFollowingRegiment() { FollowedRegiment = 0; }
     void StopMapFlyover()
     {
         MapFlight.Stop();
+        StopFollowingRegiment();
         CameraVelocity = FVector::ZeroVector;
         CameraZoomTarget.Reset();
     }
@@ -79,6 +83,8 @@ private:
     FVector Contact = FVector::ZeroVector;
     TWeakObjectPtr<ACameraActor> TacticalCamera;
     FRegimentMapFlight MapFlight;
+    FRegimentFollowCamera FollowCamera;
+    uint64 FollowedRegiment = 0;
     FVector CameraVelocity = FVector::ZeroVector;
     TOptional<FVector> CameraZoomTarget;
     TWeakObjectPtr<ULocalPlayer> Player;
