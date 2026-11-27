@@ -45,6 +45,7 @@ std::optional<Vec3> SupportStage(const BrainContext &context, const CommandTask 
 struct WingChoice {
     TaskKind action;
     bool keep{};
+    bool policy_override{};
 };
 
 WingChoice ScoreSecondRegiment(const BrainContext &context, const ChildStatus &lead,
@@ -132,7 +133,7 @@ WingChoice ScoreSecondRegiment(const BrainContext &context, const ChildStatus &l
         add(keep->action, contact, destination, keep->intent.target_regiment, true);
     }
     const auto choice = [&](uint32_t index) {
-        return WingChoice{options[index].action, options[index].keep_current_order};
+        return WingChoice{options[index].action, options[index].keep_current_order, index != baseline_index};
     };
     if (count < 2 || !context.group_policy)
         return choice(baseline_index);
@@ -518,11 +519,11 @@ StubResult<DecisionProposal> GroupBrain::Think(const BrainContext &c) const {
                         const auto selected = ScoreSecondRegiment(score_context, status_of(lead->id),
                             s, *target, secondary, flank, *staged_support, previous, kind,
                             observation, execution_window);
+                        policy_changed |= selected.policy_override;
                         if (selected.keep) {
                             retain();
                             continue;
                         }
-                        policy_changed |= use_policy && selected.action != kind;
                         kind = selected.action;
                     }
                     if (kind == TaskKind::Attack) {
@@ -610,7 +611,7 @@ StubResult<DecisionProposal> GroupBrain::Think(const BrainContext &c) const {
             : attempted_flank ? "Keep the supporting position while the flank is closed."
                               : "The other regiments hold their supporting assignments.";
         if (policy_changed)
-            out.explanation += " Trained policy scored the feasible actions.";
+            out.explanation += GroupPolicyOverrideExplanation;
         auto &history = out.next_memory->recent_decisions;
         if (!history.empty() && history.back().tick == c.tick)
             history.back().explanation = out.explanation;

@@ -8,7 +8,7 @@ THIRD_PARTY_INCLUDES_END
 class FRegimentBattleTrace
 {
 public:
-    void Configure(std::optional<battle::NavigationGridGeometry> InGrid, std::string Policy);
+    void Configure(std::optional<battle::NavigationGridGeometry> InGrid, std::string Policy, bool bGroupOrderCommitment);
     void BeforeStep(const battle::World& World);
     void AfterStep(const battle::World& World, std::span<const battle::CommandEnvelope> Commands,
         battle::io::BattleTraceOutcome SimulationResult);

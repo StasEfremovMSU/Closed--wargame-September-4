@@ -13,6 +13,10 @@ cmake --build BattleCore/out/build/ue-msvc --config Release --target battle_core
 
 Откройте `AgeOfBattlesStas.uproject` и запустите `/Game/Battle/Maps/RegimentField`. Для моделей на текстурном атласе добавьте через Fab пакет **Free LOWPO | Mercenary Company | Low Poly Characters & Weapons**. Ожидаемый путь пакета — `Content/Fab/Free_LOWPO__Mercenary_Company___Low_Poly_Characters___Weapons`. Пакеты сторонних авторов устанавливаются отдельно.
 
+## Экспериментальный ИИ командиров групп
+
+Флаг запуска `-RegimentExperimentalGroupAI` включает модель V3 из `Content/Battle/GroupPolicies/ExperimentalV3.bmlp` в тактических миссиях. Для выбора другого файла используйте `-RegimentGroupPolicy="C:\path\to\policy.bmlp"`. При обычном запуске действуют штатные правила. Флаг `-RegimentTrace` сохраняет запись боя с точной версией модели и настройкой удержания приказов.
+
 ## Лендинг
 
 Исходники лежат в `Landing`. Команда `npm run build` генерирует `Landing/dist`. Для выпуска передайте текущий коммит в переменной `AOB_RELEASE_COMMIT` и разместите установщик из `release.json` рядом с `index.html`. Предыдущий установщик остаётся доступен по своей прямой ссылке.

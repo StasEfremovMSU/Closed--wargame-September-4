@@ -1,0 +1,258 @@
+{
+  "release": "2026.11.27.2",
+  "model_sha256": "1f906bbbc785bce97f4405de78e453860a06b2c6e47798055da20a8f1c14744b",
+  "feature_schema": 3,
+  "role": "group_second_regiment",
+  "architecture": [
+    33,
+    24,
+    1
+  ],
+  "experimental_opt_in": "-RegimentExperimentalGroupAI",
+  "training": {
+    "simulation_source_commit": "bf6ff4758ec6836d364162e870af39a9b82cd2cb",
+    "trainer_sha256": "3a710d64f035a136fa8db8e19d90e58cda53dbd6b25fcc1b68c1713d942d8fae",
+    "input_weights_sha256": "8ebb1262d23ae3080a5070b4540cc672d79825a0cbf266980e0292813184a93c",
+    "run_script_sha256": "2c07d099b57ae0ccfe0a210554ce013f39248232419360176efd27fd95309e69",
+    "device": "NVIDIA GeForce RTX 3070",
+    "pytorch": "2.10.0+cu128",
+    "cuda": "12.8",
+    "optimization_seconds": 1800.008,
+    "optimizer_updates": 1494944,
+    "candidates_completed": 3155,
+    "candidate": "candidate-0896",
+    "candidate_config": {
+      "index": 896,
+      "learning_rate": 0.008,
+      "decay": 0.01,
+      "seed": 28078,
+      "warm": false,
+      "visits": false,
+      "balance_power": 0.25,
+      "bootstrap": 0.15
+    },
+    "final_window_candidate": "candidate-3126",
+    "paired_validations": 11,
+    "candidate_selected_epoch": 64,
+    "collection_seed_blocks": [
+      310,
+      311,
+      312
+    ],
+    "training_map_families": [
+      "ancient_broken_wall",
+      "ancient_chicane_crossing",
+      "ancient_diagonal_ridge",
+      "ancient_field_diagonal",
+      "ancient_field_screen",
+      "ancient_ford",
+      "ancient_low_ridge",
+      "ancient_raised_ascent",
+      "ancient_south_bank",
+      "ancient_split_crossing",
+      "ancient_terrace_pass",
+      "ancient_walled_pocket",
+      "granicus_center",
+      "napoleonic_bent_wall",
+      "napoleonic_ford",
+      "napoleonic_line",
+      "napoleonic_low_ridge",
+      "napoleonic_offset_redoubt",
+      "napoleonic_orchard_gap",
+      "napoleonic_ridge_line",
+      "napoleonic_ridge_road",
+      "napoleonic_saddle",
+      "napoleonic_slope_crossfire",
+      "napoleonic_walled_lane",
+      "napoleonic_wide_bridgehead",
+      "senlac_approach",
+      "waterloo_middle"
+    ],
+    "validation_map_families": [
+      "bouvines_plateau",
+      "kliszow_east",
+      "marengo_approach"
+    ],
+    "dataset_sha256": {
+      "quick-held/rollouts.csv": "a3d2aee9b8c53b0df3369e2faa7ad1edca22fd060b789838e80c65d9343a4f78",
+      "main-held/rollouts.csv": "ad53789e4e5df61b869fa9a2b122d7d2f6f454868fed6a7fbadcc04ceea2b5be",
+      "visits/rollouts.csv": "526d0afaaad5d5f2e358a7b1f6b2956e2705dfbbfd3c47c51adfe9f5d5ecd652",
+      "aob-policy-30min-20261127/held-rollouts.csv": "9589ece800a7f880547ff48077951a3f7bf6b8b7253de80cdd26d82219d64646"
+    }
+  },
+  "validation": {
+    "seed_block": 941,
+    "pairs": 288,
+    "checks": {
+      "changes_decisions": true,
+      "positive_paired_utility": true,
+      "no_fewer_completed_tasks": true,
+      "no_more_friendly_losses": true,
+      "no_more_premature_replacements": true
+    }
+  },
+  "holdout": {
+    "seed_block": 943,
+    "pairs": 720,
+    "qualified_vs_commitment_baseline": false,
+    "stock_fsm": {
+      "mission_success": 66,
+      "blue_lost": 3409,
+      "early_order_changes": 1614,
+      "policy_overrides": 0
+    },
+    "commitment_baseline": {
+      "mission_success": 63,
+      "blue_lost": 3405,
+      "early_order_changes": 2280,
+      "policy_overrides": 0
+    },
+    "trained": {
+      "mission_success": 57,
+      "blue_lost": 3207,
+      "early_order_changes": 1605,
+      "policy_overrides": 2986
+    },
+    "comparisons": {
+      "held_vs_fsm": {
+        "mean_paired_utility_delta": -0.005531518973499999,
+        "paired_bootstrap_95_percent_interval": [
+          -0.010049663712958333,
+          -0.0013959377781111114
+        ],
+        "higher_utility": 45,
+        "lower_utility": 60,
+        "ties": 615
+      },
+      "trained_vs_held": {
+        "mean_paired_utility_delta": 0.043002993751091526,
+        "paired_bootstrap_95_percent_interval": [
+          0.03207095251137056,
+          0.054041985999670694
+        ],
+        "higher_utility": 455,
+        "lower_utility": 211,
+        "ties": 54
+      },
+      "trained_vs_fsm": {
+        "mean_paired_utility_delta": 0.03747147477759153,
+        "paired_bootstrap_95_percent_interval": [
+          0.02617978623249972,
+          0.04909184899529306
+        ],
+        "higher_utility": 468,
+        "lower_utility": 207,
+        "ties": 45
+      }
+    },
+    "checks": {
+      "changes_decisions": true,
+      "positive_paired_utility": true,
+      "no_fewer_completed_tasks": false,
+      "no_more_friendly_losses": true,
+      "no_more_premature_replacements": true,
+      "eligible_validation": true,
+      "positive_interval": true,
+      "positive_without_each_map": true
+    },
+    "maps": {
+      "borodino_outer_line": {
+        "stock_fsm": {
+          "mission_success": 12,
+          "blue_lost": 862,
+          "early_order_changes": 399,
+          "policy_overrides": 0
+        },
+        "trained": {
+          "mission_success": 10,
+          "blue_lost": 834,
+          "early_order_changes": 871,
+          "policy_overrides": 608
+        },
+        "trained_vs_fsm": {
+          "mean_paired_utility_delta": 0.0069200311751500005,
+          "paired_bootstrap_95_percent_interval": [
+            -0.012160452631327779,
+            0.026329391604083336
+          ],
+          "higher_utility": 92,
+          "lower_utility": 67,
+          "ties": 21
+        }
+      },
+      "issus_fords": {
+        "stock_fsm": {
+          "mission_success": 13,
+          "blue_lost": 832,
+          "early_order_changes": 65,
+          "policy_overrides": 0
+        },
+        "trained": {
+          "mission_success": 11,
+          "blue_lost": 825,
+          "early_order_changes": 287,
+          "policy_overrides": 1558
+        },
+        "trained_vs_fsm": {
+          "mean_paired_utility_delta": 0.02725779647371611,
+          "paired_bootstrap_95_percent_interval": [
+            0.004183359418849998,
+            0.05016104666154944
+          ],
+          "higher_utility": 132,
+          "lower_utility": 42,
+          "ties": 6
+        }
+      },
+      "patay_hedges": {
+        "stock_fsm": {
+          "mission_success": 38,
+          "blue_lost": 672,
+          "early_order_changes": 1,
+          "policy_overrides": 0
+        },
+        "trained": {
+          "mission_success": 30,
+          "blue_lost": 648,
+          "early_order_changes": 0,
+          "policy_overrides": 397
+        },
+        "trained_vs_fsm": {
+          "mean_paired_utility_delta": 0.019545548657944445,
+          "paired_bootstrap_95_percent_interval": [
+            -0.0023878012873888885,
+            0.04169759712888889
+          ],
+          "higher_utility": 114,
+          "lower_utility": 52,
+          "ties": 14
+        }
+      },
+      "wachau_ridge": {
+        "stock_fsm": {
+          "mission_success": 3,
+          "blue_lost": 1043,
+          "early_order_changes": 1149,
+          "policy_overrides": 0
+        },
+        "trained": {
+          "mission_success": 6,
+          "blue_lost": 900,
+          "early_order_changes": 447,
+          "policy_overrides": 423
+        },
+        "trained_vs_fsm": {
+          "mean_paired_utility_delta": 0.09616252280355556,
+          "paired_bootstrap_95_percent_interval": [
+            0.07040092634766666,
+            0.120920349706
+          ],
+          "higher_utility": 130,
+          "lower_utility": 46,
+          "ties": 4
+        }
+      }
+    },
+    "evaluation_sha256": "b7fa018a379a99be5b8a68ce782efd5a1f4e649c1db016d3d0f6dfc1d44b5244"
+  }
+}

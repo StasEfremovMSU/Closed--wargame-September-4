@@ -21,6 +21,7 @@ inline constexpr auto GroupPolicyFeatureNames = std::to_array<std::string_view>(
 });
 inline constexpr size_t GroupPolicyHiddenSize = 24;
 inline constexpr uint32_t GroupPolicyCommitmentFeatureSchema = 3;
+inline constexpr std::string_view GroupPolicyOverrideExplanation = " Trained policy scored the feasible actions.";
 inline constexpr auto GroupPolicyCommitmentFeatureNames = [] {
     constexpr auto extra = std::to_array<std::string_view>(
         {"choose_keep", "order_pending", "order_executing", "order_age", "order_progress"});
@@ -34,6 +35,7 @@ inline constexpr auto GroupPolicyCommitmentFeatureNames = [] {
 
 class GroupPolicy final : public ITacticalEvaluator {
   public:
+    constexpr uint32_t FeatureSchema() const { return schema_; }
     StubResult<std::vector<ActionScore>> Evaluate(const EvaluationRequest &) const override;
 
   private:

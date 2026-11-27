@@ -18,11 +18,12 @@ bool LogTraceError(const battle::Result<bool>& Result)
 }
 }
 
-void FRegimentBattleTrace::Configure(std::optional<battle::NavigationGridGeometry> InGrid, std::string Policy)
+void FRegimentBattleTrace::Configure(std::optional<battle::NavigationGridGeometry> InGrid, std::string Policy,
+    bool bGroupOrderCommitment)
 {
     bStartPending = FParse::Param(FCommandLine::Get(), TEXT("RegimentTrace"));
     if (bStartPending)
-        Config = {InGrid, std::move(Policy), false};
+        Config = {InGrid, std::move(Policy), bGroupOrderCommitment};
 }
 
 void FRegimentBattleTrace::BeforeStep(const battle::World& World)

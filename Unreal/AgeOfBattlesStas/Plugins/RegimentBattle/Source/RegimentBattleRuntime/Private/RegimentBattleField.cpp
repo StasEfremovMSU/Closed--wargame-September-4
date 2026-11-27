@@ -29,8 +29,10 @@
 #include "Misc/CommandLine.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Parse.h"
+#include "Misc/Paths.h"
 #include "RegimentBattleOpening.h"
 #include "RegimentBattleTrace.h"
+#include "RegimentGroupPolicy.h"
 #include "RegimentBattleGround.h"
 #include "RegimentAncientFigures.h"
 #include "RegimentEraCatalog.h"
@@ -70,7 +72,6 @@ THIRD_PARTY_INCLUDES_START
 #include "battle/Simulation.h"
 #include "battle/Snapshot.h"
 #include "battle/Terrain.h"
-#include "battle/command/GroupPolicy.h"
 #include "battle/command/Services.h"
 #include <sstream>
 THIRD_PARTY_INCLUDES_END
@@ -103,23 +104,48 @@ FText StrikeDirection(battle::AttackAspect Aspect)
 std::optional<battle::command::GroupPolicy> RequestedGroupPolicy(std::string& LoadedWeights)
 {
     FString Filename;
-    if (!FParse::Value(FCommandLine::Get(), TEXT("RegimentGroupPolicy="), Filename))
-        return std::nullopt;
+    const TCHAR* CommandLine = FCommandLine::Get();
+    const bool bExplicitPolicy = FParse::Value(CommandLine, TEXT("RegimentGroupPolicy="), Filename);
+    if (!bExplicitPolicy)
+    {
+        if (!FParse::Param(CommandLine, TEXT("RegimentExperimentalGroupAI")))
+            return std::nullopt;
+        Filename = FPaths::ProjectContentDir() / TEXT("Battle/GroupPolicies/ExperimentalV3.bmlp");
+    }
 
     FString Contents;
     if (FFileHelper::LoadFileToString(Contents, *Filename))
     {
         std::string Weights(TCHAR_TO_UTF8(*Contents));
         std::istringstream Stream(Weights);
-        if (auto Policy = battle::command::LoadGroupPolicy(Stream))
+        if (auto Policy = battle::command::LoadGroupPolicy(Stream); Policy &&
+            (bExplicitPolicy || Policy->FeatureSchema() == battle::command::GroupPolicyCommitmentFeatureSchema))
         {
             LoadedWeights = std::move(Weights);
-            UE_LOG(LogRegimentBattle, Display, TEXT("Experimental group officer policy loaded: %s"), *Filename);
+            UE_LOG(LogRegimentBattle, Display, TEXT("Experimental group officer policy loaded: schema=%u %s"),
+                Policy->FeatureSchema(), *Filename);
             return Policy;
         }
     }
     UE_LOG(LogRegimentBattle, Warning, TEXT("Group officer policy unavailable, using built-in rules: %s"), *Filename);
     return std::nullopt;
+}
+
+bool LogGroupPolicyOverride(const battle::World& World, uint32 Schema)
+{
+    if (!World.command_state)
+        return false;
+    for (const auto& Runtime : World.command_state->nodes)
+    {
+        const auto& Decisions = Runtime.memory.recent_decisions;
+        if (Decisions.empty() || Decisions.back().tick != World.tick - 1 ||
+            !Decisions.back().explanation.ends_with(battle::command::GroupPolicyOverrideExplanation))
+            continue;
+        UE_LOG(LogRegimentBattle, Display, TEXT("Experimental group officer policy override: schema=%u tick=%llu group=%llu %s"),
+            Schema, Decisions.back().tick, Runtime.node.value, UTF8_TO_TCHAR(Decisions.back().explanation.c_str()));
+        return true;
+    }
+    return false;
 }
 
 bool IsOutsideFormation(const battle::UnitState& Unit, const battle::RegimentState& Regiment)
@@ -1063,6 +1089,7 @@ struct FRegimentBattleSession
     std::optional<battle::NavigationGridGeometry> TraceGrid;
     TOptional<FRegimentMissionProgress> MissionProgress;
     std::optional<battle::command::GroupPolicy> GroupPolicy;
+    bool bLoggedGroupPolicyOverride = false;
     uint64 NextCommandSequence = 1;
     TOptional<battle::Tick> LastDecisionPresentation;
     bool bCampaign = false;
@@ -2085,7 +2112,8 @@ bool ARegimentBattleField::StartBattle()
     std::string PolicyWeights;
     if (bCampaign)
         Session->GroupPolicy = RequestedGroupPolicy(PolicyWeights);
-    Session->Trace.Configure(Session->TraceGrid, std::move(PolicyWeights));
+    const auto Options = RegimentGroupPolicy::SimulationOptions(Session->GroupPolicy ? &*Session->GroupPolicy : nullptr);
+    Session->Trace.Configure(Session->TraceGrid, std::move(PolicyWeights), Options.group_order_commitment);
     if (bCampaign)
     {
         const auto& Preset = Mission->GetPreset();
@@ -3968,9 +3996,7 @@ void ARegimentBattleField::Tick(float DeltaSeconds)
                 Session->LogOpeningCheckpoint();
             continue;
         }
-        battle::SimulationOptions Options;
-        if (Session->GroupPolicy)
-            Options.group_policy = &*Session->GroupPolicy;
+        const auto Options = RegimentGroupPolicy::SimulationOptions(Session->GroupPolicy ? &*Session->GroupPolicy : nullptr);
         if (Simulation.controlled)
             QueueOfficerMotion();
         const bool bMeasureStep = Session->Perf && Session->Perf->IsMeasuring() && !Session->Perf->IsReady();
@@ -3994,6 +4020,8 @@ void ARegimentBattleField::Tick(float DeltaSeconds)
             HudState.Status = ERegimentBattleStatus::Failed;
             return;
         }
+        if (Session->GroupPolicy && !Session->bLoggedGroupPolicyOverride)
+            Session->bLoggedGroupPolicyOverride = LogGroupPolicyOverride(Simulation, Session->GroupPolicy->FeatureSchema());
         for (const auto& Event : Simulation.events)
             if (Event.kind == battle::EventKind::CommandRejected && Event.source == Simulation.controlled &&
                 Event.reason == battle::FieldGunRejectedReason)
