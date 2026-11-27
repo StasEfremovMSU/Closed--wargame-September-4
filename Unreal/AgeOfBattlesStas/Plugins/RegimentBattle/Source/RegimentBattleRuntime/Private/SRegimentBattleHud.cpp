@@ -1797,10 +1797,10 @@ TSharedRef<SWidget> MakeOfficerCommandHint(TWeakObjectPtr<ARegimentBattleField> 
             {
                 const auto Key = OfficerKeyHint(ERegimentOfficerInputAction::Camera);
                 return FText::Format(OfficerState(Field).bFirstPerson
-                    ? LOCTEXT("CameraFromEyes", "{0} · От первого лица")
+                    ? LOCTEXT("CameraFromEyes", "{0} · 1-е лицо")
                     : LOCTEXT("CameraOverShoulder", "{0} · От плеча"), Key);
             }), LOCTEXT("SwitchOfficerView", "Переключить вид от первого лица и вид от плеча"),
-                172.f, FSlateColor(OfficerControlTint), FOnClicked::CreateLambda([Field]
+                146.f, FSlateColor(OfficerControlTint), FOnClicked::CreateLambda([Field]
                 {
                     if (auto* Battle = Field.Get())
                         Battle->ToggleOfficerView();
@@ -1817,7 +1817,7 @@ TSharedRef<SWidget> MakeOfficerCommandHint(TWeakObjectPtr<ARegimentBattleField> 
             [
                 MakeControl(LOCTEXT("OfficerCommandsPrompt", "Tab · Приказы"),
                     LOCTEXT("OfficerCommandsPromptHelp", "Открыть приказы клавишей Tab"),
-                    132.f, FSlateColor(OfficerControlTint), FOnClicked::CreateLambda([Field]
+                    156.f, FSlateColor(OfficerControlTint), FOnClicked::CreateLambda([Field]
                     {
                         if (auto* Battle = Field.Get())
                             Battle->ToggleOfficerCommands();
