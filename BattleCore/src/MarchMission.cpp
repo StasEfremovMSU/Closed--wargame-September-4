@@ -407,6 +407,7 @@ void AdmitCrossing(std::span<const MarchRegiment> previous, std::span<MarchRegim
 
 FormationSpec TravelColumnFormation(FormationSpec battle_line) {
     battle_line.columns = std::max(1u, battle_line.columns / 2 + battle_line.columns % 2);
+    battle_line.shape = FormationShape::Rectangle;
     const float compact_spacing = std::max(2.f * battle_line.body_radius_m,
                                            .8f * battle_line.spacing_m);
     battle_line.spacing_m = std::min(battle_line.spacing_m, compact_spacing);

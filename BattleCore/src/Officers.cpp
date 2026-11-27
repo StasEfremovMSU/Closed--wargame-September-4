@@ -149,7 +149,7 @@ Vec3 AttackPosition(Vec3 from, Vec3 target, float range) {
 
 bool ApplyLinearInfantryTactics(World &w, RegimentState &r, const NavigationService &navigation,
                                Perception &perception, Decision &decision, bool active_order) {
-    if (!UsesLinearInfantry(w, r) || r.panic ||
+    if (r.formation.shape != FormationShape::Rectangle || !UsesLinearInfantry(w, r) || r.panic ||
         (!IsHolding(decision.action) && !IsAttacking(decision.action)))
         return false;
 
@@ -481,6 +481,7 @@ void UpdateOfficers(World &w, const NavigationService &nav) {
             if (r.order->move_columns) {
                 auto widened = r;
                 widened.formation.columns = std::min(*r.order->move_columns, uint32_t(r.units.size()));
+                widened.formation.shape = FormationShape::Rectangle;
                 const auto plan = FindFormationRoute(nav, w, widened, r.pose);
                 fits = plan.status == Status::Ok &&
                        FormationRouteSegmentClear(w, widened, r.pose) &&
@@ -534,6 +535,12 @@ void UpdateOfficers(World &w, const NavigationService &nav) {
                                            "hold: no commander, awaiting explicit order";
         } else
             d = Evaluate(p, traits, active ? &resolved : nullptr);
+        if (!active && !r.panic && HasOutwardRanks(r.formation.shape) && !IsWithdrawing(d.action)) {
+            d.action = OrderType::HoldLine;
+            d.target = {};
+            d.point = r.pose.position;
+            d.reason = "hold the closed formation";
+        }
         if (!r.panic && r.pursuit_target) {
             if (const auto *enemy = FindRegiment(w, r.pursuit_target); enemy && enemy->panic) {
                 d.action = OrderType::Pursue;

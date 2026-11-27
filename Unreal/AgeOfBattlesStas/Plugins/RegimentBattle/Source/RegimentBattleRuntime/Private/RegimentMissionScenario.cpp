@@ -912,6 +912,12 @@ battle::Scenario BuildPresetBattle(const FMissionPreset& Preset, std::span<const
                 Unit.ammunition = Infantry->Pilum->Ammunition;
                 Unit.ranged_attack = Infantry->Pilum->Weapon;
             }
+            if (Troop.MountedJavelin)
+            {
+                Unit.ranged_weapon = battle::RangedWeapon::Javelin;
+                Unit.ammunition = Troop.MountedJavelin->Stock;
+                Unit.ranged_attack = Troop.MountedJavelin->Weapon;
+            }
         }
     }
     if (Preset.bSmokeExercise && !Era)

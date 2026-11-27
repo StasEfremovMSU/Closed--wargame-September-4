@@ -235,6 +235,22 @@ bool ReadRules(const FManifestObject& Root, FRegimentEraDefinition& Era)
     return true;
 }
 
+bool ReadWeapon(const FManifestObject& Data, battle::WeaponSpec& Weapon)
+{
+    int32 Cooldown;
+    int32 Windup;
+    if (!Data.Float(TEXT("damage"), 0, 10000, Weapon.damage) ||
+        !Data.Float(TEXT("range"), 0.001, 1000, Weapon.range) ||
+        !Data.Integer(TEXT("cooldown_ticks"), 1, 1200, Cooldown) ||
+        !Data.Integer(TEXT("windup_ticks"), 0, 1200, Windup) ||
+        !Data.Float(TEXT("projectile_speed_mps"), 0.001, 1000, Weapon.projectile_speed_mps) ||
+        !Data.Float(TEXT("base_accuracy"), 0, 1, Weapon.base_accuracy))
+        return false;
+    Weapon.cooldown_ticks = static_cast<battle::Tick>(Cooldown);
+    Weapon.windup_ticks = static_cast<battle::Tick>(Windup);
+    return true;
+}
+
 bool ReadArchetypes(const FManifestObject& Root, TMap<FString, FRegimentEraTroop>& Archetypes)
 {
     const TSharedPtr<FJsonObject>* Object;
@@ -254,19 +270,11 @@ bool ReadArchetypes(const FManifestObject& Root, TMap<FString, FRegimentEraTroop
         const FManifestObject Data{*Value->AsObject(), Path, Root.Error};
 
         FRegimentEraTroop Troop;
-        auto& Weapon = Troop.Weapon;
-        int32 Cooldown;
-        int32 Windup;
         if (!Data.DisplayText(TEXT("name"), Troop.Name, MaxNameLength) ||
             !Data.Float(TEXT("health"), 0.001, 10000, Troop.Health) ||
             !Data.Float(TEXT("speed"), 0, 50, Troop.Speed) ||
             !Data.Float(TEXT("armour"), 0, 10000, Troop.Armour) ||
-            !Data.Float(TEXT("damage"), 0, 10000, Weapon.damage) ||
-            !Data.Float(TEXT("range"), 0.001, 1000, Weapon.range) ||
-            !Data.Integer(TEXT("cooldown_ticks"), 1, 1200, Cooldown) ||
-            !Data.Integer(TEXT("windup_ticks"), 0, 1200, Windup) ||
-            !Data.Float(TEXT("projectile_speed_mps"), 0.001, 1000, Weapon.projectile_speed_mps) ||
-            !Data.Float(TEXT("base_accuracy"), 0, 1, Weapon.base_accuracy))
+            !ReadWeapon(Data, Troop.Weapon))
             return false;
         if (Data.Json.HasField(TEXT("description")) &&
             !Data.DisplayText(TEXT("description"), Troop.Description, MaxDescriptionLength))
@@ -335,8 +343,23 @@ bool ReadArchetypes(const FManifestObject& Root, TMap<FString, FRegimentEraTroop
         {
             return Data.Invalid(TEXT("ammunition"), TEXT("requires a ranged weapon"));
         }
-        Weapon.cooldown_ticks = static_cast<battle::Tick>(Cooldown);
-        Weapon.windup_ticks = static_cast<battle::Tick>(Windup);
+        if (Data.Json.HasField(TEXT("mounted_javelin")))
+        {
+            if (Troop.Cavalry != battle::CavalryClass::Light || Troop.RangedWeapon != battle::RangedWeapon::None)
+                return Data.Invalid(TEXT("mounted_javelin"), TEXT("requires a light cavalry melee profile"));
+            const TSharedPtr<FJsonObject>* JavelinObject;
+            if (!Data.Object(TEXT("mounted_javelin"), JavelinObject))
+                return false;
+            const FManifestObject Javelin{**JavelinObject, Path + TEXT(".mounted_javelin"), Root.Error};
+            FRegimentMountedJavelin Sidearm;
+            int32 Stock;
+            if (!ReadWeapon(Javelin, Sidearm.Weapon) || !Javelin.Integer(TEXT("ammunition"), 1, 1000, Stock))
+                return false;
+            if (Sidearm.Weapon.range <= Troop.Weapon.range)
+                return Javelin.Invalid(TEXT("range"), TEXT("must exceed the melee weapon's reach"));
+            Sidearm.Stock = static_cast<uint32>(Stock);
+            Troop.MountedJavelin = Sidearm;
+        }
         Archetypes.Add(Id, MoveTemp(Troop));
     }
     return true;

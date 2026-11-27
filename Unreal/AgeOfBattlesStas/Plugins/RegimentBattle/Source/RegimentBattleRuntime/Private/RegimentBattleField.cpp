@@ -428,6 +428,7 @@ struct FUnitView : FFigureComponents
     bool bPoseInitialized = false;
     bool bPoseWasMoving = false;
     bool bDagger = false;
+    bool bRoofShield = false;
     bool bPlatformVisible = false;
     TOptional<FHitVisual> Hit;
     TOptional<FDeathVisual> Death;
@@ -436,7 +437,7 @@ struct FUnitView : FFigureComponents
     {
         DestroyFigure();
         static_cast<FFigureComponents&>(*this) = {};
-        bPoseInitialized = bPoseWasMoving = bDagger = false;
+        bPoseInitialized = bPoseWasMoving = bDagger = bRoofShield = false;
     }
 
     double HitWeight(uint64 Tick) const
@@ -708,7 +709,7 @@ void AddProxyFigure(FInstanceBatch& Batch, const FTransform& Transform, const ba
     const FLinearColor Timber = FLinearColor(.15f, .078f, .039f) * Appearance.LeatherShade;
     const FLinearColor Steel(.24f, .26f, .28f);
     const bool bMounted = Unit.troop == battle::UnitTroop::Mounted;
-    const double Height = bMounted ? (bBakedBody ? RegimentHistoricalRiderHeight : 105.0) : 0.0;
+    const double Height = bMounted ? (bBakedBody ? RegimentHistoricalSeatOffset(Dress) : 105.0) : 0.0;
     const double Stature = ProxyFigureStature(Command);
     if (!bBakedBody)
     {
@@ -884,6 +885,25 @@ UInstancedStaticMeshComponent* NewBayonetMusket(AActor& Owner, USceneComponent& 
     return Musket;
 }
 
+UInstancedStaticMeshComponent* NewHistoricalMount(AActor& Owner, USceneComponent& Parent,
+    const FAncientMeshBatch& Model, UMaterialInterface* Paint, UMaterialInterface* CoatMaterial,
+    const FRegimentHorseCoat& Coat)
+{
+    auto* Mount = NewFigureComponent<UInstancedStaticMeshComponent>(Owner, Parent);
+    Mount->SetStaticMesh(Model.Mesh.Get());
+    if (Model.PaintSlot != INDEX_NONE && Paint)
+        Mount->SetMaterial(Model.PaintSlot, Paint);
+    if (Model.CoatSlot != INDEX_NONE && CoatMaterial)
+    {
+        Mount->SetMaterial(Model.CoatSlot, CoatMaterial);
+        Mount->SetNumCustomDataFloats(RegimentFigurePartDataCount);
+    }
+    AddPaintedPart(*Mount, FTransform::Identity, Coat.Body, ERegimentFigureSurface::Leather);
+    Mount->RegisterComponent();
+    Mount->SetComponentTickEnabled(false);
+    return Mount;
+}
+
 UInstancedStaticMeshComponent* NewMount(AActor& Owner, USceneComponent& Parent,
     UStaticMesh& Block, UMaterialInterface* PartMaterial, UMaterialInterface* FallbackMaterial,
     const FRegimentHorseCoat& Coat)
@@ -981,6 +1001,12 @@ struct FRegimentBattleSession
 
     battle::World Simulation;
     const FRegimentEraFaction* Factions[2] = {};
+    FStringView EraId;
+    RegimentOfficerOrders::FFormationContext FormationContext(int32 Team) const
+    {
+        const auto* Faction = Factions[Team == 0 ? 0 : 1];
+        return {EraId, Faction ? FStringView(Faction->Id) : FStringView()};
+    }
     const FRegimentEraTroop* MountedProfiles[MissionRosterCapacity] = {};
     bool bAncient = false;
     TOptional<FRegimentBattleOpening> Opening;
@@ -1064,6 +1090,7 @@ struct FRegimentBattleSession
     TArray<ERegimentHistoricalFigure> HistoricalFigures;
     TMap<ERegimentHistoricalFigure, FAncientMeshBatch> HistoricalDress;
     TMap<ERegimentHistoricalFigure, FAncientMeshBatch> HistoricalProxies;
+    TMap<ERegimentHistoricalFigure, FAncientMeshBatch> HistoricalMounts;
     TMap<ERegimentHistoricalFigure, FAncientMeshBatch> HistoricalTack;
     TMap<battle::RangedWeapon, FAncientMeshBatch> LooseWeapons;
     TMap<ERegimentHistoricalFigure, FAncientMeshBatch> SengokuWeapons;
@@ -1735,7 +1762,8 @@ struct FRegimentBattleSession
             Body->SetWorldTransform(Transform);
             if (auto* Horse = Fall.Components.Mount.Get())
             {
-                FTransform MountTransform(Lean * Fall.MountRotation, Fall.Death.GroundLocation);
+                FTransform MountTransform(Lean * Fall.MountRotation, Fall.Death.GroundLocation,
+                    Horse->GetComponentTransform().GetScale3D());
                 const auto MountBounds = Horse->CalcBounds(MountTransform);
                 const double Clearance = Fall.Death.GroundLocation.Z + MountBounds.BoxExtent.Z - MountBounds.Origin.Z;
                 MountTransform.AddToTranslation(FVector(0, 0, Clearance));
@@ -2097,6 +2125,7 @@ bool ARegimentBattleField::StartBattle()
         if (const auto* Era = RegimentEraCatalog::Find(Selection.Id))
         {
             EraId = Era->Id;
+            Session->EraId = EraId;
             Session->bAncient = Era->Id == TEXT("ancient");
             bNapoleonic = Era->Id == TEXT("napoleonic");
             Session->Factions[0] = RegimentEraCatalog::FindFaction(*Era, Selection.BlueFaction);
@@ -2162,9 +2191,14 @@ bool ARegimentBattleField::StartBattle()
             if (Dress != ERegimentHistoricalFigure::None && !Session->HistoricalDress.Contains(Dress))
             {
                 Session->HistoricalDress.Add(Dress).Create(*this, BuildRegimentHistoricalDress(Dress), BaseMaterial);
+                const auto Mount = bMounted ? BuildRegimentHistoricalMount(Dress) : FRegimentAncientFigure{};
+                const bool bHasHistoricalMount = !Mount.Parts.IsEmpty();
                 Session->HistoricalProxies.Add(Dress).Create(*this, BuildRegimentHistoricalProxy(Dress), BaseMaterial,
-                    bMounted && Dress >= ERegimentHistoricalFigure::Egyptian);
-                if (bMounted)
+                    bMounted && (bHasHistoricalMount || Dress >= ERegimentHistoricalFigure::Egyptian));
+                auto* GeneratedMount = bHasHistoricalMount ? &Session->HistoricalMounts.Add(Dress) : nullptr;
+                if (GeneratedMount)
+                    GeneratedMount->Create(*this, Mount, BaseMaterial, true);
+                if (bMounted && (!GeneratedMount || !GeneratedMount->Mesh))
                     Session->HistoricalTack.Add(Dress).Create(*this, BuildRegimentHistoricalTack(Dress), BaseMaterial);
                 if (bSengoku)
                 {
@@ -2868,7 +2902,8 @@ void ARegimentBattleField::IssueOfficerOrder(ERegimentPlayerOrder Order, bool bA
                 }
         }
     ShowOfficerNotice(RegimentOfficerOrders::QueueOrder(World, *Session->Navigation,
-        {SelectedOfficerRegiment}, Order, Cursor, Session->PendingCommands, Session->NextCommandSequence));
+        {SelectedOfficerRegiment}, Order, Cursor, Session->PendingCommands, Session->NextCommandSequence,
+        Session->FormationContext(Regiment ? Regiment->team : 0)));
 }
 
 TConstArrayView<FRegimentFieldLine> ARegimentBattleField::GetFieldLines() const
@@ -3689,6 +3724,11 @@ void ARegimentBattleField::UpdateOfficerCamera(float DeltaSeconds)
     OfficerHudState.RegimentCondition = Regiment ? FText::Format(LOCTEXT("OfficerRegimentCondition",
         "{0}/{1} в строю  ·  Дух {2}  ·  Усталость {3}"), int32(Regiment->units.size()), int32(Regiment->initial_count),
         FText::AsPercent(Regiment->morale), FText::AsPercent(Regiment->fatigue)) : FText::GetEmpty();
+    OfficerHudState.Formation = Regiment ? RegimentOfficerOrders::FormationName(Regiment->formation.shape) : FText::GetEmpty();
+    OfficerHudState.ActiveSpecialFormation = Regiment ? RegimentSpecialFormationBit(
+        RegimentOfficerOrders::FormationOrder(Regiment->formation.shape)) : 0;
+    OfficerHudState.SpecialFormations = Regiment && OfficerInput.bCommandsOpen ? RegimentOfficerOrders::SpecialFormations(
+        World, *Regiment, Session->FormationContext(Regiment->team)) : 0;
 
     if (!Controller)
         return;
@@ -4347,6 +4387,10 @@ bool ARegimentBattleField::PresentFrame()
     if (!SteelProp)
         SteelProp = WeaponMaterial;
 
+    const bool bHasTestudo = std::ranges::any_of(Simulation.regiments, [](const auto& Regiment)
+    {
+        return Regiment.formation.shape == battle::FormationShape::Testudo;
+    });
     for (int32 Index = 0; Index < int32(Simulation.units.size()); ++Index)
     {
         const auto& Unit = Simulation.units[Index];
@@ -4469,6 +4513,10 @@ bool ARegimentBattleField::PresentFrame()
         const auto Visual = EraFaction ? EraFaction->Visual : ERegimentEraVisual::Classic;
         const double EraScale = RegimentEraFigureScale(Visual);
         const auto Dress = Session->HistoricalFigures[Index];
+        const auto* HistoricalMount = bMounted ? Session->HistoricalMounts.Find(Dress) : nullptr;
+        const bool bHistoricalMount = HistoricalMount && HistoricalMount->Mesh;
+        const double SeatOffset = bMounted ? RegimentHistoricalSeatOffset(Dress) : 0.0;
+        const double RiderHeight = SeatOffset * (bHistoricalMount ? EraScale : 1.0);
         auto* HistoricalDress = Session->HistoricalDress.Find(Dress);
         auto* Headgear = HistoricalDress ? nullptr : Session->EraHeadgear.Find(Visual);
         auto* Tack = bMounted ? Session->HistoricalTack.Find(Dress) : nullptr;
@@ -4486,7 +4534,7 @@ bool ARegimentBattleField::PresentFrame()
         {
             if (bSashimono)
                 Session->SengokuBanners.Batches[Side].Transforms.Emplace(Facing,
-                    Ground + FVector(0, 0, bMounted ? RegimentHistoricalRiderHeight : 0.0), FVector(EraScale));
+                    Ground + FVector(0, 0, RiderHeight), FVector(EraScale));
         };
         const auto AddHeadgear = [&](const FQuat& Facing, double AboveGround)
         {
@@ -4498,7 +4546,7 @@ bool ARegimentBattleField::PresentFrame()
             if (HistoricalDress && HistoricalDress->Mesh)
                 HistoricalDress->Batches[Side].Transforms.Emplace(
                     Facing, Ground + FVector(0, 0, RiderHeight), FVector(EraScale));
-            if (Tack && Tack->Mesh)
+            if (!bHistoricalMount && Tack && Tack->Mesh)
                 Tack->Batches[Side].Transforms.Emplace(Facing, Ground, FVector(EraScale));
         };
         const bool bMusket = CommandFigure == ECommandFigure::None && RegimentShowsBayonetMusket(Unit, EraFaction);
@@ -4508,7 +4556,13 @@ bool ARegimentBattleField::PresentFrame()
         const bool bUsesShield = (ShieldStyle.IsSet() || bFallbackShield) && !Unit.archer && !bMusket &&
             CommandFigure == ECommandFigure::None;
         auto* PaintedShield = bUsesShield && ShieldStyle ? Session->AncientShields.Find(*ShieldStyle) : nullptr;
-        const FVector ShieldAt = bMounted ? FVector(17, -30, 106 + RegimentHistoricalRiderHeight) : FVector(26, -24, 104);
+        const FVector ShieldAt = bMounted ? FVector(17, -30, 106 + RiderHeight) : FVector(26, -24, 104);
+        const auto* ShieldRegiment = bHasTestudo && PaintedShield && !bMounted &&
+            Unit.control == battle::ControlMode::FormationControlled && !Unit.skirmisher && !Unit.skirmisher_returning
+            ? battle::FindRegiment(Simulation, Unit.regiment) : nullptr;
+        const bool bRoofShield = ShieldRegiment && ShieldRegiment->formation.shape == battle::FormationShape::Testudo &&
+            !ShieldRegiment->panic && !ShieldRegiment->melee_engaged && Unit.slot_index >= ShieldRegiment->formation.columns;
+        const FVector RoofShieldAt(10, 0, 172);
         const double BasePikeLength = Dress == ERegimentHistoricalFigure::SengokuAshigaru
             ? FMath::Clamp(Unit.weapon.range * 100.0, 245.0, 320.0)
             : Session->PikeLength(Side, bMounted, Dress);
@@ -4533,12 +4587,13 @@ bool ARegimentBattleField::PresentFrame()
                 ProxyColors[Side], View.Appearance);
             AddHeadgear(Rotation, ((bMounted ? 105.0 : 0.0) + 156.0 * ProxyFigureStature(CommandFigure)) * EraScale);
             if (PaintedShield && PaintedShield->Mesh)
-                PaintedShield->Batches[Side].Transforms.Emplace(Rotation, Transform.TransformPositionNoScale(ShieldAt));
+                PaintedShield->Batches[Side].Transforms.Emplace(
+                    bRoofShield ? Rotation * FRotator(90, 0, 0).Quaternion() : Rotation,
+                    Transform.TransformPositionNoScale(bRoofShield ? RoofShieldAt : ShieldAt));
             if (bShowHandProp)
             {
                 const bool bBowProp = HandWeapon == battle::RangedWeapon::Bow;
-                const double PropHeight = bMounted ? RegimentHistoricalRiderHeight : 0.0;
-                const FVector Grip = Transform.TransformPositionNoScale(FVector(22, bBowProp ? -29 : 29, 92 + PropHeight));
+                const FVector Grip = Transform.TransformPositionNoScale(FVector(22, bBowProp ? -29 : 29, 92 + RiderHeight));
                 const FQuat Pitch = FRotator(bBowProp ? 13.0 : -33.0, 0, 0).Quaternion();
                 HandProp->Batches[Side].Transforms.Emplace(Rotation * Pitch, Grip, FVector(EraScale));
             }
@@ -4605,11 +4660,17 @@ bool ARegimentBattleField::PresentFrame()
                 Figure->RegisterComponent();
                 Figure->SetComponentTickEnabled(false);
                 View.Figure = Figure;
-                if (bMounted && StaffBlock)
+                if (bHistoricalMount)
+                {
+                    View.Mount = NewHistoricalMount(*this, *GetRootComponent(), *HistoricalMount,
+                        FactionMaterials[Side].Get(), FigurePartMaterial.Get(), View.Appearance.Coat);
+                    View.FeetOffset += RiderHeight;
+                }
+                else if (bMounted && StaffBlock)
                 {
                     View.Mount = NewMount(*this, *GetRootComponent(), *StaffBlock, FigurePartMaterial.Get(),
                         TimberMaterial, View.Appearance.Coat);
-                    View.FeetOffset += 54.0;
+                    View.FeetOffset += RiderHeight;
                 }
                 if (Rig->IsValid())
                 {
@@ -4742,6 +4803,19 @@ bool ARegimentBattleField::PresentFrame()
         }
         if (auto* Figure = View.Figure.Get(); Figure && (bSimulationFrame || bNewRich))
         {
+            if (auto* Shield = View.Shield.Get(); PaintedShield && Shield && bRoofShield != View.bRoofShield)
+            {
+                const FVector Forward = Rig->GetMeshForward();
+                const FVector Right = FVector::CrossProduct(FVector::UpVector, Forward);
+                const auto& Local = bRoofShield ? RoofShieldAt : ShieldAt;
+                const FVector ShieldLocation = (Forward * Local.X + Right * Local.Y +
+                    FVector::UpVector * (Local.Z - View.FeetOffset)) / View.MeshScale;
+                const FQuat ShieldRotation = FRotationMatrix::MakeFromXZ(Forward, FVector::UpVector).ToQuat();
+                Shield->SetRelativeTransform(FTransform(
+                    bRoofShield ? ShieldRotation * FRotator(90, 0, 0).Quaternion() : ShieldRotation,
+                    ShieldLocation, FVector(1.0 / View.MeshScale)));
+                View.bRoofShield = bRoofShield;
+            }
             const auto* Attack = Session->Attacks.Find(Id);
             const bool bRecentAttack = Attack && Simulation.tick - Attack->StartTick < AttackPoseTicks;
             const bool bShowPilum = bPilum && !bPolearm && (bRecentAttack ? Attack->bProjectile : Unit.ammunition_remaining > 0);
@@ -4816,7 +4890,8 @@ bool ARegimentBattleField::PresentFrame()
             const double MotionLift = bMounted ? FMath::Sin(View.StridePhase * 2.0) * Gait * 3.0 : 0.0;
             FigureTransform.AddToTranslation(FVector(0, 0, View.FeetOffset + MotionLift));
             if (auto* Horse = View.Mount.Get())
-                Horse->SetWorldTransform(FTransform(FRotator(0.0, View.Facing, 0.0), Location + FVector(0, 0, MotionLift)));
+                Horse->SetWorldTransform(FTransform(FRotator(0.0, View.Facing, 0.0),
+                    Location + FVector(0, 0, MotionLift), FVector(bHistoricalMount ? EraScale : 1.0)));
             FigureTransform.SetScale3D(FVector(View.MeshScale));
             FQuat FigureRotation(FVector::UpVector,
                 FMath::DegreesToRadians(View.Facing) - Rig->GetMeshForwardYaw());
@@ -4938,11 +5013,11 @@ bool ARegimentBattleField::PresentFrame()
                 FVector(.72, .045, .52) / View.MeshScale));
         }
         const FQuat Facing = FRotator(0, View.Facing, 0).Quaternion();
-        AddHeadgear(Facing, Height * .94 + (bMounted ? 54.0 : 0.0));
+        AddHeadgear(Facing, Height * .94 + RiderHeight);
         if (const auto* Figure = View.Figure.Get())
         {
             const FVector Ground = Figure->GetComponentLocation() - FVector(0, 0, View.FeetOffset);
-            AddDress(Facing, Ground, bMounted ? RegimentHistoricalRiderHeight : 0.0);
+            AddDress(Facing, Ground, RiderHeight);
             AddSashimono(Facing, Ground);
         }
     }

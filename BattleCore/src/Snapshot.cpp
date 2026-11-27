@@ -179,6 +179,7 @@ Result<World> Restore(const Snapshot &s) {
             !std::binary_search(w.accepted_sequences.begin(), w.accepted_sequences.end(),
                                 e.sequence) ||
             e.tick < w.tick || uint8_t(e.command.kind) > uint8_t(CommandKind::FireFieldGun) ||
+            e.command.formation.shape > FormationShape::Circle ||
             !Finite(e.command.pose) || !Finite(e.command.velocity) ||
             !ValidOrderShape(e.command.order))
             return bad("invalid queued command");
@@ -253,6 +254,10 @@ struct Hash {
         n(s.columns);
         f(s.spacing_m);
         f(s.body_radius_m);
+        if (s.shape != FormationShape::Rectangle) {
+            n(0x5348415045ull);
+            n(uint8_t(s.shape));
+        }
     }
     void weapon(const WeaponSpec &s) {
         f(s.damage);

@@ -148,6 +148,21 @@
       "description": "Тяжёлая рыцарская конница. Доспех и копьё рассчитаны на удар в сомкнутом строю.",
       "cavalry_class": "heavy"
     },
+    "livonian_knights": {
+      "name": "Ливонские орденские рыцари",
+      "description": "Орденские всадники в кольчугах, с щитами и длинными копьями для сомкнутой атаки.",
+      "health": 30,
+      "speed": 5.9,
+      "armour": 1.25,
+      "damage": 4.4,
+      "range": 2.85,
+      "cooldown_ticks": 25,
+      "windup_ticks": 5,
+      "projectile_speed_mps": 20,
+      "base_accuracy": 0.8,
+      "cavalry_class": "heavy",
+      "mounted_weapon": "lance"
+    },
     "light_cavalry": {
       "name": "Лёгкие всадники",
       "health": 21,
@@ -307,10 +322,11 @@
         "swords": "armoured",
         "archers": "bowmen",
         "spearmen": "spear",
-        "mounted": "knights"
+        "mounted": "livonian_knights"
       },
       "mounted_variants": {
-        "light": "order_sergeants"
+        "light": "order_sergeants",
+        "heavy": "livonian_knights"
       },
       "ranged_variants": {
         "crossbow": "crossbowmen"

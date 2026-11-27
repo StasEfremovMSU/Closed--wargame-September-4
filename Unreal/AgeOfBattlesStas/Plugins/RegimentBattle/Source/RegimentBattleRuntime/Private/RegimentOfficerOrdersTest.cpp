@@ -55,6 +55,71 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentOfficerOrderPresentationTest, "Regimen
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentManeuverOrderTest, "RegimentBattle.ManeuverOrder",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentSpecialFormationsTest, "RegimentBattle.SpecialFormations",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+
+bool FRegimentSpecialFormationsTest::RunTest(const FString&)
+{
+    using namespace RegimentOfficerOrders;
+    using battle::FormationShape;
+    using battle::UnitTroop;
+    using Order = ERegimentPlayerOrder;
+    const battle::RegimentId Friendly{1};
+    const battle::FlatNavigationService Navigation;
+    const auto Check = [&](ERegimentPlayerOrder Action, FormationShape Shape, FFormationContext Context,
+        UnitTroop Troop, battle::CavalryClass Cavalry = {}, bool bLinear = false)
+    {
+        auto Scenario = MakeOfficerOrderWorld().scenario;
+        Scenario.rules.linear_infantry = bLinear;
+        Scenario.regiments[0].skirmisher_count = 0;
+        Scenario.regiments[1].pose.position.x = 70.f;
+        auto Unit = Scenario.units.front();
+        Unit.troop = Troop;
+        Unit.cavalry = Cavalry;
+        Unit.ranged_weapon = bLinear ? battle::RangedWeapon::Musket : battle::RangedWeapon::None;
+        Unit.archer = bLinear;
+        Scenario.units[0] = Unit;
+        Unit.id = {11};
+        Scenario.units[1] = Unit;
+        for (uint64 Index = 0; Index < 24; ++Index)
+        {
+            Unit.id = {100 + Index};
+            Scenario.units.push_back(Unit);
+        }
+        auto World = battle::CreateWorld(Scenario, 42).value;
+        auto* Regiment = battle::FindRegiment(World, Friendly);
+        if (!TestNotNull(TEXT("Formation fixture creates a regiment"), Regiment) ||
+            !TestTrue(TEXT("Formation fixture possesses its commander"), battle::AcquireControl(World, {10}) == battle::Status::Ok))
+            return;
+        const auto Mask = SpecialFormations(World, *Regiment, Context);
+        const bool bAllowed = Shape != FormationShape::Rectangle;
+        TestEqual(TEXT("Officer sees this order only where appropriate"),
+            (Mask & RegimentSpecialFormationBit(Action)) != 0, bAllowed);
+        std::vector<battle::CommandEnvelope> Pending;
+        uint64 Sequence = 1;
+        QueueOrder(World, Navigation, Friendly, Action, {}, Pending, Sequence, Context);
+        if (!TestEqual(TEXT("Only a permitted special formation is sent"), Pending.size(), bAllowed ? size_t(1) : size_t(0)) || !bAllowed)
+            return;
+        TestTrue(TEXT("Formation uses the existing reform command"), Pending.front().command.kind == battle::CommandKind::ReformRegiment);
+        TestTrue(TEXT("Reform carries the actual new geometry"), Pending.front().command.formation.shape == Shape);
+        QueueOrder(World, Navigation, Friendly, Order::Line, {}, Pending, Sequence, Context);
+        if (TestEqual(TEXT("The line order can immediately cancel a queued special formation"), Pending.size(), size_t(2)))
+            TestTrue(TEXT("Line restores rectangular geometry"), Pending.back().command.formation.shape == FormationShape::Rectangle);
+        Pending.resize(1);
+        if (TestTrue(TEXT("The simulation consumes the officer's formation command"), bool(battle::Step(World, Pending, {}, Navigation))))
+            TestTrue(TEXT("The selected special formation stays active when the officer's AI updates"),
+                battle::FindRegiment(World, Friendly)->formation.shape == Shape);
+    };
+    Check(Order::Wedge, FormationShape::Wedge, {TEXT("high_medieval"), TEXT("livonian_order")}, UnitTroop::Mounted, battle::CavalryClass::Heavy);
+    Check(Order::Wedge, FormationShape::Rectangle, {TEXT("ancient"), TEXT("carthage")}, UnitTroop::Mounted, battle::CavalryClass::Light);
+    Check(Order::Square, FormationShape::Square, {TEXT("napoleonic"), TEXT("france")}, UnitTroop::Infantry, {}, true);
+    Check(Order::Testudo, FormationShape::Testudo, {TEXT("ancient"), TEXT("rome")}, UnitTroop::Infantry);
+    Check(Order::Testudo, FormationShape::Rectangle, {TEXT("ancient"), TEXT("rome")}, UnitTroop::Spearman);
+    Check(Order::Circle, FormationShape::Circle, {TEXT("high_medieval"), TEXT("rus")}, UnitTroop::Spearman);
+    Check(Order::Circle, FormationShape::Rectangle, {TEXT("napoleonic"), TEXT("france")}, UnitTroop::Infantry, {}, true);
+    return !HasAnyErrors();
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentPendingOfficerPreviewTest, "RegimentBattle.PendingOfficerPreview",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 

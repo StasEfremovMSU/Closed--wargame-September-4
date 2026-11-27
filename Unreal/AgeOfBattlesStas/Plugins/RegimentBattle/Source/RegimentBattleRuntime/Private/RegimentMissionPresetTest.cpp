@@ -539,6 +539,67 @@ bool FRegimentMissionPresetTroopProfilesTest::RunTest(const FString&)
     return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentMissionHistoricalCavalryTest, "RegimentBattle.MissionPresets.HistoricalCavalry",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+
+bool FRegimentMissionHistoricalCavalryTest::RunTest(const FString&)
+{
+    const struct
+    {
+        const TCHAR* Era;
+        const TCHAR* Faction;
+        int32 Slot;
+        ERegimentMountClass Selection;
+        battle::CavalryClass Cavalry;
+        const TCHAR* Name;
+        uint32 Javelins;
+    } Cases[] = {
+        {TEXT("ancient"), TEXT("carthage"), 8, ERegimentMountClass::Light, battle::CavalryClass::Light,
+            TEXT("Нумидийская лёгкая конница"), 3},
+        {TEXT("high_medieval"), TEXT("livonian_order"), 8, ERegimentMountClass::Heavy, battle::CavalryClass::Heavy,
+            TEXT("Ливонские орденские рыцари"), 0},
+        {TEXT("napoleonic"), TEXT("france"), 3, ERegimentMountClass::Heavy, battle::CavalryClass::Heavy,
+            TEXT("Французские кирасиры"), 0},
+        {TEXT("napoleonic"), TEXT("russia"), 9, ERegimentMountClass::Light, battle::CavalryClass::Light,
+            TEXT("Донские казаки"), 0}
+    };
+    for (const auto& Case : Cases)
+    {
+        const auto* Era = RegimentEraCatalog::Find(Case.Era);
+        FMissionPreset Preset;
+        if (!TestNotNull(Case.Era, Era) ||
+            !TestTrue(TEXT("Loads the era mission"), RegimentMissionPresets::LoadBuiltIn(Era->MissionId, Preset)))
+            return false;
+        (Case.Slot < MissionRegimentsPerTeam ? Preset.Era.BlueFaction : Preset.Era.OrangeFaction) = Case.Faction;
+        Preset.Roster[Case.Slot].MountedClass = Case.Selection;
+
+        const auto Opening = MakeMissionOpening(Preset.Roster, Preset.Terrain, Preset.Field, Preset.FigureTarget);
+        const auto Scenario = BuildPresetBattle(Preset, Opening, EMissionDeployment::AuthoredStart);
+        const auto Regiment = battle::RegimentId{uint64(Case.Slot + 1)};
+        int32 Riders = 0;
+        for (const auto& Unit : Scenario.units)
+        {
+            if (Unit.regiment != Regiment || std::ranges::any_of(Scenario.officers, [&](const auto& Officer) {
+                return Officer.unit == Unit.id;
+            }))
+                continue;
+            ++Riders;
+            TestEqual(TEXT("The named profile reaches each line rider"), FString(UTF8_TO_TCHAR(Unit.name.c_str())),
+                FString(Case.Name));
+            TestTrue(TEXT("The profile supplies the selected cavalry class"), Unit.cavalry == Case.Cavalry);
+            TestTrue(TEXT("Classified riders retain their mounted melee role"),
+                Unit.troop == battle::UnitTroop::Mounted && !Unit.archer && Unit.weapon.range < 4.f);
+            TestEqual(TEXT("Only the Numidians carry the finite javelin stock"), Unit.ammunition, Case.Javelins);
+            TestTrue(TEXT("Javelins have a separate longer-range weapon"), Case.Javelins
+                ? Unit.ranged_weapon == battle::RangedWeapon::Javelin && Unit.ranged_attack &&
+                    Unit.ranged_attack->range > Unit.weapon.range
+                : !Unit.ranged_attack);
+        }
+        TestTrue(TEXT("The player can field the selected riders"), Riders > 0 && bool(battle::CreateWorld(Scenario, 42)));
+    }
+    return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentMissionPresetEraInvalidTest, "RegimentBattle.MissionPresets.InvalidEra",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 

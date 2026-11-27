@@ -173,6 +173,110 @@ bool FRegimentHistoricalFigureTest::RunTest(const FString&)
     return !HasAnyErrors();
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentCavalrySilhouetteTest, "RegimentBattle.Presentation.CavalrySilhouettes",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+
+bool FRegimentCavalrySilhouetteTest::RunTest(const FString&)
+{
+    using S = ERegimentHistoricalFigure;
+    using F = ERegimentAncientFeature;
+    using M = ERegimentAncientMaterial;
+    using C = battle::CavalryClass;
+    battle::UnitSpec Rider;
+    Rider.troop = battle::UnitTroop::Mounted;
+    const auto StyleFor = [&](const TCHAR* Faction, const TCHAR* Era, C Class)
+    {
+        Rider.cavalry = Class;
+        return RegimentHistoricalStyle(S::None, Faction, Rider, Era);
+    };
+    const auto Livonian = StyleFor(TEXT("livonian_order"), TEXT("high_medieval"), C::Heavy);
+    const auto LivonianLight = StyleFor(TEXT("livonian_order"), TEXT("high_medieval"), C::Light);
+    const auto Cuirassier = StyleFor(TEXT("france"), TEXT("napoleonic"), C::Heavy);
+    const auto Hussar = StyleFor(TEXT("france"), TEXT("napoleonic"), C::Light);
+    const auto Austrian = StyleFor(TEXT("austria"), TEXT("renaissance"), C::Heavy);
+    const auto AustrianLight = StyleFor(TEXT("austria"), TEXT("renaissance"), C::Light);
+    const auto Saxon = StyleFor(TEXT("saxony"), TEXT("great_northern_war"), C::Heavy);
+    const auto SaxonDragoon = StyleFor(TEXT("saxony"), TEXT("great_northern_war"), C::Light);
+    const auto Cossack = StyleFor(TEXT("russia"), TEXT("napoleonic"), C::Light);
+    const auto Numidian = StyleFor(TEXT("carthage"), TEXT("ancient"), C::Light);
+    TestTrue(TEXT("Livonian heavy cavalry has its own silhouette"), Livonian != LivonianLight);
+    TestTrue(TEXT("Don Cossacks are visually distinct from hussars"), Cossack != Hussar);
+    TestEqual(TEXT("Light Austrian horse retains its early modern outfit"), AustrianLight, S::EarlyModernHorse);
+    TestEqual(TEXT("Saxon dragoons retain their Great Northern War outfit"), SaxonDragoon, S::NorthernHorse);
+    TestEqual(TEXT("Great Northern War Don Cossacks also use the light Cossack silhouette"),
+        StyleFor(TEXT("russia"), TEXT("great_northern_war"), C::Light), Cossack);
+    TestEqual(TEXT("Renaissance Cossack cavalry uses the light Cossack silhouette"),
+        StyleFor(TEXT("cossacks"), TEXT("renaissance"), C::Light), Cossack);
+    TestEqual(TEXT("Carthaginian light riders are Numidians"), Numidian, S::Numidian);
+
+    const auto BodySize = [&](S Style)
+    {
+        const auto Proxy = BuildRegimentHistoricalProxy(Style);
+        const auto* Body = Proxy.Parts.FindByPredicate([](const auto& Piece) { return Piece.Feature == F::Horse; });
+        return Body ? Body->Transform.GetScale3D() : FVector::ZeroVector;
+    };
+    const FVector LivonianBody = BodySize(Livonian);
+    const FVector CuirassierBody = BodySize(Cuirassier);
+    const FVector CossackBody = BodySize(Cossack);
+    const FVector NumidianBody = BodySize(Numidian);
+    TestTrue(TEXT("Livonian horse has a substantially broader barrel than the light Cossack horse"),
+        LivonianBody.Y >= CossackBody.Y + 12.0);
+    TestTrue(TEXT("Cuirassier horse is longer and taller at the barrel than a hussar horse"),
+        CuirassierBody.X >= BodySize(Hussar).X + 10.0 && CuirassierBody.Z > BodySize(Hussar).Z);
+    TestTrue(TEXT("Austrian and Saxon cuirassiers also ride larger horses than their light counterparts"),
+        BodySize(Austrian).X >= BodySize(AustrianLight).X + 10.0 &&
+        BodySize(Saxon).X >= BodySize(SaxonDragoon).X + 10.0);
+    TestTrue(TEXT("Numidian horse is narrower and shallower than a standard ancient horse"),
+        NumidianBody.Y + 7.0 <= BodySize(S::RomanCavalry).Y && NumidianBody.Z + 6.0 <= BodySize(S::RomanCavalry).Z);
+    TestTrue(TEXT("The Cossack horse keeps a lower barrel than the cuirassier horse"),
+        CossackBody.Z + 8.0 <= CuirassierBody.Z);
+    TestTrue(TEXT("The rider is higher over the larger horse and lower over the smallest one"),
+        RegimentHistoricalSeatOffset(Livonian) > RegimentHistoricalSeatOffset(Cuirassier) &&
+        RegimentHistoricalSeatOffset(Cuirassier) > RegimentHistoricalSeatOffset(Cossack) &&
+        RegimentHistoricalSeatOffset(Cossack) > RegimentHistoricalSeatOffset(Numidian));
+
+    for (const auto Style : {Livonian, Cuirassier, Austrian, Saxon, Cossack, Numidian})
+    {
+        const auto Mount = BuildRegimentHistoricalMount(Style);
+        const auto Proxy = BuildRegimentHistoricalProxy(Style);
+        TestTrue(TEXT("The close mount has one horse and stands at ground level"),
+            Mount.Count(F::Horse) == 1 && FMath::Abs(Mount.Bounds.Min.Z) < 5.0);
+        bool bAllPartsMatch = Proxy.Count(F::Horse) == 1;
+        for (const auto& Part : Mount.Parts)
+            bAllPartsMatch &= Proxy.Parts.ContainsByPredicate([&Part](const auto& ProxyPart)
+            {
+                return Part.Primitive == ProxyPart.Primitive && Part.Material == ProxyPart.Material &&
+                    Part.Feature == ProxyPart.Feature && Part.Transform.Equals(ProxyPart.Transform);
+            });
+        TestTrue(TEXT("The distant silhouette preserves the close horse and its tack"), bAllPartsMatch);
+    }
+
+    const auto LivonianTack = BuildRegimentHistoricalTack(Livonian);
+    TestTrue(TEXT("Livonian barding extends in front of the horse's shoulders"),
+        LivonianTack.Bounds.Max.X > 65.0 && LivonianTack.Parts.ContainsByPredicate([](const auto& Part)
+        {
+            return Part.Material == M::Iron && Part.Transform.GetScale3D().Z >= 34.0;
+        }));
+    TestEqual(TEXT("The Numidian horse displays only a neck strap"), BuildRegimentHistoricalTack(Numidian).Parts.Num(), 1);
+    const auto NapoleonicCrestHeight = BuildRegimentHistoricalDress(Cuirassier).Bounds.Max.Z;
+    for (const auto Style : {Cuirassier, Austrian, Saxon})
+    {
+        const auto Dress = BuildRegimentHistoricalDress(Style);
+        TestTrue(TEXT("A rounded iron breastplate projects from the cuirassier torso"),
+            Dress.Parts.ContainsByPredicate([](const auto& Part)
+            {
+                return Part.Primitive == ERegimentAncientPrimitive::Ellipsoid && Part.Material == M::Iron &&
+                    Part.Transform.GetLocation().X >= 15.0 &&
+                    FMath::IsNearlyEqual(Part.Transform.GetLocation().Z, 110.0, 8.0) &&
+                    Part.Transform.GetScale3D().Y >= 45.0;
+            }));
+        if (Style != Cuirassier)
+            TestTrue(TEXT("Earlier headgear has a lower silhouette than the Napoleonic helmet crest"),
+                Dress.Bounds.Max.Z + 5.0 < NapoleonicCrestHeight);
+    }
+    return !HasAnyErrors();
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentFigureRefreshTest, "RegimentBattle.Presentation.FigureRefresh",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 

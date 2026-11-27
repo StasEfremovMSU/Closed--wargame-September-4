@@ -1,5 +1,6 @@
 #include "battle/World.h"
 #include "battle/Formation.h"
+#include <map>
 #include <set>
 namespace battle {
 namespace {
@@ -28,17 +29,24 @@ Result<Scenario> ValidateScenario(Scenario s) {
         return bad("invalid scenario objective");
     std::set<uint64_t> regs, units, offs, off_units, classified_cavalry_regiments;
     std::set<RegimentId> loose_regiments;
+    std::map<RegimentId, FormationShape> shaped_regiments;
     for (const auto &r : s.regiments) {
         if (!r.id || !regs.insert(r.id.value).second || !Finite(r.pose) || !Finite(r.rally_point) ||
             r.formation.columns == 0 || !std::isfinite(r.formation.spacing_m) ||
             r.formation.spacing_m <= 0 || !std::isfinite(r.formation.body_radius_m) ||
-            r.formation.body_radius_m <= 0 || !std::isfinite(r.speed) || r.speed < 0 ||
+            r.formation.body_radius_m <= 0 || r.formation.shape > FormationShape::Circle ||
+            !std::isfinite(r.speed) || r.speed < 0 ||
             !std::isfinite(r.turn_rate) || r.turn_rate <= 0)
             return bad("invalid or duplicate regiment");
         if (r.deployment_ticks > 1200 || !(r.initial_fatigue >= 0.f && r.initial_fatigue <= 1.f))
             return bad("regiment deployment exceeds 60 seconds or fatigue is outside [0,1]");
         if (r.loose_skirmish)
             loose_regiments.insert(r.id);
+        if (r.formation.shape != FormationShape::Rectangle) {
+            if (r.loose_skirmish)
+                return bad("a loose skirmish formation cannot use a closed shape");
+            shaped_regiments.emplace(r.id, r.formation.shape);
+        }
     }
     for (auto &u : s.units) {
         if (!u.id || !units.insert(u.id.value).second ||
@@ -62,6 +70,9 @@ Result<Scenario> ValidateScenario(Scenario s) {
         if ((u.troop == UnitTroop::Mounted || u.platform != BattlePlatform::None) &&
             loose_regiments.contains(u.regiment))
             return bad("loose skirmish formations require foot troops");
+        if (const auto shape = shaped_regiments.find(u.regiment);
+            shape != shaped_regiments.end() && !CanUseFormationShape(shape->second, u))
+            return bad("unit troop profile does not support the regiment's shape");
         if (IsSiegeEngine(u.platform)) {
             const bool catapult = u.platform == BattlePlatform::Catapult;
             const bool field_gun = u.platform == BattlePlatform::FieldGun;

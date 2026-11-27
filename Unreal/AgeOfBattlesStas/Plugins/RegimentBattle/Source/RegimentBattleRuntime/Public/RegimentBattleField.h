@@ -41,8 +41,21 @@ struct FRegimentBattleHudState
 enum class ERegimentPlayerOrder : uint8
 {
     Line, Column, Hold, Attack, Withdraw, Skirmishers, Follow, NextRegiment, Release,
-    Maneuver, GroupManeuver, Pace, HoldLine, Brace, Pursue, Cover, FireSector, CommandHold, WingHold
+    Maneuver, GroupManeuver, Pace, HoldLine, Brace, Pursue, Cover, FireSector, CommandHold, WingHold,
+    Wedge, Square, Testudo, Circle
 };
+
+constexpr uint8 RegimentSpecialFormationBit(ERegimentPlayerOrder Order)
+{
+    switch (Order)
+    {
+    case ERegimentPlayerOrder::Wedge: return 1;
+    case ERegimentPlayerOrder::Square: return 2;
+    case ERegimentPlayerOrder::Testudo: return 4;
+    case ERegimentPlayerOrder::Circle: return 8;
+    default: return 0;
+    }
+}
 
 enum class ERegimentFieldLineKind : uint8 { Route, Blocked, Front, Fire, FireBlocked, FireFriendly, FireMelee, FireRisk };
 
@@ -116,6 +129,9 @@ struct FRegimentOfficerHudState
     int32 CommandTier = 1;
     FText Regiment;
     FText RegimentCondition;
+    FText Formation;
+    uint8 SpecialFormations = 0;
+    uint8 ActiveSpecialFormation = 0;
     FText Notice;
 };
 

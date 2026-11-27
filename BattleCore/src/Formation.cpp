@@ -1,4 +1,5 @@
 #include "battle/Formation.h"
+#include "CavalryTuning.h"
 #include "LocalMelee.h"
 #include "battle/Officers.h"
 #include <array>
@@ -23,13 +24,19 @@ float OrderedPaceMultiplier(MovementPace pace) {
     default: return 1.f;
     }
 }
-float PaceMultiplier(const RegimentState &regiment) {
+float PaceMultiplier(const World &world, const RegimentState &regiment) {
     if (regiment.panic)
         return 1.f;
     if (regiment.ai_action == OrderType::FallBack)
         return .5f; // An organized retreat preserves the front at half movement.
-    if (regiment.cavalry_phase == CavalryPhase::Approach || regiment.pursuit_target)
-        return 1.45f;
+    constexpr float ChargePace = 1.45f;
+    if (regiment.pursuit_target)
+        return ChargePace;
+    if (regiment.cavalry_phase == CavalryPhase::Approach && !regiment.units.empty()) {
+        const auto tuning = HorseCavalryTuning(*FindUnit(world, regiment.units.front()));
+        const float runup = std::min(1.f, regiment.charge_runup_m / tuning.charge_runup_m);
+        return std::lerp(tuning.charge_start_pace, ChargePace, runup);
+    }
     if (!regiment.order || regiment.order->status != OrderStatus::Active)
         return 1.f;
     return OrderedPaceMultiplier(regiment.order->pace);
@@ -47,7 +54,7 @@ float WheelGroundFactor(const World &world, const RegimentState &regiment, float
     if (turn == 0.f || (!world.scenario.hill && world.scenario.obstacles.empty()))
         return 1.f;
     const auto axis = Forward(turn);
-    const float pace = PaceMultiplier(regiment);
+    const float pace = PaceMultiplier(world, regiment);
     float factor = 1.f;
     for (const auto id : regiment.units) {
         const auto &unit = *FindUnit(world, id);
@@ -81,6 +88,67 @@ bool CanShareTranslation(const World &world, const RegimentState &regiment) {
     return !regiment.units.empty() && !regiment.panic && !regiment.melee_engaged &&
            !regiment.following_officer && !IsDeploying(world, regiment);
 }
+
+uint32_t WedgeRanks(uint32_t count) {
+    uint32_t ranks = 0;
+    for (; count > ranks; ++ranks)
+        count -= ranks;
+    return ranks;
+}
+
+struct PerimeterLayout {
+    uint32_t first_ring_steps;
+    uint32_t points_per_step;
+};
+
+PerimeterLayout Perimeters(uint32_t count, FormationShape shape) {
+    const uint32_t rings = std::clamp(uint32_t(std::sqrt(float(count))) / 4u, 1u, 4u);
+    if (shape == FormationShape::Square) {
+        // Choose enough edge positions for the intended number of ranks, leaving the center open.
+        const uint32_t per_ring = 4 * rings;
+        return {(count - 1) / per_ring + rings, 4};
+    }
+    const uint32_t per_ring = 6 * rings;
+    return {std::max(rings, uint32_t((uint64_t(count) + 3 * rings * (rings - 1) - 1) /
+                                   per_ring + 1)), 6};
+}
+
+float TestudoSpacing(const FormationSpec &formation) {
+    return std::min(formation.spacing_m,
+                    std::max(.60f * formation.spacing_m, 2.f * formation.body_radius_m + .04f));
+}
+
+void SetOutwardSlots(std::vector<Pose> &slots, const FormationSpec &formation, Pose centre,
+                     uint32_t count) {
+    if (count == 1) {
+        slots[0] = centre;
+        return;
+    }
+    const auto forward = Forward(centre.yaw);
+    const auto right = Right(centre.yaw);
+    const auto layout = Perimeters(count, formation.shape);
+    const bool square = formation.shape == FormationShape::Square;
+    uint32_t index = 0;
+    for (auto steps = layout.first_ring_steps; index < count && steps > 0; --steps) {
+        const auto ring_size = uint32_t(std::min<uint64_t>(count - index,
+                                                        uint64_t(steps) * layout.points_per_step));
+        const float extent = float(steps) * formation.spacing_m * (square ? .5f : 1.f);
+        for (uint32_t i = 0; i < ring_size; ++i) {
+            if (square) {
+                const float progress = 4.f * float(i) / float(ring_size);
+                const uint32_t side = std::min(3u, uint32_t(progress));
+                const float along = extent * (2.f * (progress - float(side)) - 1.f);
+                const float yaw = centre.yaw + Pi * .5f * float(side);
+                slots[index++] = {centre.position + Forward(yaw) * extent + Right(yaw) * along, yaw};
+            } else {
+                const float angle = 2.f * Pi * float(i) / float(ring_size);
+                slots[index++] = {centre.position + forward * (extent * std::cos(angle)) +
+                                                   right * (extent * std::sin(angle)), centre.yaw + angle};
+            }
+        }
+    }
+}
+
 void SetFormationSlots(std::vector<Pose> &slots, const FormationSpec &formation, Pose centre,
                        uint32_t count, bool routing = false) {
     if (!formation.columns || !count) {
@@ -88,16 +156,34 @@ void SetFormationSlots(std::vector<Pose> &slots, const FormationSpec &formation,
         return;
     }
     slots.resize(count);
-    const uint32_t rows = (count + formation.columns - 1) / formation.columns;
+    if (HasOutwardRanks(formation.shape)) {
+        SetOutwardSlots(slots, formation, centre, count);
+        return;
+    }
     const auto forward = Forward(centre.yaw);
     const auto right = Right(centre.yaw);
-    const float rout_gap = routing ? std::max(0.f, formation.spacing_m - 2.f * formation.body_radius_m) * .42f : 0.f;
-    const float half_depth = float(rows - 1) * .5f * formation.spacing_m;
-    const float half_width = float(formation.columns - 1) * .5f * formation.spacing_m;
+    if (formation.shape == FormationShape::Wedge) {
+        const uint32_t rows = WedgeRanks(count);
+        for (uint32_t rank = 0, index = 0; rank < rows; ++rank) {
+            const uint32_t files = std::min(rank + 1, count - index);
+            const float x = (float(rows - 1) * .5f - float(rank)) * formation.spacing_m;
+            for (uint32_t file = 0; file < files; ++file) {
+                const float y = (float(file) - float(files - 1) * .5f) * formation.spacing_m;
+                slots[index++] = {centre.position + forward * x + right * y, centre.yaw};
+            }
+        }
+        return;
+    }
+    const uint32_t rows = (count - 1) / formation.columns + 1;
+    const float spacing = formation.shape == FormationShape::Testudo ? TestudoSpacing(formation)
+                                                                     : formation.spacing_m;
+    const float rout_gap = routing ? std::max(0.f, spacing - 2.f * formation.body_radius_m) * .42f : 0.f;
+    const float half_depth = float(rows - 1) * .5f * spacing;
+    const float half_width = float(formation.columns - 1) * .5f * spacing;
     for (uint32_t i = 0; i < count; ++i) {
         const uint32_t rank = i / formation.columns;
-        float x = (float(rows - 1) * .5f - float(rank)) * formation.spacing_m;
-        float y = (float(i % formation.columns) - float(formation.columns - 1) * .5f) * formation.spacing_m;
+        float x = (float(rows - 1) * .5f - float(rank)) * spacing;
+        float y = (float(i % formation.columns) - float(formation.columns - 1) * .5f) * spacing;
         if (rout_gap > 0.f) {
             // Break the standing alignment within the existing swept footprint and body clearance.
             x = std::clamp(x + ((i + rank) % 2 ? rout_gap : -rout_gap), -half_depth, half_depth);
@@ -128,13 +214,66 @@ std::vector<Pose> BuildFormationSlots(const FormationSpec &formation, Pose centr
     SetFormationSlots(slots, formation, centre, count);
     return slots;
 }
-FormationFootprint Footprint(const RegimentState &r) {
-    size_t count = r.slots.empty() ? r.units.size() : r.slots.size();
-    if (!count)
+FormationFootprint Footprint(const FormationSpec &formation, uint32_t count) {
+    if (!count || !formation.columns)
         return {};
-    size_t rows = (count + r.formation.columns - 1) / r.formation.columns;
-    return {(r.formation.columns - 1) * r.formation.spacing_m + 2 * r.formation.body_radius_m,
-            float(rows - 1) * r.formation.spacing_m + 2 * r.formation.body_radius_m};
+    const float body_width = 2 * formation.body_radius_m;
+    if (HasOutwardRanks(formation.shape)) {
+        const auto layout = Perimeters(count, formation.shape);
+        const float side = count == 1 ? 0.f : float(layout.first_ring_steps) * formation.spacing_m *
+            (formation.shape == FormationShape::Square ? 1.f : 2.f);
+        return {side + body_width, side + body_width};
+    }
+    if (formation.shape == FormationShape::Wedge) {
+        const uint32_t rows = WedgeRanks(count);
+        const uint32_t last = count - uint32_t(uint64_t(rows) * (rows - 1) / 2);
+        const uint32_t width = std::max(rows - 1, last);
+        return {float(width - 1) * formation.spacing_m + body_width,
+                float(rows - 1) * formation.spacing_m + body_width};
+    }
+    const uint32_t rows = (count - 1) / formation.columns + 1;
+    const float spacing = formation.shape == FormationShape::Testudo ? TestudoSpacing(formation)
+                                                                     : formation.spacing_m;
+    return {(formation.columns - 1) * spacing + body_width, float(rows - 1) * spacing + body_width};
+}
+
+FormationFootprint Footprint(const RegimentState &r) {
+    return Footprint(r.formation, uint32_t(r.slots.empty() ? r.units.size() : r.slots.size()));
+}
+
+bool IsFormationFrontRank(const RegimentState &regiment, const UnitState &unit) {
+    if (HasOutwardRanks(regiment.formation.shape)) {
+        const auto count = uint32_t(regiment.slots.size());
+        if (unit.slot_index >= count)
+            return false;
+        const auto perimeter = Perimeters(count, regiment.formation.shape);
+        return unit.slot_index < uint64_t(perimeter.first_ring_steps) * perimeter.points_per_step;
+    }
+    if (regiment.formation.shape != FormationShape::Wedge)
+        return unit.slot_index < regiment.formation.columns;
+    const auto count = uint32_t(regiment.slots.size());
+    if (unit.slot_index >= count)
+        return false;
+    uint32_t first = 0;
+    uint32_t width = 1;
+    for (; first + width <= unit.slot_index; ++width)
+        first += width;
+    // Both sloping edges have open ground ahead. The interior files follow behind them.
+    return unit.slot_index == first || unit.slot_index == first + std::min(width, count - first) - 1;
+}
+
+bool IsAtFormationPost(const RegimentState &regiment, const UnitState &unit) {
+    const Vec3 offset = unit.pose.position - unit.slot.position;
+    const float tolerance = std::max(.18f, regiment.formation.spacing_m * .38f);
+    return unit.alive && unit.control == ControlMode::FormationControlled && !unit.skirmisher &&
+           !unit.skirmisher_returning && unit.slot_index < regiment.slots.size() &&
+           offset.x * offset.x + offset.y * offset.y <= tolerance * tolerance;
+}
+
+bool CanUseFormationShape(FormationShape shape, const UnitSpec &unit) {
+    return shape == FormationShape::Rectangle || (unit.platform == BattlePlatform::None &&
+        (shape == FormationShape::Wedge ? unit.troop == UnitTroop::Mounted
+                                       : unit.troop != UnitTroop::Mounted));
 }
 bool UsesLinearInfantry(const World &w, const RegimentState &r) {
     return w.scenario.rules.regiment_tactics && w.scenario.rules.linear_infantry &&
@@ -148,6 +287,7 @@ FormationSpec LinearInfantryFormation(FormationSpec spec, uint32_t count, bool f
     const uint32_t line = std::min(64u, count / 2 + count % 2);
     const uint32_t column = std::min(24u, count / 4);
     spec.columns = std::max(1u, firing_line ? line : column);
+    spec.shape = FormationShape::Rectangle;
     return spec;
 }
 FormationSpec LinearInfantryFormation(const RegimentState &r, bool firing_line) {
@@ -155,7 +295,8 @@ FormationSpec LinearInfantryFormation(const RegimentState &r, bool firing_line) 
 }
 bool IsLinearFiringLine(const RegimentState &r) {
     const auto layout_size = uint32_t(r.slots.empty() ? r.units.size() : r.slots.size());
-    return r.formation.columns >= LinearInfantryFormation(r.formation, layout_size, true).columns;
+    return r.formation.shape == FormationShape::Rectangle &&
+           r.formation.columns >= LinearInfantryFormation(r.formation, layout_size, true).columns;
 }
 namespace {
 void PrioritizeMusketRanks(const World &w, const RegimentState &r,
@@ -175,6 +316,27 @@ std::vector<UnitState *> RankMembers(World &w, const RegimentState &r) {
     for (const auto id : r.units)
         members.push_back(FindUnit(w, id));
     return members;
+}
+
+Vec3 RankPosition(const UnitState &unit) {
+    return unit.control == ControlMode::PlayerControlled || unit.skirmisher || unit.skirmisher_returning
+        ? unit.slot.position : unit.pose.position;
+}
+
+void MatchNearestSlots(std::span<const Pose> slots, std::vector<UnitState *> &members) {
+    for (size_t i = 0; i < slots.size(); ++i) {
+        auto best = members.begin() + i;
+        float best_distance = std::numeric_limits<float>::infinity();
+        for (auto candidate = best; candidate != members.end(); ++candidate) {
+            const Vec3 delta = RankPosition(**candidate) - slots[i].position;
+            const float distance = Dot(delta, delta);
+            if (distance < best_distance) {
+                best_distance = distance;
+                best = candidate;
+            }
+        }
+        std::iter_swap(members.begin() + i, best);
+    }
 }
 } // namespace
 bool RectanglesOverlap(Pose a, FormationFootprint af, Pose b, FormationFootprint bf) {
@@ -465,11 +627,16 @@ void CompleteDeployments(World &w) {
 
 Status ReformRegiment(World &w, RegimentId id, FormationSpec s) {
     if (!s.columns || !std::isfinite(s.spacing_m) || s.spacing_m <= 0 ||
-        !std::isfinite(s.body_radius_m) || s.body_radius_m <= 0)
+        !std::isfinite(s.body_radius_m) || s.body_radius_m <= 0 || s.shape > FormationShape::Circle)
         return Status::InvalidInput;
     auto *r = FindRegiment(w, id);
     if (!r)
         return Status::NotFound;
+    if (s.shape != r->formation.shape && s.shape != FormationShape::Rectangle && (r->loose_skirmish ||
+        std::ranges::any_of(w.scenario.units, [&](const UnitSpec &unit) {
+            return unit.regiment == r->id && !CanUseFormationShape(s.shape, unit);
+        })))
+        return Status::InvalidInput;
     const bool battery = IsArtilleryBattery(w, *r);
     if (battery) {
         // A battery uses one rank even when the order was generated for infantry.
@@ -485,11 +652,23 @@ Status ReformRegiment(World &w, RegimentId id, FormationSpec s) {
         OpenSkirmishSpacing(s);
     if (IsDeploying(w, *r) && (s.columns > r->formation.columns ||
                               s.spacing_m != r->formation.spacing_m ||
-                              s.body_radius_m != r->formation.body_radius_m))
+                              s.body_radius_m != r->formation.body_radius_m ||
+                              s.shape != r->formation.shape))
         return Status::Conflict;
+    const bool special_layout = r->formation.shape != FormationShape::Rectangle ||
+                                s.shape != FormationShape::Rectangle;
+    const bool changed_shape = r->formation.shape != s.shape;
     const bool changed_layout = r->formation != s || r->slots.size() != r->units.size();
     if (changed_layout)
         r->march_lane.reset();
+    if (changed_shape) {
+        r->brace_ready_tick = 0;
+        r->braced = false;
+        r->charge_runup_m = 0.f;
+        r->route.clear();
+        r->waypoint = 0;
+        r->decision_tick = 0;
+    }
     const bool contact_just_ended = r->separate_since && r->separate_since == w.tick;
     r->formation = s;
     std::erase_if(r->units, [&](auto id) {
@@ -498,25 +677,25 @@ Status ReformRegiment(World &w, RegimentId id, FormationSpec s) {
     });
     r->slots = BuildFormationSlots(s, r->pose, uint32_t(r->units.size()));
     auto rank_order = RankMembers(w, *r);
-    if ((changed_layout || contact_just_ended) && w.scenario.rules.regiment_tactics &&
+    if (changed_shape) {
+        MatchNearestSlots(r->slots, rank_order);
+    } else if (special_layout) {
+        // Retain perimeter and rank order when survivors close the old vacancies.
+        std::ranges::stable_sort(rank_order, {}, &UnitState::slot_index);
+    } else if ((changed_layout || contact_just_ended) && w.scenario.rules.regiment_tactics &&
         w.scenario.rules.local_melee) {
         const auto forward = Forward(r->pose.yaw);
         const auto right = Right(r->pose.yaw);
-        const auto rank_position = [](const UnitState *unit) {
-            return unit->control == ControlMode::PlayerControlled ||
-                   unit->skirmisher || unit->skirmisher_returning ?
-                       unit->slot.position : unit->pose.position;
-        };
         // Rear-rank replacements may already be on the front when contact breaks.
         // Keep the physical order of each new rank so neighbors can refill without crossing.
         std::stable_sort(rank_order.begin(), rank_order.end(), [&](const auto *a, const auto *b) {
-            return Dot(rank_position(a), forward) > Dot(rank_position(b), forward);
+            return Dot(RankPosition(*a), forward) > Dot(RankPosition(*b), forward);
         });
         for (size_t i = 0; i < rank_order.size(); i += s.columns) {
             const auto last = std::min(rank_order.size(), i + s.columns);
             std::stable_sort(rank_order.begin() + i, rank_order.begin() + last,
                              [&](const auto *a, const auto *b) {
-                return Dot(rank_position(a), right) < Dot(rank_position(b), right);
+                return Dot(RankPosition(*a), right) < Dot(RankPosition(*b), right);
             });
         }
     }
@@ -595,12 +774,20 @@ static float FormationSpeedAtPace(const World &w, const RegimentState &r, float 
         }
     }
     speed = std::min(speed * pace, engine_limit);
+    if (!r.panic) {
+        switch (r.formation.shape) {
+        case FormationShape::Square: speed *= .60f; break;
+        case FormationShape::Testudo: speed *= .55f; break;
+        case FormationShape::Circle: speed *= .70f; break;
+        default: break;
+        }
+    }
     if (!w.scenario.rules.regiment_tactics)
         return speed;
     return speed * (1.f - .35f * r.fatigue) * (r.disordered ? .70f : 1.f);
 }
 float FormationTravelSpeed(const World &w, const RegimentState &r) {
-    return FormationSpeedAtPace(w, r, PaceMultiplier(r));
+    return FormationSpeedAtPace(w, r, PaceMultiplier(w, r));
 }
 float FormationTravelSpeed(const World &w, const RegimentState &r, OrderType type, MovementPace pace) {
     return FormationSpeedAtPace(w, r, type == OrderType::FallBack ? .5f : OrderedPaceMultiplier(pace));
@@ -897,7 +1084,8 @@ void AdvanceFormations(World &w, float dt, const LocalMelee *contact) {
             continue;
         const bool deploying = IsDeploying(w, r);
         const bool disordered = regiment_tactics && r.disordered;
-        const auto troop = FindUnit(w, r.units.front())->troop;
+        const auto &lead = *FindUnit(w, r.units.front());
+        const auto troop = lead.troop;
         const float fatigue_factor = regiment_tactics ? 1.f - .35f * r.fatigue : 1.f;
         const Pose previous = shared_step[index].value_or(r.pose);
         const auto escape = !shared_step[index] ? LooseSkirmishEscape(w, r) : Vec3{};
@@ -957,8 +1145,10 @@ void AdvanceFormations(World &w, float dt, const LocalMelee *contact) {
                                                  : r.pose;
             const float pressure_factor = 1.f - .35f * r.artillery_pressure;
             // Fleeing figures turn to run without waiting for the whole formation to wheel.
+            const float turn_rate = regiment_tactics
+                ? r.turn_rate * HorseCavalryTuning(lead).turn_scale : r.turn_rate;
             float turn_limit = regiment_tactics && r.panic ? std::max(r.turn_rate, 2 * Pi) * dt
-                : r.turn_rate * dt * fatigue_factor * (disordered ? .65f : 1.f) * pressure_factor;
+                : turn_rate * dt * fatigue_factor * (disordered ? .65f : 1.f) * pressure_factor;
             const float requested_turn = Angle(target.yaw - r.pose.yaw);
             const float speed = FormationTravelSpeed(w, r);
             float movement_budget = speed * dt;
@@ -1093,10 +1283,11 @@ void AdvanceFormations(World &w, float dt, const LocalMelee *contact) {
         if (regiment_tactics && !locked && r.pose == previous)
             r.fatigue = std::max(0.f, r.fatigue - .025f * dt);
         SetFormationSlots(r.slots, r.formation, r.pose, uint32_t(r.slots.size()), regiment_tactics && r.panic);
-        if (regiment_tactics && !locked && !r.panic && !deploying && !withdrawing &&
+        if (regiment_tactics && r.formation.shape == FormationShape::Rectangle &&
+            !locked && !r.panic && !deploying && !withdrawing &&
             r.waypoint >= r.route.size() && !r.following_officer)
             AssignCoverGuardSlots(w, r);
-        const float pace = PaceMultiplier(r);
+        const float pace = PaceMultiplier(w, r);
         const bool guard_stance = regiment_tactics && IsHolding(r.ai_action) && !r.panic &&
                                   !r.following_officer && r.pose.position == previous.position;
         const bool back_step = evading || (regiment_tactics && r.ai_action == OrderType::FallBack &&
@@ -1114,7 +1305,7 @@ void AdvanceFormations(World &w, float dt, const LocalMelee *contact) {
                 contact->AdvanceSkirmisher(*u, r, dt);
                 continue;
             }
-            if (locked)
+            if (locked && (!HasOutwardRanks(r.formation.shape) || IsAtFormationPost(r, *u)))
                 continue;
             if (contact && contact->HoldForWindup(*u))
                 continue;
@@ -1122,6 +1313,8 @@ void AdvanceFormations(World &w, float dt, const LocalMelee *contact) {
             const auto goal = yield_for_officer ? contact->OfficerClearanceGoal(*u, r) : u->slot.position;
             float refill_speed = RankRefillSpeed(*u, pace, fatigue_factor, disordered,
                                                 1.f - .35f * r.artillery_pressure);
+            if (locked)
+                refill_speed *= .65f;
             // A unit already in place has no terrain segment to traverse. Preserve the
             // original arithmetic for unusual inputs where it can change float bit patterns.
             if (from == goal && !HasNegativeZero(from) &&

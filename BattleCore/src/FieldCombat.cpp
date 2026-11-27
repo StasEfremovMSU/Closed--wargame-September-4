@@ -1,4 +1,5 @@
 #include "FieldCombat.h"
+#include "CavalryTuning.h"
 #include "LocalMelee.h"
 #include "battle/Formation.h"
 #include "battle/Officers.h"
@@ -69,11 +70,18 @@ void UpdateCavalry(World &world, RegimentState &regiment) {
 }
 
 void UpdateBrace(World &world, RegimentState &regiment) {
-    const bool ready_to_prepare = regiment.ai_action == OrderType::Brace && !regiment.panic &&
-        !regiment.disordered && !IsDeploying(world, regiment) &&
+    const bool square = regiment.formation.shape == FormationShape::Square;
+    const bool solid_square = square && IsHolding(regiment.ai_action) && !regiment.following_officer &&
+        regiment.waypoint >= regiment.route.size() && regiment.units.size() >= 4 &&
+        (regiment.braced || std::ranges::count_if(regiment.units, [&](UnitId id) {
+            return IsAtFormationPost(regiment, *FindUnit(world, id));
+        }) >= (int64_t(regiment.units.size()) * 3 + 3) / 4);
+    const bool spear_line = !square && regiment.ai_action == OrderType::Brace &&
         std::any_of(regiment.units.begin(), regiment.units.end(), [&](UnitId id) {
             return FindUnit(world, id)->troop == UnitTroop::Spearman;
         });
+    const bool ready_to_prepare = (solid_square || spear_line) && !regiment.panic &&
+        !regiment.disordered && !IsDeploying(world, regiment);
     if (!ready_to_prepare) {
         regiment.braced = false;
         regiment.brace_ready_tick = 0;
@@ -145,13 +153,12 @@ bool ChargeReady(const World &world, const RegimentState &regiment, const UnitSt
                  const UnitState &defender) {
     const bool chariot = attacker.platform == BattlePlatform::ScythedChariot;
     const bool elephant = IsElephant(attacker.platform);
-    const float runup = chariot ? 6.f : elephant ? 2.5f :
-        attacker.cavalry == CavalryClass::Heavy ? 4.f : 3.f;
+    const float runup = chariot ? 6.f : elephant ? 2.5f : HorseCavalryTuning(attacker).charge_runup_m;
     const bool impact = regiment.cavalry_phase == CavalryPhase::Impact &&
                         world.tick < regiment.cavalry_phase_until;
     if ((!impact && regiment.cavalry_phase != CavalryPhase::Approach) ||
         regiment.panic || regiment.disordered || regiment.cavalry_target != defender.regiment ||
-        regiment.charge_runup_m < runup || attacker.slot_index >= regiment.formation.columns ||
+        regiment.charge_runup_m < runup || !IsFormationFrontRank(regiment, attacker) ||
         attacker.skirmisher || attacker.skirmisher_returning || attacker.parry_until > world.tick + 1 ||
         (attacker.troop != UnitTroop::Mounted && !chariot && !elephant))
         return false;

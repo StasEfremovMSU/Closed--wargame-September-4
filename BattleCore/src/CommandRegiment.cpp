@@ -215,6 +215,7 @@ StubResult<DecisionProposal> RegimentBrain::Think(const BrainContext &c) const {
         auto out = finish();
         FormationSpec formation = *c.current_formation;
         formation.columns = *task.formation_columns;
+        formation.shape = FormationShape::Rectangle;
         if (task.formation_spacing_m)
             formation.spacing_m = *task.formation_spacing_m;
         out.value->regiment_directives = RegimentDirectives{formation, std::nullopt, std::nullopt};

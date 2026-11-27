@@ -238,6 +238,7 @@
     },
     "numidian_horse": {
       "name": "Нумидийская лёгкая конница",
+      "mounted_weapon": "blade",
       "health": 20,
       "speed": 7.2,
       "armour": 0.1,
@@ -247,8 +248,17 @@
       "windup_ticks": 3,
       "projectile_speed_mps": 20,
       "base_accuracy": 0.8,
-      "description": "Нумидийские всадники в карфагенском войске. Лёгкий манёвренный конный полк.",
-      "cavalry_class": "light"
+      "description": "Манёвренная конница Карфагена. Каждый всадник несёт три дротика для обстрела перед сближением.",
+      "cavalry_class": "light",
+      "mounted_javelin": {
+        "damage": 2.3,
+        "range": 10,
+        "cooldown_ticks": 22,
+        "windup_ticks": 3,
+        "projectile_speed_mps": 17,
+        "base_accuracy": 0.77,
+        "ammunition": 3
+      }
     },
     "companion_cavalry": {
       "name": "Конница гетайров",

@@ -2,6 +2,7 @@
 
 #include "CoreTypes.h"
 #include "Containers/Map.h"
+#include "Containers/StringView.h"
 #include "Internationalization/Text.h"
 #include <span>
 
@@ -15,6 +16,16 @@ struct FRegimentOrderPresentation;
 
 namespace RegimentOfficerOrders
 {
+struct FFormationContext
+{
+    FStringView Era;
+    FStringView Faction;
+};
+
+uint8 SpecialFormations(const battle::World&, const battle::RegimentState&, FFormationContext);
+ERegimentPlayerOrder FormationOrder(battle::FormationShape);
+FText FormationName(battle::FormationShape);
+
 class FPlayerOrderJournal
 {
 public:
@@ -58,6 +69,6 @@ std::vector<battle::RegimentId> HoldRecipients(const battle::World&, battle::Reg
 std::vector<battle::RegimentId> Regiments(const battle::World& World, battle::UnitId Officer);
 FText QueueOrder(const battle::World& World, const battle::NavigationService& Navigation,
     battle::RegimentId Regiment, ERegimentPlayerOrder Order, std::optional<battle::Vec3> Cursor,
-    std::vector<battle::CommandEnvelope>& Pending, uint64& NextSequence);
+    std::vector<battle::CommandEnvelope>& Pending, uint64& NextSequence, FFormationContext FormationContext = {});
 battle::UnitId PersonalTarget(const battle::World& World, float AimYaw);
 }

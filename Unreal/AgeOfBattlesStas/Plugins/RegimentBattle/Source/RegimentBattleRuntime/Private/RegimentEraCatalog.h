@@ -18,6 +18,12 @@ enum class ERegimentEraVisual : uint8
     Elven, Orcish, Undead, Dwarven, Giant, Arcane, Count
 };
 
+struct FRegimentMountedJavelin
+{
+    battle::WeaponSpec Weapon;
+    uint32 Stock = 0;
+};
+
 struct FRegimentEraTroop
 {
     FString Name;
@@ -32,6 +38,7 @@ struct FRegimentEraTroop
     uint32 Ammunition = 0;
     bool bBayonetMusket = false;
     battle::BattlePlatform Platform = battle::BattlePlatform::None;
+    TOptional<FRegimentMountedJavelin> MountedJavelin;
 };
 
 struct FRegimentEraInfantryProfile

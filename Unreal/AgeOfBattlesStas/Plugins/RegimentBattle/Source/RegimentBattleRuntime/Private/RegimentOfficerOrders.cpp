@@ -201,7 +201,9 @@ FText PendingRegimentAction(const battle::Command& Command, battle::UnitId Offic
         return {};
     switch (Command.kind)
     {
-    case battle::CommandKind::ReformRegiment: return LOCTEXT("OrderReformAction", "Перестроение");
+    case battle::CommandKind::ReformRegiment:
+        return Command.formation.shape == battle::FormationShape::Rectangle ? LOCTEXT("OrderReformAction", "Перестроение")
+                                                                          : FormationName(Command.formation.shape);
     case battle::CommandKind::SetSkirmishers:
         return Command.skirmishers_enabled ? LOCTEXT("OrderSkirmisherAction", "Выслать застрельщиков")
                                           : LOCTEXT("OrderRecallAction", "Отозвать застрельщиков");
@@ -592,9 +594,77 @@ std::vector<battle::RegimentId> HoldRecipients(const battle::World& World, battl
     return Owned;
 }
 
+ERegimentPlayerOrder FormationOrder(battle::FormationShape Shape)
+{
+    using ShapeType = battle::FormationShape;
+    switch (Shape)
+    {
+    case ShapeType::Wedge: return ERegimentPlayerOrder::Wedge;
+    case ShapeType::Square: return ERegimentPlayerOrder::Square;
+    case ShapeType::Testudo: return ERegimentPlayerOrder::Testudo;
+    case ShapeType::Circle: return ERegimentPlayerOrder::Circle;
+    default: return ERegimentPlayerOrder::Line;
+    }
+}
+
+FText FormationName(battle::FormationShape Shape)
+{
+    using ShapeType = battle::FormationShape;
+    switch (Shape)
+    {
+    case ShapeType::Wedge: return LOCTEXT("FormationWedge", "Клин");
+    case ShapeType::Square: return LOCTEXT("FormationSquare", "Каре");
+    case ShapeType::Testudo: return LOCTEXT("FormationTestudo", "Черепаха");
+    case ShapeType::Circle: return LOCTEXT("FormationCircle", "Круг");
+    default: return FText::GetEmpty();
+    }
+}
+
+uint8 SpecialFormations(const battle::World& World, const battle::RegimentState& Regiment, FFormationContext Context)
+{
+    const bool bAncient = Context.Era == TEXT("ancient");
+    const bool bMedieval = Context.Era == TEXT("high_medieval") || Context.Era == TEXT("late_medieval");
+    const bool bColumnOfHorse = bMedieval || (bAncient && (Context.Faction == TEXT("macedon") || Context.Faction == TEXT("diadochi")));
+    const bool bRoman = bAncient && Context.Faction == TEXT("rome");
+    const bool bSquare = World.scenario.rules.linear_infantry || Context.Era == TEXT("great_northern_war");
+    if (Regiment.loose_skirmish || (!bAncient && !bMedieval && !bSquare))
+        return 0;
+
+    size_t Living = 0, HeavyHorse = 0, Swords = 0, Spears = 0, Muskets = 0;
+    for (const auto Id : Regiment.units)
+    {
+        const auto* Unit = battle::FindUnit(World, Id);
+        if (!Unit || !Unit->alive)
+            continue;
+        // A formation of horsemen or infantry cannot be built around a siege platform.
+        if (Unit->platform != battle::BattlePlatform::None)
+            return 0;
+        ++Living;
+        if (Unit->troop == battle::UnitTroop::Mounted)
+            HeavyHorse += Unit->cavalry == battle::CavalryClass::Heavy;
+        else
+        {
+            Spears += Unit->troop == battle::UnitTroop::Spearman;
+            Swords += Unit->troop == battle::UnitTroop::Infantry && !Unit->archer;
+            Muskets += battle::UsesGunpowder(Unit->ranged_weapon);
+        }
+    }
+
+    uint8 Mask = 0;
+    if (bColumnOfHorse && Living >= 3 && HeavyHorse == Living)
+        Mask |= RegimentSpecialFormationBit(ERegimentPlayerOrder::Wedge);
+    if (bSquare && Living >= 4 && Muskets > Living / 2)
+        Mask |= RegimentSpecialFormationBit(ERegimentPlayerOrder::Square);
+    if (bRoman && Living >= 4 && Swords > Living / 2)
+        Mask |= RegimentSpecialFormationBit(ERegimentPlayerOrder::Testudo);
+    if ((bAncient || bMedieval) && Living >= 4 && Spears > Living / 2)
+        Mask |= RegimentSpecialFormationBit(ERegimentPlayerOrder::Circle);
+    return Mask;
+}
+
 FText QueueOrder(const battle::World& World, const battle::NavigationService&,
     battle::RegimentId RegimentId, ERegimentPlayerOrder Order, std::optional<battle::Vec3> Cursor,
-    std::vector<battle::CommandEnvelope>& Pending, uint64& NextSequence)
+    std::vector<battle::CommandEnvelope>& Pending, uint64& NextSequence, FFormationContext FormationContext)
 {
     if (World.outcome != battle::BattleOutcome::Running)
         return LOCTEXT("BattleFinished", "Бой завершён.");
@@ -631,6 +701,10 @@ FText QueueOrder(const battle::World& World, const battle::NavigationService&,
     {
     case ERegimentPlayerOrder::Line:
     case ERegimentPlayerOrder::Column:
+    case ERegimentPlayerOrder::Wedge:
+    case ERegimentPlayerOrder::Square:
+    case ERegimentPlayerOrder::Testudo:
+    case ERegimentPlayerOrder::Circle:
     {
         if (Regiment->panic)
             return LOCTEXT("ReformDuringPanic", "Сначала соберите паникующий полк.");
@@ -642,20 +716,31 @@ FText QueueOrder(const battle::World& World, const battle::NavigationService&,
         const auto Authored = std::ranges::find(World.scenario.regiments, RegimentId, &battle::RegimentSpec::id);
         if (Authored == World.scenario.regiments.end())
             return LOCTEXT("NoAuthoredFormation", "Для этого полка не задан строй.");
+        using ShapeType = battle::FormationShape;
+        const auto Shape = Order == ERegimentPlayerOrder::Wedge ? ShapeType::Wedge
+            : Order == ERegimentPlayerOrder::Square ? ShapeType::Square
+            : Order == ERegimentPlayerOrder::Testudo ? ShapeType::Testudo
+            : Order == ERegimentPlayerOrder::Circle ? ShapeType::Circle : ShapeType::Rectangle;
+        const auto Special = RegimentSpecialFormationBit(Order);
+        if (Special && !(SpecialFormations(World, *Regiment, FormationContext) & Special))
+            return LOCTEXT("FormationNotAvailable", "Этот строй недоступен выбранному полку.");
         const bool bLine = Order == ERegimentPlayerOrder::Line;
-        auto Formation = bLine ? Authored->formation : battle::TravelColumnFormation(Authored->formation);
+        auto Formation = Order == ERegimentPlayerOrder::Column
+            ? battle::TravelColumnFormation(Authored->formation) : Authored->formation;
         const auto Living = std::ranges::count_if(Regiment->units, [&](battle::UnitId Id)
         {
             const auto* Unit = battle::FindUnit(World, Id);
             return Unit && Unit->alive;
         });
         Formation.columns = std::min(Formation.columns, uint32(Living));
-        if (battle::UsesLinearInfantry(World, *Regiment))
-            Formation = battle::LinearInfantryFormation(*Regiment, bLine);
+        if (Shape == ShapeType::Testudo)
+            Formation.columns = uint32(FMath::CeilToInt(FMath::Sqrt(double(Living))));
+        if (!Special && battle::UsesLinearInfantry(World, *Regiment))
+            Formation = battle::LinearInfantryFormation(Authored->formation, uint32(Living), bLine);
+        Formation.shape = Shape;
         const auto* PendingReform = MostRecentCommand(Pending, World.tick, RegimentId, battle::CommandKind::ReformRegiment);
         if (Formation == (PendingReform ? PendingReform->formation : Regiment->formation))
-            return bLine ? LOCTEXT("LineAlreadySet", "Полк уже в линии.")
-                         : LOCTEXT("ColumnAlreadySet", "Полк уже в колонне.");
+            return LOCTEXT("FormationAlreadySet", "Этот строй уже выбран.");
         if (!CanReformHere(World, *Regiment, Formation))
             return LOCTEXT("FormationObstructed", "Здесь недостаточно места для выбранного строя.");
 
@@ -663,6 +748,8 @@ FText QueueOrder(const battle::World& World, const battle::NavigationService&,
         Command.kind = battle::CommandKind::ReformRegiment;
         Command.formation = Formation;
         Queue(Command);
+        if (Special)
+            return FText::Format(LOCTEXT("SpecialFormationOrdered", "Новый строй — {0}."), FormationName(Shape));
         return bLine ? LOCTEXT("LineOrdered", "Приказано развернуться в линию.")
                      : LOCTEXT("ColumnOrdered", "Приказано построиться в колонну.");
     }
@@ -821,7 +908,11 @@ std::vector<FManeuverRoute> PreviewManeuver(const battle::World& World, const ba
         AtGoal.id = Regiment->id;
         AtGoal.pose = Goal;
         AtGoal.formation = Regiment->formation;
-        AtGoal.formation.columns = Route.Columns.value_or(AtGoal.formation.columns);
+        if (Route.Columns)
+        {
+            AtGoal.formation.columns = *Route.Columns;
+            AtGoal.formation.shape = battle::FormationShape::Rectangle;
+        }
         AtGoal.units = Regiment->units;
         if (Route.Columns && (battle::FindFormationRoute(Navigation, World, AtGoal, Goal).status != battle::Status::Ok ||
             !battle::FormationRouteSegmentClear(World, AtGoal, Goal)))

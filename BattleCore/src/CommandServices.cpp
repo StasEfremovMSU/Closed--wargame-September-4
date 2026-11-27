@@ -239,6 +239,7 @@ StubResult<RegimentTaskTranslation> TranslateRegimentTask(const CommandTask &tas
                     "Reform translation needs an explicit column count."};
         FormationSpec formation = current;
         formation.columns = *task.formation_columns;
+        formation.shape = FormationShape::Rectangle;
         if (task.formation_spacing_m)
             formation.spacing_m = *task.formation_spacing_m;
         if (!std::isfinite(formation.spacing_m) || formation.spacing_m <= 0)

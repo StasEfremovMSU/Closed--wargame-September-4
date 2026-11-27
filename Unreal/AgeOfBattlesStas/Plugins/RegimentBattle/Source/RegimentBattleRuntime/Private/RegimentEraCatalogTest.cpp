@@ -107,6 +107,7 @@ bool FRegimentEraCatalogRejectTest::RunTest(const FString& Parameters)
         {TEXT("\"archers\":\"bow\""), TEXT("\"archers\":\"missing\""), TEXT("archers")},
         {TEXT("\"health\":2"), TEXT("\"health\":0"), TEXT("health")},
         {TEXT("\"health\":2"), TEXT("\"health\":2,\"cavalry_class\":\"armoured\""), TEXT("cavalry_class")},
+        {TEXT("\"health\":2"), TEXT("\"health\":2,\"mounted_javelin\":{}"), TEXT("mounted_javelin")},
         {TEXT("\"health\":2"), TEXT("\"health\":2,\"ammunition\":8"), TEXT("ammunition")},
         {TEXT("\"health\":1"), TEXT("\"health\":1,\"ranged_weapon\":\"bow\",\"ammunition\":0"), TEXT("ammunition")},
         {TEXT("\"heraldry\":\"0000FF\""),

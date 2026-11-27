@@ -32,7 +32,7 @@ void CompleteFields(const Json &actual, const Json &persisted, const std::string
         if (!actual.is_object())
             throw std::invalid_argument("expected snapshot object: " + path);
         for (auto it = actual.begin(); it != actual.end(); ++it)
-            if (!persisted.contains(it.key()))
+            if (!persisted.contains(it.key()) && !(it.key() == "shape" && path.ends_with("/formation")))
                 throw std::invalid_argument("unexpected snapshot field: " + path + "/" + it.key());
         for (auto it = persisted.begin(); it != persisted.end(); ++it) {
             if (!actual.contains(it.key())) {

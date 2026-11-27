@@ -4,6 +4,7 @@
 #include "battle/Officers.h"
 #include "battle/command/Services.h"
 #include "ArmyStaff.h"
+#include "CavalryTuning.h"
 #include "LocalMelee.h"
 #include "FieldCombat.h"
 #include <array>
@@ -33,6 +34,13 @@ bool RangedReadyThisTick(const World &world, const UnitState &unit, Tick ready) 
 }
 
 bool CanFireFromRank(const World &world, const UnitState &unit, const RegimentState *regiment) {
+    if (regiment && !unit.skirmisher) {
+        if (regiment->formation.shape == FormationShape::Testudo)
+            return false;
+        if (HasOutwardRanks(regiment->formation.shape) && unit.platform == BattlePlatform::None)
+            return IsFormationFrontRank(*regiment, unit) && IsAtFormationPost(*regiment, unit) &&
+                   regiment->waypoint >= regiment->route.size();
+    }
     if (!regiment || !world.scenario.rules.regiment_tactics || !world.scenario.rules.linear_infantry ||
         unit.ranged_weapon != RangedWeapon::Musket || unit.platform != BattlePlatform::None ||
         unit.troop == UnitTroop::Mounted)
@@ -98,10 +106,15 @@ float MeleeDamage(const World &world, const UnitState &attacker, const UnitState
         return defender.health;
     float attack = weapon.damage * AttackStrength(FindRegiment(world, attacker.regiment));
     float guard = defender.armour;
-    if (const auto *regiment = FindRegiment(world, defender.regiment)) {
+    const auto *regiment = FindRegiment(world, defender.regiment);
+    if (regiment) {
         guard *= .75f + .25f * regiment->cohesion;
         if (regiment->disordered || IsDeploying(world, *regiment))
             guard *= .85f;
+        if (regiment->formation.shape == FormationShape::Circle && !regiment->panic &&
+            !regiment->disordered && aspect == AttackAspect::Front &&
+            IsAtFormationPost(*regiment, defender))
+            attack *= .87f;
     }
     if (aspect == AttackAspect::Flank) {
         attack *= 1.08f;
@@ -111,8 +124,8 @@ float MeleeDamage(const World &world, const UnitState &attacker, const UnitState
         guard *= .55f;
     }
     if (charge) {
-        const auto *defending = FindRegiment(world, defender.regiment);
-        if (defending && defending->braced && aspect == AttackAspect::Front)
+        if (regiment && regiment->braced && aspect == AttackAspect::Front &&
+            (regiment->formation.shape != FormationShape::Square || IsAtFormationPost(*regiment, defender)))
             attack *= .65f;
         else if (attacker.platform == BattlePlatform::IndianElephant)
             attack *= 2.2f;
@@ -124,7 +137,9 @@ float MeleeDamage(const World &world, const UnitState &attacker, const UnitState
             const auto *formation = FindRegiment(world, attacker.regiment);
             const float readiness = formation ? (.8f + .2f * formation->cohesion) *
                                                   (1.f - .2f * formation->fatigue) : 1.f;
-            const float momentum = attacker.cavalry == CavalryClass::Heavy ? 1.45f : 1.0f;
+            float momentum = HorseCavalryTuning(attacker).charge_momentum;
+            if (formation && formation->formation.shape == FormationShape::Wedge && formation->cohesion >= .8f)
+                momentum *= 1.12f;
             attack *= 1.f + momentum * readiness;
         }
     }
@@ -582,6 +597,17 @@ bool HoldsFormationPosition(const UnitState &unit) {
            !unit.skirmisher && !unit.skirmisher_returning;
 }
 
+bool TestudoShields(const World &world, const UnitState &shooter, const UnitState &defender) {
+    const auto *regiment = FindRegiment(world, defender.regiment);
+    if (!regiment || regiment->formation.shape != FormationShape::Testudo || regiment->panic ||
+        regiment->disordered || !IsAtFormationPost(*regiment, defender) ||
+        shooter.platform != BattlePlatform::None || UsesGunpowder(shooter.ranged_weapon) ||
+        shooter.ranged_weapon == RangedWeapon::Arcane)
+        return false;
+    const auto incoming = Ground(shooter.pose.position - defender.pose.position);
+    return Dot(Forward(regiment->pose.yaw), incoming) >= -.5f * Length(incoming);
+}
+
 class AttackAspects {
   public:
     explicit AttackAspects(const World &world) : world_(world) {}
@@ -589,7 +615,9 @@ class AttackAspects {
     AttackAspect Classify(const UnitState &attacker, const UnitState &defender) {
         const auto *regiment = FindRegiment(world_, defender.regiment);
         const bool attached = regiment && HoldsFormationPosition(defender);
-        const float yaw = attached ? regiment->pose.yaw : defender.pose.yaw;
+        const bool outward = attached && HasOutwardRanks(regiment->formation.shape)
+            && !regiment->panic && !regiment->disordered && IsAtFormationPost(*regiment, defender);
+        const float yaw = outward ? defender.slot.yaw : attached ? regiment->pose.yaw : defender.pose.yaw;
         const auto forward = Forward(yaw);
         const auto offset = Ground(attacker.pose.position - defender.pose.position);
         constexpr float cosine_sector = .70710678f;
@@ -597,7 +625,7 @@ class AttackAspects {
         const float facing = Dot(offset, forward);
         if (facing >= edge)
             return AttackAspect::Front;
-        if (!attached)
+        if (!attached || outward)
             return facing <= -edge ? AttackAspect::Rear : AttackAspect::Flank;
 
         // A diagonal blow against one fighter inside a frontage is still frontal
@@ -717,15 +745,19 @@ void BuildCombatEvents(const World &w, std::vector<BattleEvent> &out, uint64_t *
     float closest_gun = FieldGunOfficerReachM;
     for (size_t i = 0; i < w.units.size(); ++i) {
         const auto &u = w.units[i];
+        if (!u.alive)
+            continue;
+        // A closed rank can prevent the optional throw while still allowing a melee strike.
+        const auto *javelin_regiment = u.ranged_attack ? FindRegiment(w, u.regiment) : nullptr;
         const bool alternate_ready = u.ranged_attack && u.ammunition_remaining &&
             u.ranged_ready_tick <= w.tick && RangedReadyThisTick(w, u, u.ranged_ready_tick) &&
+            CanFireFromRank(w, u, javelin_regiment) &&
             (!contact || !u.regiment || contact->RangedTargetAllowed(u, false));
-        if (!u.alive ||
-            (!alternate_ready && u.ready_tick > w.tick &&
+        if ((!alternate_ready && u.ready_tick > w.tick &&
              (!contact || !u.archer || u.dagger_ready_tick > w.tick)) ||
             (contact && !contact->CanAcquire(u)))
             continue;
-        auto *r = FindRegiment(w, u.regiment);
+        const auto *r = u.ranged_attack ? javelin_regiment : FindRegiment(w, u.regiment);
         if (r && (r->panic || IsDeploying(w, *r)))
             continue;
         const bool dagger = contact && contact->DaggerDrawn(u);
@@ -895,7 +927,7 @@ void BuildCombatEvents(const World &w, std::vector<BattleEvent> &out, uint64_t *
         const bool canister = field_gun && distance <= FieldGunCanisterRange;
         const bool pursuit = tactics && !e.projectile && regiment &&
                              regiment->pursuit_target == target->regiment &&
-                             u.slot_index < regiment->formation.columns;
+                             IsFormationFrontRank(*regiment, u);
         const bool charge = tactics && !e.projectile && regiment && !pursuit &&
                             ChargeReady(w, *regiment, u, *target);
         constexpr Tick OfficerStrikeWindup = 9;
@@ -1107,8 +1139,14 @@ void CommitCombatEvents(World &w, std::span<const BattleEvent> launches, const L
                         if (contact)
                             contact->QueueCavalryShove(*s, *t, amount, aspect);
                     }
-                } else if (UnitTeam(w, *s) == UnitTeam(w, *t))
-                    reason = "risky volley: friendly fire";
+                } else {
+                    if (TestudoShields(w, *s, *t)) {
+                        amount *= .4f;
+                        reason = "testudo shield cover";
+                    }
+                    if (UnitTeam(w, *s) == UnitTeam(w, *t))
+                        reason = "risky volley: friendly fire";
+                }
             }
             if (canister) {
                 record_hit(a, *t, amount, std::string(FieldGunCanisterReason), AttackAspect::Front, true);

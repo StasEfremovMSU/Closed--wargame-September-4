@@ -1,4 +1,5 @@
 #include "LocalMelee.h"
+#include "CavalryTuning.h"
 #include "ArmyStaff.h"
 #include "battle/Formation.h"
 #include "battle/Officers.h"
@@ -117,7 +118,8 @@ void LocalMelee::DetectCoarseCandidates(float dt) {
         const auto &r = world_.regiments[i];
         auto &group = coarse_groups_[i];
         group.team = r.team;
-        group.clear_march = world_.scenario.obstacles.empty() && !r.panic && !r.melee_engaged &&
+        group.clear_march = r.formation.shape == FormationShape::Rectangle &&
+            world_.scenario.obstacles.empty() && !r.panic && !r.melee_engaged &&
             !r.retreat_waypoint && r.slots.size() == r.units.size();
     }
     for (const auto &position : unindexed_) {
@@ -564,7 +566,9 @@ bool LocalMelee::MoveTowards(UnitState &u, Vec3 goal, float step, float turn_dt,
         if (Length(u.contact_travel) > .01f) {
             const float current = std::atan2(u.contact_travel.y, u.contact_travel.x);
             const float wanted = std::atan2(heading.y, heading.x);
-            const float max_turn = 8.f * turn_dt;
+            const float turn_scale = world_.scenario.rules.regiment_tactics
+                ? HorseCavalryTuning(u).turn_scale : 1.f;
+            const float max_turn = 8.f * turn_dt * turn_scale;
             heading = Forward(current + std::clamp(std::remainder(wanted - current, 2.f * Pi),
                                                    -max_turn, max_turn));
         }
@@ -820,9 +824,22 @@ void LocalMelee::AdvanceSupport(UnitState &u, const UnitState &lead, const Regim
 }
 
 void LocalMelee::AdvanceLine(World &w, const RegimentState &r, float dt) const {
+    if (HasOutwardRanks(r.formation.shape))
+        return;
     const size_t columns = std::min<size_t>(r.formation.columns, r.slots.size());
     if (!HoldsContact(r) || columns == 0)
         return;
+    if (r.formation.shape == FormationShape::Wedge) {
+        // Let the sloping edge files complete contact before any rear-rank refill.
+        for (const auto id : r.units) {
+            auto &unit = *FindUnit(w, id);
+            if (unit.alive && unit.control == ControlMode::FormationControlled &&
+                !unit.skirmisher && !unit.skirmisher_returning &&
+                IsFormationFrontRank(r, unit))
+                AdvanceLead(unit, r, unit.slot, std::nullopt, dt);
+        }
+        return;
+    }
     const auto opposing_front = FindOpposingFront(r, columns);
     std::vector<UnitState *> by_slot(r.slots.size());
     for (auto id : r.units) {
@@ -900,11 +917,10 @@ void LocalMelee::QueueCavalryShove(const UnitState &source, const UnitState &tar
     const auto *defending = Regiment(target);
     const auto &initial = world_.scenario.units[UnitIndex(target)];
     const float weight = std::min(1.f, damage / initial.health);
-    const float pace = source.cavalry == CavalryClass::Heavy || source.platform != BattlePlatform::None
-                        ? 1.f : .76f;
+    const float shove = HorseCavalryTuning(source).shove_scale;
     const float brace = defending && defending->braced && aspect == AttackAspect::Front ? .20f : 1.f;
     shoves_.push_back({UnitIndex(source), UnitIndex(target),
-                      std::min(.55f, (.18f + weight * .55f) * pace * brace), true});
+                      std::min(.55f, (.18f + weight * .55f) * shove * brace), true});
 }
 
 LocalMelee::ShoveClearance LocalMelee::SweepShove(const UnitState &unit, Vec3 direction,

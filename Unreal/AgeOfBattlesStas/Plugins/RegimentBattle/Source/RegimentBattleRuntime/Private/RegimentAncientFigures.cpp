@@ -609,6 +609,7 @@ ERegimentHistoricalFigure RegimentHistoricalStyle(ERegimentHistoricalFigure Prof
         if (bMounted)
         {
             if (bHeavy) return S::NapoleonicCuirassier;
+            if (Faction == TEXT("russia") && Unit.cavalry == battle::CavalryClass::Light) return S::CossackRider;
             return Faction == TEXT("poland") ? S::NapoleonicLancer : S::NapoleonicHussar;
         }
         if (Faction == TEXT("france")) return S::Fusilier;
@@ -633,6 +634,7 @@ ERegimentHistoricalFigure RegimentHistoricalStyle(ERegimentHistoricalFigure Prof
     {
         const bool bSteppe = Faction == TEXT("mongols") || Faction == TEXT("golden_horde");
         const bool bEastern = Faction == TEXT("saracens") || Faction == TEXT("byzantium") || Faction == TEXT("rus");
+        if (bMounted && bHeavy && Faction == TEXT("livonian_order")) return S::LivonianKnight;
         if (bMounted) return bSteppe || bEastern ? S::MedievalSteppeHorse : S::MedievalKnight;
         if (bSteppe) return S::SteppeMedieval;
         return bEastern ? S::EasternMail : S::WesternMail;
@@ -648,8 +650,10 @@ ERegimentHistoricalFigure RegimentHistoricalStyle(ERegimentHistoricalFigure Prof
     }
     if (Era == TEXT("renaissance"))
     {
-        if (bMounted && Faction == TEXT("commonwealth") && Unit.cavalry == battle::CavalryClass::Heavy)
+        if (bMounted && bHeavy && Faction == TEXT("commonwealth"))
             return S::WingedHussar;
+        if (bMounted && bHeavy && Faction == TEXT("austria")) return S::RenaissanceCuirassier;
+        if (bMounted && Faction == TEXT("cossacks")) return S::CossackRider;
         if (bMounted) return S::EarlyModernHorse;
         if (Faction == TEXT("russian_tsardom") || Faction == TEXT("commonwealth") ||
             Faction == TEXT("cossacks") || Faction == TEXT("ottomans"))
@@ -657,7 +661,11 @@ ERegimentHistoricalFigure RegimentHistoricalStyle(ERegimentHistoricalFigure Prof
         return Unit.archer ? S::PikeAndShotMissile : S::PikeAndShot;
     }
     if (Era == TEXT("great_northern_war"))
+    {
+        if (bMounted && bHeavy && Faction == TEXT("saxony")) return S::NorthernCuirassier;
+        if (bMounted && Faction == TEXT("russia") && Unit.cavalry == battle::CavalryClass::Light) return S::CossackRider;
         return bMounted ? S::NorthernHorse : S::NorthernInfantry;
+    }
     return S::None;
 }
 
@@ -703,7 +711,7 @@ TOptional<ERegimentAncientShield> RegimentHistoricalShield(ERegimentHistoricalFi
     switch (Style)
     {
     case S::WesternMail: case S::EasternMail: case S::SteppeMedieval:
-    case S::MedievalKnight: case S::MedievalSteppeHorse: case S::GothicPlate:
+    case S::MedievalKnight: case S::LivonianKnight: case S::MedievalSteppeHorse: case S::GothicPlate:
         if (FactionShield == ERegimentEraShield::Kite) return H::Kite;
         if (FactionShield == ERegimentEraShield::Rectangular) return H::Pavise;
         return H::RoundMedieval;
@@ -753,13 +761,41 @@ bool IsHistoricalRider(HistoricalFigure Style)
     {
     case S::RomanCavalry: case S::Numidian: case S::Companion: case S::SengokuCavalry:
     case S::AncientLightHorse: case S::AncientHeavyHorse: case S::SteppeRider: case S::Cataphract:
-    case S::MedievalKnight: case S::MedievalSteppeHorse: case S::LateKnight:
+    case S::MedievalKnight: case S::LivonianKnight: case S::MedievalSteppeHorse: case S::LateKnight:
     case S::WingedHussar: case S::EarlyModernHorse: case S::NorthernHorse:
-    case S::NapoleonicHussar: case S::NapoleonicCuirassier: case S::NapoleonicLancer:
+    case S::NapoleonicHussar: case S::NapoleonicCuirassier: case S::NapoleonicLancer: case S::CossackRider:
+    case S::RenaissanceCuirassier: case S::NorthernCuirassier:
         return true;
     default:
         return false;
     }
+}
+
+struct FHistoricalMountProportions
+{
+    FVector Scale;
+    double SeatOffset;
+};
+
+TOptional<FHistoricalMountProportions> HistoricalMountProportions(HistoricalFigure Style)
+{
+    using S = HistoricalFigure;
+    switch (Style)
+    {
+    case S::LivonianKnight: return FHistoricalMountProportions{{.88, 1.22, 1.14}, 74.0};
+    case S::RenaissanceCuirassier: case S::NorthernCuirassier: case S::NapoleonicCuirassier:
+        return FHistoricalMountProportions{{.82, 1.10, 1.09}, 62.0};
+    case S::CossackRider: return FHistoricalMountProportions{{.71, .90, .93}, 46.0};
+    case S::Numidian: return FHistoricalMountProportions{{.67, .82, .87}, 40.0};
+    default: return {};
+    }
+}
+
+void AppendScaledParts(FRegimentAncientFigure& Destination, const FRegimentAncientFigure& Source, const FVector& Scale)
+{
+    for (const auto& Piece : Source.Parts)
+        Part(Destination, Piece.Primitive, Piece.Material, Piece.Transform.GetLocation() * Scale,
+            Piece.Transform.GetScale3D() * Scale, Piece.Transform.Rotator(), Piece.Feature);
 }
 
 enum class EFieldHelmet : uint8
@@ -767,7 +803,7 @@ enum class EFieldHelmet : uint8
     Headcloth, WrappedCap, Crest, Conical, Fur, GreatHelm, Sallet, Felt, Morion, Lobster,
     CockedHat, Shako, Czapka, CrestedHelmet, Busby
 };
-enum class EFieldCoat : uint8 { Linen, Tunic, Coat, Mail, Lamellar, Plate, Braided };
+enum class EFieldCoat : uint8 { Linen, Tunic, Coat, Mail, Lamellar, Plate, Braided, Cuirass };
 
 struct FFieldOutfit
 {
@@ -796,7 +832,7 @@ FFieldOutfit FieldOutfit(HistoricalFigure Style)
     case S::WesternMail: return {H::Conical, C::Mail, M::Linen};
     case S::EasternMail: return {H::Conical, C::Lamellar, M::Bronze};
     case S::SteppeMedieval: case S::MedievalSteppeHorse: return {H::Fur, C::Lamellar, M::Leather};
-    case S::MedievalKnight: return {H::GreatHelm, C::Mail, M::Iron};
+    case S::MedievalKnight: case S::LivonianKnight: return {H::GreatHelm, C::Mail, M::Iron};
     case S::GothicPlate: case S::LateKnight: return {H::Sallet, C::Plate, M::Iron};
     case S::MedievalBowman: case S::PaviseInfantry: return {H::Felt, C::Tunic, M::Linen};
     case S::SwissPike: return {H::Sallet, C::Tunic, M::Scarlet};
@@ -804,14 +840,17 @@ FFieldOutfit FieldOutfit(HistoricalFigure Style)
     case S::PikeAndShotMissile: return {H::Felt, C::Coat, M::Leather};
     case S::EasternEarlyModern: return {H::Fur, C::Coat, M::Ochre};
     case S::WingedHussar: case S::EarlyModernHorse: return {H::Lobster, C::Plate, M::Bronze};
+    case S::RenaissanceCuirassier: return {H::Lobster, C::Cuirass, M::Bronze};
     case S::NorthernInfantry: return {H::CockedHat, C::Coat, M::Ivory};
     case S::NorthernHorse: return {H::CockedHat, C::Coat, M::Ochre};
+    case S::NorthernCuirassier: return {H::CockedHat, C::Cuirass, M::Ivory};
     case S::NapoleonicPolish: return {H::Czapka, C::Coat, M::Scarlet};
     case S::NapoleonicAustrian: return {H::CrestedHelmet, C::Coat, M::Linen};
     case S::NapoleonicIberian: return {H::Shako, C::Coat, M::Linen};
     case S::NapoleonicHussar: return {H::Busby, C::Braided, M::Ochre};
-    case S::NapoleonicCuirassier: return {H::CrestedHelmet, C::Plate, M::Bronze};
+    case S::NapoleonicCuirassier: return {H::CrestedHelmet, C::Cuirass, M::Bronze};
     case S::NapoleonicLancer: return {H::Czapka, C::Braided, M::Scarlet};
+    case S::CossackRider: return {H::Fur, C::Coat, M::Scarlet};
     default: return {H::Shako, C::Coat, M::Ochre};
     }
 }
@@ -894,15 +933,30 @@ FRegimentAncientFigure RefreshedDress(HistoricalFigure Style, bool bSimplified)
     }
 
     const auto Coat = Outfit.Coat;
-    const bool bPlate = Coat == C::Plate;
+    const bool bCuirass = Coat == C::Cuirass;
+    const bool bPlate = Coat == C::Plate || bCuirass;
     const bool bMail = Coat == C::Mail;
     const bool bLamellar = Coat == C::Lamellar;
     const bool bLong = Coat == C::Coat || Coat == C::Braided;
     const bool bMounted = IsHistoricalRider(Style);
     const M Cloth = Coat == C::Linen ? M::Linen : M::Paint;
     Add(P::BeveledBlock, bMail ? M::GreyWool : Cloth, {0, 0, 105}, {38, 49, 49});
-    if (bPlate || bLamellar)
+    if (bCuirass)
+    {
+        Add(P::Ellipsoid, M::Dark, {13, 0, 108}, {35, 50, 47}, FRotator(-7, 0, 0));
+        Add(P::Ellipsoid, M::Iron, {19, 0, 109}, {36, 47, 44}, FRotator(-7, 0, 0));
+        Add(P::BeveledBlock, M::Iron, {-15, 0, 107}, {17, 46, 37}, FRotator(10, 0, 0));
+        for (double Y : {-16., 16.})
+            Bar(Model, M::Bronze, {27, Y, 116}, {-5, Y, 131}, 6, P::BeveledBlock);
+    }
+    else if (bPlate || bLamellar)
         Add(P::BeveledBlock, bPlate ? M::Iron : Outfit.Trim, {11, 0, 109}, {24, 49, 42}, FRotator(-7, 0, 0));
+    if (Style == S::LivonianKnight)
+    {
+        Add(P::BeveledBlock, M::Ivory, {11, 0, 105}, {28, 44, 49});
+        Add(P::BeveledBlock, M::Scarlet, {26, 0, 109}, {4, 25, 5});
+        Add(P::BeveledBlock, M::Scarlet, {26, 0, 109}, {4, 5, 29});
+    }
     if (bLamellar)
         for (double Z : {93., 108., 123.})
             Add(P::BeveledBlock, M::Dark, {23, 0, Z}, {6, 43, 3});
@@ -923,7 +977,7 @@ FRegimentAncientFigure RefreshedDress(HistoricalFigure Style, bool bSimplified)
     if (Coat == C::Braided)
         for (double Z : {93., 104., 115., 124.})
             Add(P::BeveledBlock, Outfit.Trim, {21, 0, Z}, {4, 31, 3});
-    else
+    else if (!bCuirass && Style != S::LivonianKnight)
     {
         const M Strap = bLong ? M::Linen : M::Leather;
         Bar(Model, Strap, {22, -16, 124}, {22, 18, 87}, 5);
@@ -1191,11 +1245,58 @@ FRegimentAncientFigure BuildRegimentHistoricalDress(ERegimentHistoricalFigure St
     return Model;
 }
 
+double RegimentHistoricalSeatOffset(ERegimentHistoricalFigure Style)
+{
+    const auto Proportions = HistoricalMountProportions(Style);
+    return Proportions ? Proportions->SeatOffset : RegimentHistoricalRiderHeight;
+}
+
 FRegimentAncientFigure BuildRegimentHistoricalTack(ERegimentHistoricalFigure Style)
 {
     using S = ERegimentHistoricalFigure;
     FRegimentAncientFigure Model;
-    if (Style == S::Numidian || Style == S::RomanCavalry || Style == S::Companion)
+    if (const auto Proportions = HistoricalMountProportions(Style))
+    {
+        FRegimentAncientFigure Tack;
+        if (Style == S::Numidian)
+            Part(Tack, P::Disc, M::Leather, {53, 0, 132}, {42, 38, 5}, FRotator(29, 0, 0));
+        else
+        {
+            const bool bBarded = Style == S::LivonianKnight;
+            const bool bCossack = Style == S::CossackRider;
+            const M Blanket = bBarded ? M::Ivory : bCossack ? M::GreyWool : M::Paint;
+            Part(Tack, P::BeveledBlock, Blanket, {-13, 0, 125},
+                bBarded ? FVector(110, 57, 13) : FVector(66, 54, 12));
+            Part(Tack, P::BeveledBlock, M::Leather, {-8, 0, 134}, {48, 40, 13});
+            for (double Side : {-1., 1.})
+            {
+                const double Y = Side * 26.0;
+                Part(Tack, P::BeveledBlock, Blanket, {-18, Y, bBarded ? 95.0 : 113.0},
+                    bBarded ? FVector(109, 9, 62) : FVector(63, 8, 26));
+                if (bBarded)
+                {
+                    Part(Tack, P::BeveledBlock, M::Scarlet, {-24, Y + Side * 5, 97}, {28, 4, 5});
+                    Part(Tack, P::BeveledBlock, M::Scarlet, {-24, Y + Side * 5, 97}, {6, 4, 31});
+                    Part(Tack, P::BeveledBlock, M::Iron, {47, Y, 105}, {22, 12, 48}, FRotator(-22, 0, 0));
+                }
+                else
+                    Part(Tack, P::BeveledBlock, bCossack ? M::Leather : M::Linen,
+                        {-18, Y + Side * 4, 101}, {60, 4, 5});
+                Bar(Tack, M::Leather, {72, Side * 16, 157}, {2, Side * 22, 139}, 3, P::BeveledBlock);
+                Bar(Tack, M::Leather, {4, Side * 24, 129}, {12, Side * 30, 88}, 3.5);
+                Part(Tack, P::BeveledBlock, M::Iron, {14, Side * 31, 87}, {15, 8, 5});
+            }
+            if (bBarded)
+            {
+                Part(Tack, P::Ellipsoid, M::Iron, {54, 0, 111}, {34, 56, 52}, FRotator(-17, 0, 0));
+                Part(Tack, P::BeveledBlock, M::Iron, {82, 0, 170}, {34, 27, 37}, FRotator(-27, 0, 0));
+                Part(Tack, P::BeveledBlock, M::Bronze, {88, 0, 176}, {22, 6, 30}, FRotator(-27, 0, 0));
+            }
+        }
+        AppendScaledParts(Model, Tack, Proportions->Scale);
+        return Model;
+    }
+    if (Style == S::RomanCavalry || Style == S::Companion)
         Part(Model, P::Disc, M::Leather, {41, 0, 132}, {28, 37, 6}, FRotator(-25, 0, 0));
     if (Style == S::RomanCavalry || Style == S::Companion)
     {
@@ -1238,6 +1339,21 @@ FRegimentAncientFigure BuildRegimentHistoricalTack(ERegimentHistoricalFigure Sty
     return Model;
 }
 
+FRegimentAncientFigure BuildRegimentHistoricalMount(ERegimentHistoricalFigure Style)
+{
+    FRegimentAncientFigure Model;
+    if (const auto Proportions = HistoricalMountProportions(Style))
+    {
+        FRegimentAncientFigure HorseBody;
+        Horse(HorseBody, FVector::ZeroVector, M::Hide, 6, false);
+        AppendScaledParts(Model, HorseBody, Proportions->Scale);
+        const auto Tack = BuildRegimentHistoricalTack(Style);
+        Model.Bounds += Tack.Bounds;
+        Model.Parts.Append(Tack.Parts);
+    }
+    return Model;
+}
+
 FRegimentAncientFigure BuildRegimentHistoricalProxy(ERegimentHistoricalFigure Style)
 {
     using S = ERegimentHistoricalFigure;
@@ -1249,26 +1365,30 @@ FRegimentAncientFigure BuildRegimentHistoricalProxy(ERegimentHistoricalFigure St
         return Model;
     Model.bSimplified = true;
     const bool bMounted = IsHistoricalRider(Style);
-    const double RideHeight = bMounted ? RegimentHistoricalRiderHeight : 0.0;
+    const double RideHeight = bMounted ? RegimentHistoricalSeatOffset(Style) : 0.0;
     if (bMounted)
     {
         const FVector RiderOffset(0, 0, RideHeight);
         for (auto& Piece : Model.Parts)
             Piece.Transform.AddToTranslation(RiderOffset);
         Model.Bounds = Model.Bounds.ShiftBy(RiderOffset);
-        auto Mount = BuildRegimentHistoricalTack(Style);
-        FRegimentAncientFigure HorseBody;
-        Horse(HorseBody, FVector::ZeroVector, Style == S::Numidian ? M::Leather : M::Hide, 6, false);
-        for (const auto& Piece : HorseBody.Parts)
-            Part(Mount, Piece.Primitive, Piece.Material, Piece.Transform.GetLocation() * FVector(.72, 1, 1),
-                Piece.Transform.GetScale3D() * FVector(.72, 1, 1), Piece.Transform.Rotator(), Piece.Feature);
+        auto Mount = BuildRegimentHistoricalMount(Style);
+        if (Mount.Parts.IsEmpty())
+        {
+            Mount = BuildRegimentHistoricalTack(Style);
+            FRegimentAncientFigure HorseBody;
+            Horse(HorseBody, FVector::ZeroVector, M::Hide, 6, false);
+            AppendScaledParts(Mount, HorseBody, FVector(.72, 1, 1));
+        }
         Model.Bounds += Mount.Bounds;
         Model.Parts.Append(MoveTemp(Mount.Parts));
     }
     const bool bKilt = Style == S::Highlander;
     const M Coat = bSengoku || bRefreshed ? M::Paint : Style >= S::BritishLine ? M::Scarlet : Style >= S::RussianLine ? M::Green :
         Style >= S::Fusilier ? M::Navy : Style == S::Numidian ? M::Linen : M::Paint;
-    const M Trousers = bSengoku || bRefreshed ? M::Dark : bKilt ? M::Skin : Style >= S::Fusilier ? M::Linen : M::Paint;
+    const bool bBareLegs = bKilt || Style == S::Numidian;
+    const M Trousers = bSengoku || bRefreshed ? M::Dark : bBareLegs ? M::Skin
+        : Style >= S::Fusilier ? M::Linen : M::Paint;
     Part(Model, P::BeveledBlock, Coat, {0, 0, 89 + RideHeight}, {32, 43, 64});
     Part(Model, P::BeveledBlock, M::Skin, {2, 0, 144 + RideHeight}, {27, 26, 27});
     for (double Side : {-1., 1.})
@@ -1277,7 +1397,7 @@ FRegimentAncientFigure BuildRegimentHistoricalProxy(ERegimentHistoricalFigure St
         Part(Model, P::BeveledBlock, M::Skin, {19, Side * 29, 93 + RideHeight}, {13, 13, 17});
         Part(Model, P::BeveledBlock, Trousers, {bMounted ? 12.0 : 0.0, Side * (bMounted ? 23.0 : 12.0), 38 + RideHeight},
             {18, 17, bMounted ? 48.0 : 55.0}, FRotator(bMounted ? -22.0 : 0.0, 0, 0));
-        Part(Model, P::BeveledBlock, M::Dark,
+        Part(Model, P::BeveledBlock, Style == S::Numidian ? M::Skin : M::Dark,
             {bMounted ? 13.0 : 3.0, Side * (bMounted ? 25.0 : 12.0), (bMounted ? 25.0 : 15.0) + RideHeight},
             {22, 17, bKilt ? 30.0 : 27.0});
     }

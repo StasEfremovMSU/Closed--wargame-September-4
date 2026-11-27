@@ -3,12 +3,17 @@
 #include "Terrain.h"
 #include "battle/command/Setup.h"
 namespace battle {
+enum class FormationShape : uint8_t { Rectangle, Wedge, Square, Testudo, Circle };
 struct FormationSpec {
     bool operator==(const FormationSpec &) const = default;
     uint32_t columns{5};
     float spacing_m{2};
     float body_radius_m{0.3f};
+    FormationShape shape{FormationShape::Rectangle};
 };
+constexpr bool HasOutwardRanks(FormationShape shape) {
+    return shape == FormationShape::Square || shape == FormationShape::Circle;
+}
 FormationSpec TravelColumnFormation(FormationSpec);
 struct WeaponSpec {
     bool operator==(const WeaponSpec &) const = default;

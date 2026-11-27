@@ -49,6 +49,7 @@ Result<TickResult> Step(World &w, std::span<const CommandEnvelope> input,
         if (!e.sequence || !Finite(e.command.pose) || !Finite(e.command.velocity) ||
             !ValidOrderShape(e.command.order) || e.tick < w.tick ||
             uint8_t(e.command.kind) > uint8_t(CommandKind::FireFieldGun) ||
+            e.command.formation.shape > FormationShape::Circle ||
             (e.command.kind == CommandKind::IssueCommandTask &&
              !command::ValidTaskRequest(e.command.command_task)) ||
             (e.command.kind == CommandKind::ExternalPoseSample && e.command.sample_tick != e.tick))

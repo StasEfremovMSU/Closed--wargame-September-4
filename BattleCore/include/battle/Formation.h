@@ -24,7 +24,11 @@ PathResult FindFormationGroupRoute(const NavigationService &, const World &,
 std::vector<FormationTranslation> ActiveFormationTranslations(const World &);
 void OpenSkirmishSpacing(FormationSpec &);
 std::vector<Pose> BuildFormationSlots(const FormationSpec &, Pose centre, uint32_t count);
+FormationFootprint Footprint(const FormationSpec &, uint32_t count);
 FormationFootprint Footprint(const RegimentState &);
+bool IsFormationFrontRank(const RegimentState &, const UnitState &);
+bool IsAtFormationPost(const RegimentState &, const UnitState &);
+bool CanUseFormationShape(FormationShape, const UnitSpec &);
 bool UsesLinearInfantry(const World &, const RegimentState &);
 bool IsLinearFiringLine(const RegimentState &);
 FormationSpec LinearInfantryFormation(FormationSpec, uint32_t count, bool firing_line);

@@ -44,7 +44,8 @@ enum class ERegimentHistoricalFigure : uint8
     GothicPlate, MedievalBowman, SwissPike, PaviseInfantry, LateKnight,
     PikeAndShot, PikeAndShotMissile, EasternEarlyModern, WingedHussar, EarlyModernHorse,
     NorthernInfantry, NorthernHorse, NapoleonicCentral, NapoleonicPolish, NapoleonicAustrian,
-    NapoleonicIberian, NapoleonicHussar, NapoleonicCuirassier, NapoleonicLancer
+    NapoleonicIberian, NapoleonicHussar, NapoleonicCuirassier, NapoleonicLancer,
+    LivonianKnight, CossackRider, RenaissanceCuirassier, NorthernCuirassier
 };
 
 struct FRegimentAncientPart
@@ -81,9 +82,11 @@ TOptional<ERegimentAncientShield> RegimentHistoricalShield(ERegimentHistoricalFi
 TOptional<ERegimentAncientShield> RegimentHistoricalShield(ERegimentHistoricalFigure Style, ERegimentEraShield FactionShield);
 double RegimentHistoricalSpearLength(ERegimentHistoricalFigure Style);
 inline constexpr double RegimentHistoricalRiderHeight = 54.0;
+double RegimentHistoricalSeatOffset(ERegimentHistoricalFigure Style);
 FRegimentAncientFigure BuildRegimentHistoricalDress(ERegimentHistoricalFigure Style);
 FRegimentAncientFigure BuildRegimentHistoricalProxy(ERegimentHistoricalFigure Style);
 FRegimentAncientFigure BuildRegimentHistoricalTack(ERegimentHistoricalFigure Style);
+FRegimentAncientFigure BuildRegimentHistoricalMount(ERegimentHistoricalFigure Style);
 FRegimentAncientFigure BuildRegimentLooseWeapon(battle::RangedWeapon Weapon);
 FRegimentAncientFigure BuildRegimentSengokuWeapon(ERegimentHistoricalFigure Style);
 FRegimentAncientFigure BuildRegimentSengokuBanner();

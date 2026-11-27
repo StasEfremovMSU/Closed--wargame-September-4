@@ -505,6 +505,9 @@ TSharedRef<SWidget> MakeOfficerOrder(TWeakObjectPtr<ARegimentBattleField> Field,
     return SNew(SBox).HeightOverride(34.f)
         .Visibility_Lambda([Field, Order]
         {
+            const uint8 Special = RegimentSpecialFormationBit(Order);
+            if (Special && !(OfficerState(Field).SpecialFormations & Special))
+                return EVisibility::Collapsed;
             if ((Order == ERegimentPlayerOrder::CommandHold && OfficerState(Field).CommandTier < 2) ||
                 (Order == ERegimentPlayerOrder::WingHold && OfficerState(Field).CommandTier < 3))
                 return EVisibility::Collapsed;
@@ -518,8 +521,10 @@ TSharedRef<SWidget> MakeOfficerOrder(TWeakObjectPtr<ARegimentBattleField> Field,
             .IsFocusable(false)
             .ButtonColorAndOpacity_Lambda([Field, Order]() -> FSlateColor
             {
-                return Order == ERegimentPlayerOrder::Follow &&
-                        OfficerState(Field).Order.Follow != ERegimentFollowStatus::Off
+                const auto& State = OfficerState(Field);
+                const bool bActiveFollow = Order == ERegimentPlayerOrder::Follow &&
+                    State.Order.Follow != ERegimentFollowStatus::Off;
+                return bActiveFollow || (RegimentSpecialFormationBit(Order) & State.ActiveSpecialFormation)
                     ? SelectedTint : OfficerControlTint;
             })
             .HAlign(HAlign_Fill)
@@ -545,10 +550,11 @@ TSharedRef<SWidget> MakeOfficerOrder(TWeakObjectPtr<ARegimentBattleField> Field,
             })
             [
                 SNew(SHorizontalBox)
-                + SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0, 0, 7, 0)
+                + SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0, 0, Key.IsEmpty() ? 0.f : 7.f, 0)
                 [
                     SNew(SBorder)
                     .BorderImage(&KeyBackground)
+                    .Visibility(Key.IsEmpty() ? EVisibility::Collapsed : EVisibility::HitTestInvisible)
                     .HAlign(HAlign_Center)
                     .Padding(FMargin(5, 2))
                     [
@@ -808,6 +814,14 @@ TSharedRef<SWidget> MakeOfficerCommandSheet(TWeakObjectPtr<ARegimentBattleField>
         LOCTEXT("FollowOrder", "За мной"), LOCTEXT("FollowHelp", "Начать или прекратить движение полка за офицером"));
     AddOrder(Common, ERegimentPlayerOrder::Line, LOCTEXT("LineKey", "1"),
         LOCTEXT("LineOrder", "Линия"), LOCTEXT("LineHelp", "Развернуть полк в линию"));
+    AddOrder(Common, ERegimentPlayerOrder::Wedge, FText::GetEmpty(),
+        LOCTEXT("WedgeOrder", "Клин"), LOCTEXT("WedgeHelp", "Тяжёлая конница строится остриём вперёд. Наберите ход для атаки."));
+    AddOrder(Common, ERegimentPlayerOrder::Square, FText::GetEmpty(),
+        LOCTEXT("SquareOrder", "Каре"), LOCTEXT("SquareHelp", "Пехота разворачивается наружу. Остановитесь, чтобы встретить конницу."));
+    AddOrder(Common, ERegimentPlayerOrder::Testudo, FText::GetEmpty(),
+        LOCTEXT("TestudoOrder", "Черепаха"), LOCTEXT("TestudoHelp", "Легионеры поднимают щиты и медленнее идут под обстрелом."));
+    AddOrder(Common, ERegimentPlayerOrder::Circle, FText::GetEmpty(),
+        LOCTEXT("CircleOrder", "Круг"), LOCTEXT("CircleHelp", "Копейщики разворачиваются наружу по всей окружности."));
     AddOrder(Common, ERegimentPlayerOrder::Withdraw, LOCTEXT("WithdrawKey", "5"),
         LOCTEXT("WithdrawOrder", "Отход"), LOCTEXT("WithdrawHelp", "Отойти из боя и собраться"));
     AddOrder(Tactics, ERegimentPlayerOrder::Hold, LOCTEXT("HoldKey", "3"),
@@ -912,8 +926,11 @@ TSharedRef<SWidget> MakeOfficerCommandSheet(TWeakObjectPtr<ARegimentBattleField>
                     })
                     .Text_Lambda([Field]
                     {
-                        const auto& Order = OfficerState(Field).Order;
-                        return Order.Activity.IsEmpty() ? LOCTEXT("OfficerNoOrder", "Ожидает приказа") : Order.Activity;
+                        const auto& State = OfficerState(Field);
+                        const auto Activity = State.Order.Activity.IsEmpty()
+                            ? LOCTEXT("OfficerNoOrder", "Ожидает приказа") : State.Order.Activity;
+                        return State.Formation.IsEmpty() ? Activity
+                            : FText::Format(LOCTEXT("OfficerActivityAndFormation", "{0} · {1}"), State.Formation, Activity);
                     })
                     .ColorAndOpacity(Muted).Font(FCoreStyle::GetDefaultFontStyle("Regular", 13))
                     .OverflowPolicy(ETextOverflowPolicy::Ellipsis)

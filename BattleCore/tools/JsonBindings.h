@@ -31,6 +31,10 @@ inline void to_json(nlohmann::json &j, CavalryClass value) { j = uint8_t(value);
 inline void from_json(const nlohmann::json &j, CavalryClass &value) {
     value = CavalryClass(ReadJsonUnsigned(j, uint8_t(CavalryClass::Heavy), "invalid CavalryClass value"));
 }
+inline void to_json(nlohmann::json &j, FormationShape value) { j = uint8_t(value); }
+inline void from_json(const nlohmann::json &j, FormationShape &value) {
+    value = FormationShape(ReadJsonUnsigned(j, uint8_t(FormationShape::Circle), "invalid FormationShape value"));
+}
 inline void to_json(nlohmann::json &j, RangedWeapon value) { j = uint8_t(value); }
 inline void from_json(const nlohmann::json &j, RangedWeapon &value) {
     value = RangedWeapon(ReadJsonUnsigned(j, uint8_t(RangedWeapon::Arcane), "invalid RangedWeapon value"));
@@ -57,7 +61,17 @@ template <class T> void from_json(const nlohmann::json &j, Id<T> &v) {
 namespace battle {
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Vec3, x, y, z)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Pose, position, yaw)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FormationSpec, columns, spacing_m, body_radius_m)
+inline void to_json(nlohmann::json &j, const FormationSpec &formation) {
+    j = {{"columns", formation.columns}, {"spacing_m", formation.spacing_m},
+         {"body_radius_m", formation.body_radius_m}};
+    if (formation.shape != FormationShape::Rectangle)
+        j["shape"] = formation.shape;
+}
+inline void from_json(const nlohmann::json &j, FormationSpec &formation) {
+    const FormationSpec defaults;
+    formation = {j.value("columns", defaults.columns), j.value("spacing_m", defaults.spacing_m),
+                 j.value("body_radius_m", defaults.body_radius_m), j.value("shape", defaults.shape)};
+}
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(WeaponSpec, damage, range, cooldown_ticks,
                                                 windup_ticks, projectile_speed_mps, base_accuracy)
 inline void to_json(nlohmann::json &j, const UnitSpec &u) {
