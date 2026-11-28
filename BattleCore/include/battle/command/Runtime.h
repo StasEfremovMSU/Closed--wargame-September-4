@@ -30,6 +30,9 @@ struct CommandState {
 bool ValidTaskRequest(const CommandTask &);
 StubResult<bool> InitializeCommand(World &);
 StubResult<TaskId> SubmitTask(World &, CommandTask);
+bool CanOrderScopedAttack(const World &, UnitId);
+std::vector<Command> PlanScopedAttacks(const World &, const NavigationService &, UnitId,
+                                       std::span<const RegimentId> excluded = {});
 bool UsesStaffCourier(const World &, NodeId sender, NodeId recipient);
 Pose ArmyStaffStation(Pose commander, SupportDuty duty, size_t index);
 StubResult<bool> UpdateCommand(World &, const NavigationService &,

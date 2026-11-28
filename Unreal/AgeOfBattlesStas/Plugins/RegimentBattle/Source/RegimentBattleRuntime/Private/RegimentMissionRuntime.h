@@ -92,6 +92,7 @@ private:
     TSet<uint64> PlayerOrders;
     double Accumulator = 0.0;
     double NextRoutePreview = 0.0;
+    TOptional<FVector> LastMarchHoverPoint;
     uint64 Selected = 1;
     bool bMapCameraApplied = false;
     bool bMarchResumed = false;

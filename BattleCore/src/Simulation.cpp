@@ -48,7 +48,7 @@ Result<TickResult> Step(World &w, std::span<const CommandEnvelope> input,
             continue;
         if (!e.sequence || !Finite(e.command.pose) || !Finite(e.command.velocity) ||
             !ValidOrderShape(e.command.order) || e.tick < w.tick ||
-            uint8_t(e.command.kind) > uint8_t(CommandKind::SetRankPriority) ||
+            uint8_t(e.command.kind) > uint8_t(CommandKind::SetStationaryThreatFacing) ||
             e.command.formation.shape > FormationShape::Circle ||
             !ValidSlotStagger(e.command.formation.slot_stagger) ||
             (e.command.kind == CommandKind::SetRankPriority &&
@@ -111,7 +111,15 @@ Result<TickResult> Step(World &w, std::span<const CommandEnvelope> input,
             status = SetSkirmishers(w, e.command.regiment, e.command.skirmishers_enabled);
         else if (e.command.kind == CommandKind::SetRankPriority)
             status = SetRegimentRankPriority(w, e.command.regiment, e.command.rank_priority);
-        else if (e.command.kind == CommandKind::IssueCommandTask) {
+        else if (e.command.kind == CommandKind::SetStationaryThreatFacing) {
+            if (w.scenario.rules.stationary_threat_facing != e.command.stationary_threat_facing) {
+                w.scenario.rules.stationary_threat_facing = e.command.stationary_threat_facing;
+                for (auto &regiment : w.regiments)
+                    if (IsHolding(regiment.ai_action) && !regiment.following_officer)
+                        regiment.decision_tick = 0;
+            }
+            status = Status::Ok;
+        } else if (e.command.kind == CommandKind::IssueCommandTask) {
             auto submitted = command::SubmitTask(w, e.command.command_task);
             status =
                 submitted.status == command::StubStatus::Ready ? Status::Ok : Status::InvalidInput;

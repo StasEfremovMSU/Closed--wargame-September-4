@@ -68,6 +68,9 @@ private:
 
     TSharedRef<SWidget> MakeModulePanel();
     TSharedRef<SWidget> MakeCampaignPanel();
+    TSharedRef<SWidget> MakeCampaignBriefing();
+    FReply PreviewCampaignStage(int32 Campaign, int32 Mission);
+    FReply LaunchCampaignStage();
     TSharedRef<SWidget> MakeTutorialPanel();
     FText CampaignStageStatus(int32 Campaign, int32 Stage) const;
     FText GetCampaignNotice() const;
@@ -131,6 +134,11 @@ private:
     FText ScenarioResultCount;
     EScenarioFilter ScenarioFilter = EScenarioFilter::All;
     TOptional<FMissionPreset> ScenarioPreview;
+    TOptional<FMissionAuthoringPreview> ScenarioBriefingMap;
+    TOptional<FMissionPreset> CampaignPreview;
+    TOptional<FMissionAuthoringPreview> CampaignBriefingMap;
+    int32 CampaignIndex = INDEX_NONE;
+    int32 CampaignMission = INDEX_NONE;
     TOptional<FMissionAuthoringPreview> DeploymentPreview;
     TSharedPtr<SWidget> DeploymentMap;
     FText DeploymentReport;
@@ -138,6 +146,7 @@ private:
     TSharedPtr<SButton> FirstModuleButton;
     TSharedPtr<SEditableTextBox> PresetName;
     TSharedPtr<SVerticalBox> BriefingSources;
+    TSharedPtr<SVerticalBox> CampaignSources;
     FText PresetStatus;
     FText MarchNotice;
     FText CampaignNotice;

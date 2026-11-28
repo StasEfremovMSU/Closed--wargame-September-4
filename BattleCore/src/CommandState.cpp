@@ -159,6 +159,10 @@ struct Hash {
         n(unsigned(v.status)); optional(v.formation_columns, [&](auto x) { n(x); });
         optional(v.formation_spacing_m, [&](auto x) { f(x); });
         optional(v.received_tick, [&](auto x) { n(x); });
+        if (v.supersede_player_orders_through) {
+            text("supersede player orders through");
+            n(*v.supersede_player_orders_through);
+        }
     }
     void report(const SituationReport &v) {
         n(unsigned(v.kind)); id(v.sender); id(v.recipient); id(v.about_task);

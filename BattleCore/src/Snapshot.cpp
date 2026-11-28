@@ -99,7 +99,7 @@ Result<World> Restore(const Snapshot &s) {
             r.artillery_pressure < 0.f || r.artillery_pressure > 1.f ||
             !normalized(r.morale) || !normalized(r.cohesion) || !normalized(r.fatigue) ||
             (r.retreat_waypoint && !Finite(*r.retreat_waypoint)) ||
-            uint8_t(r.ai_action) > uint8_t(OrderType::Pursue) ||
+            uint8_t(r.ai_action) > uint8_t(OrderType::MeleeAssault) ||
             r.rank_priority > RankPriority::MeleeFront || r.rank_layout > RankPriority::MeleeFront ||
             uint8_t(r.cavalry_phase) > uint8_t(CavalryPhase::Reform) ||
             !(r.charge_runup_m >= 0.f && r.charge_runup_m <= 12.f) ||
@@ -192,7 +192,7 @@ Result<World> Restore(const Snapshot &s) {
         if (!e.sequence || !queued.insert(e.sequence).second ||
             !std::binary_search(w.accepted_sequences.begin(), w.accepted_sequences.end(),
                                 e.sequence) ||
-            e.tick < w.tick || uint8_t(e.command.kind) > uint8_t(CommandKind::SetRankPriority) ||
+            e.tick < w.tick || uint8_t(e.command.kind) > uint8_t(CommandKind::SetStationaryThreatFacing) ||
             e.command.formation.shape > FormationShape::Circle ||
             !ValidSlotStagger(e.command.formation.slot_stagger) ||
             (e.command.kind == CommandKind::SetRankPriority &&
@@ -336,6 +336,8 @@ struct Hash {
             n(c.follow_enabled);
         if (c.kind == CommandKind::SetRankPriority)
             n(uint8_t(c.rank_priority));
+        if (c.kind == CommandKind::SetStationaryThreatFacing)
+            n(c.stationary_threat_facing);
     }
     void unit(const UnitSpec &u) {
         n(u.id.value);
@@ -636,6 +638,10 @@ uint64_t StateHash(const World &w) {
         h.text("controlled_arrow_aim");
     if (rules.individual_rout)
         h.text("individual_rout");
+    if (rules.stationary_threat_facing) {
+        h.text("stationary_threat_facing");
+        h.n(*rules.stationary_threat_facing);
+    }
     if (rules.meeting_engagement)
         h.text("meeting_engagement");
     h.n(w.scenario.obstacles.size());

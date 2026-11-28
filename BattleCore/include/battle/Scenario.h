@@ -102,6 +102,8 @@ struct Rules {
     bool sustained_melee{};
     bool controlled_arrow_aim{};
     bool individual_rout{};
+    // An unstated setting retains the behavior of older recorded battles.
+    std::optional<bool> stationary_threat_facing;
     bool meeting_engagement{};
     bool formed_fire_on_skirmishers{};
 };

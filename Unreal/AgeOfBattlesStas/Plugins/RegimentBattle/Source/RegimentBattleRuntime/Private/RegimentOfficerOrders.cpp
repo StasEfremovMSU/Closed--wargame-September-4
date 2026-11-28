@@ -179,6 +179,7 @@ FText OrderAction(battle::OrderType Type)
     case OrderType::Hold: return LOCTEXT("OrderHoldAction", "Удерживать позицию");
     case OrderType::MoveTo: return LOCTEXT("OrderMoveAction", "Манёвр");
     case OrderType::Attack: return LOCTEXT("OrderAttackAction", "Атака");
+    case OrderType::MeleeAssault: return LOCTEXT("OrderMeleeAssaultAction", "В рукопашную");
     case OrderType::Withdraw:
     case OrderType::FallBack: return LOCTEXT("OrderWithdrawAction", "Отход");
     case OrderType::Rally: return LOCTEXT("OrderRallyAction", "Сбор");
@@ -260,16 +261,18 @@ std::optional<FCourierAddress> CourierAddress(const battle::World& World, battle
 bool IsPlayerDispatch(const battle::command::CommandTask& Task, const FCourierAddress& Address)
 {
     return Task.author == Address.General && Task.issuer == Address.Army && Task.recipient == Address.Group &&
-        Task.priority == battle::PlayerOrderPriority && Task.action == battle::command::TaskKind::HoldArea;
+        Task.priority == battle::PlayerOrderPriority && (Task.action == battle::command::TaskKind::HoldArea ||
+            Task.action == battle::command::TaskKind::Attack);
 }
 
-void SetCourierRecipient(FRegimentOrderPresentation& Result, const battle::World& World, const FCourierAddress& Address)
+void SetCourierRecipient(FRegimentOrderPresentation& Result, const battle::World& World,
+    const FCourierAddress& Address, battle::command::TaskKind Action)
 {
     const auto* Group = battle::command::FindNode(World.command_state->hierarchy, Address.Group);
     Result.bCourier = true;
     Result.Recipient = Group && !Group->name.empty() ? FText::AsCultureInvariant(UTF8_TO_TCHAR(Group->name.c_str()))
         : FText::Format(LOCTEXT("UnnamedCourierGroup", "Группа {0}"), Address.Group.value);
-    Result.Action = OrderAction(battle::OrderType::Hold);
+    Result.Action = OrderAction(Action == battle::command::TaskKind::Attack ? battle::OrderType::Attack : battle::OrderType::Hold);
 }
 
 const battle::command::MessageEnvelope* LatestDispatch(const battle::World& World, const FCourierAddress& Address)
@@ -356,6 +359,39 @@ std::optional<FText> QueueStaffHold(const battle::World& World, std::span<const 
         int32(Groups.size()));
 }
 
+FText QueueScopedAttack(const battle::World& World, const battle::NavigationService& Navigation,
+    std::span<const battle::RegimentId> Excluded, std::vector<battle::CommandEnvelope>& Pending, uint64& Sequence)
+{
+    if (!LivingBlueUnit(World, World.controlled) || !battle::command::CanOrderScopedAttack(World, World.controlled))
+        return LOCTEXT("ScopedAttackNeedsHigherOfficer", "Этот приказ доступен командиру группы или армии.");
+    const auto Orders = battle::command::PlanScopedAttacks(World, Navigation, World.controlled, Excluded);
+    if (Orders.empty())
+        return LOCTEXT("ScopedAttackNoTarget", "Подчинённые части не могут достичь ни одного известного противника.");
+    int32 Groups = 0;
+    int32 Regiments = 0;
+    for (const auto& Order : Orders)
+    {
+        if (Order.kind == battle::CommandKind::IssueOrder)
+            if (const auto* Recipient = battle::FindRegiment(World, Order.order.recipient);
+                Recipient && WillFollow(World, *Recipient, World.controlled, Pending))
+            {
+                battle::Command Release;
+                Release.kind = battle::CommandKind::SetRegimentFollowing;
+                Release.unit = World.controlled;
+                Release.regiment = Recipient->id;
+                Pending.push_back({World.tick, Sequence++, Release});
+            }
+        Groups += Order.kind == battle::CommandKind::IssueCommandTask;
+        Regiments += Order.kind == battle::CommandKind::IssueOrder;
+        Pending.push_back({World.tick, Sequence++, Order});
+    }
+    if (!Groups)
+        return FText::Format(LOCTEXT("ScopedAttackRegiments", "Приказ атаковать подготовлен для полков: {0}"), Regiments);
+    if (!Regiments)
+        return FText::Format(LOCTEXT("ScopedAttackGroups", "Приказ атаковать подготовлен для групп: {0}"), Groups);
+    return FText::Format(LOCTEXT("ScopedAttackMixed", "Приказ атаковать подготовлен для групп: {0}, полков: {1}"), Groups, Regiments);
+}
+
 void FPlayerOrderJournal::Observe(const battle::World& World)
 {
     const auto Record = [this](const battle::Order& Order)
@@ -397,7 +433,7 @@ FRegimentOrderPresentation DescribeOrder(const battle::World& World, const battl
         {
             const auto& Command = It->command;
             if (Address && Command.kind == battle::CommandKind::IssueCommandTask && IsPlayerDispatch(Command.command_task, *Address))
-                SetCourierRecipient(Result, World, *Address);
+                SetCourierRecipient(Result, World, *Address, Command.command_task.action);
             else
                 Result.Action = PendingRegimentAction(Command, World.controlled, Record->id, Regiment.id);
             if (!Result.Action.IsEmpty())
@@ -432,7 +468,7 @@ FRegimentOrderPresentation DescribeOrder(const battle::World& World, const battl
     const auto* Dispatch = Address && Result.Delivery == Delivery::None ? LatestDispatch(World, *Address) : nullptr;
     if (Dispatch && (!Latest || Dispatch->created_tick > Latest->created_tick))
     {
-        SetCourierRecipient(Result, World, *Address);
+        SetCourierRecipient(Result, World, *Address, std::get<battle::command::CommandTask>(Dispatch->payload).action);
         DescribeDispatchPhase(Result, Dispatch->status, bPaused);
     }
     else if (Latest)
@@ -533,6 +569,9 @@ FRegimentOrderPresentation DescribeOrder(const battle::World& World, const battl
         case battle::OrderType::FallBack: Result.Activity = LOCTEXT("ActivityFallback", "Отходит"); break;
         case battle::OrderType::Brace: Result.Activity = LOCTEXT("ActivityBrace", "Готов против конницы"); break;
         case battle::OrderType::Pursue: Result.Activity = LOCTEXT("ActivityPursuit", "Преследует"); break;
+        case battle::OrderType::MeleeAssault:
+            Result.Activity = LOCTEXT("ActivityMeleeAssault", "Идёт в рукопашную");
+            break;
         }
     }
     return Result;
@@ -836,6 +875,7 @@ FText QueueOrder(const battle::World& World, const battle::NavigationService&,
     case ERegimentPlayerOrder::HoldLine:
     case ERegimentPlayerOrder::Brace:
     case ERegimentPlayerOrder::Attack:
+    case ERegimentPlayerOrder::MeleeAssault:
     case ERegimentPlayerOrder::Pursue:
     case ERegimentPlayerOrder::Withdraw:
         break;
@@ -846,6 +886,7 @@ FText QueueOrder(const battle::World& World, const battle::NavigationService&,
     case ERegimentPlayerOrder::Pace:
     case ERegimentPlayerOrder::Cover:
     case ERegimentPlayerOrder::FireSector:
+    case ERegimentPlayerOrder::CommandAttackNearest:
         return FText::GetEmpty();
     }
 
@@ -860,14 +901,16 @@ FText QueueOrder(const battle::World& World, const battle::NavigationService&,
     Direct.priority = battle::PlayerOrderPriority;
     Direct.created_tick = World.tick;
     Direct.delivery_tick = World.tick + FRegimentBattlePlayback::StepsPerSecond;
-    if (Order == ERegimentPlayerOrder::Attack || Order == ERegimentPlayerOrder::Pursue)
+    if (Order == ERegimentPlayerOrder::Attack || Order == ERegimentPlayerOrder::MeleeAssault ||
+        Order == ERegimentPlayerOrder::Pursue)
     {
         const auto* Enemy = VisibleEnemy(World, *Officer, Record->id, Cursor, Order == ERegimentPlayerOrder::Pursue);
         if (!Enemy)
             return Order == ERegimentPlayerOrder::Pursue
                 ? LOCTEXT("NoVisibleFleeingEnemy", "Офицер не видит отступающего вражеского полка.")
                 : LOCTEXT("NoVisibleEnemy", "Офицер не видит ни одного вражеского полка.");
-        Direct.type = Order == ERegimentPlayerOrder::Pursue ? battle::OrderType::Pursue : battle::OrderType::Attack;
+        Direct.type = Order == ERegimentPlayerOrder::Pursue ? battle::OrderType::Pursue :
+            Order == ERegimentPlayerOrder::MeleeAssault ? battle::OrderType::MeleeAssault : battle::OrderType::Attack;
         Direct.target_regiment = Enemy->id;
         Direct.point = Enemy->pose.position;
     }

@@ -1,4 +1,5 @@
 #include "TestSupport.h"
+#include "JsonBindings.h"
 #include "battle/Control.h"
 #include "battle/Snapshot.h"
 #include "doctest.h"
@@ -79,6 +80,21 @@ Scenario StaffBattle(bool with_staff = true, bool with_part = false, bool with_g
     return scenario;
 }
 
+Scenario StaffBattleWithRegimentOfficers() {
+    auto scenario = StaffBattle();
+    auto &hierarchy = scenario.command_setup->hierarchy;
+    for (auto &node : hierarchy.nodes)
+        if (node.level == c::Level::Regiment) {
+            const UnitId officer{node.regiment.value};
+            scenario.officers.push_back({{officer.value}, officer, 2});
+            c::OfficerProfile profile;
+            profile.officer = {officer.value};
+            hierarchy.officers.push_back(profile);
+            node.commander = profile.officer;
+        }
+    return scenario;
+}
+
 CommandEnvelope PlayerGroupOrder(const World &world, c::NodeId recipient, uint64_t sequence) {
     Command command;
     command.kind = CommandKind::IssueCommandTask;
@@ -143,6 +159,149 @@ TEST_CASE("runtime.staff_orders_reach_only_the_selected_group_when_the_rider_arr
     CHECK(PlayerDispatch(world, {2})->status == c::DeliveryStatus::Delivered);
     CHECK_FALSE(ReceivedPlayerOrder(world, {3}));
     CHECK(Distance(FindUnit(world, {23})->pose.position, FindUnit(world, {21})->pose.position) < 3.f);
+}
+
+TEST_CASE("runtime.scoped_attack_dispatches_army_groups_through_their_staff_courier") {
+    bool hold_first = true;
+    bool completed_maneuver = false;
+    SUBCASE("earlier direct hold at the same tick") {}
+    SUBCASE("later direct hold at the same tick") { hold_first = false; }
+    SUBCASE("earlier completed direct maneuver") { completed_maneuver = true; }
+    auto created = CreateWorld(StaffBattleWithRegimentOfficers(), 17);
+    REQUIRE(created);
+    auto &world = created.value;
+    REQUIRE(AcquireControl(world, {20}) == Status::Ok);
+    FlatNavigationService navigation;
+    REQUIRE(Step(world, {}, {}, navigation));
+    Order old_hold;
+    old_hold.issuer = {20};
+    old_hold.recipient = {1};
+    old_hold.priority = PlayerOrderPriority;
+    old_hold.type = completed_maneuver ? OrderType::MoveTo : OrderType::Hold;
+    old_hold.point = world.regiments[0].pose.position;
+    old_hold.created_tick = old_hold.delivery_tick = world.tick;
+    Command hold;
+    hold.kind = CommandKind::IssueOrder;
+    hold.unit = {20};
+    hold.order = old_hold;
+    const auto plan = c::PlanScopedAttacks(world, navigation, {20});
+    REQUIRE(plan.size() == 2);
+    std::vector<CommandEnvelope> commands;
+    if (hold_first)
+        commands.push_back({world.tick, 1, hold});
+    for (const auto &packet : plan) {
+        CHECK(packet.kind == CommandKind::IssueCommandTask);
+        CHECK(packet.command_task.action == c::TaskKind::Attack);
+        CHECK(packet.command_task.intent.target_regiment == RegimentId{2});
+        commands.push_back({world.tick, commands.size() + 1, packet});
+    }
+    if (!hold_first)
+        commands.push_back({world.tick, commands.size() + 1, hold});
+    REQUIRE(Step(world, commands, {}, navigation));
+    REQUIRE(world.regiments[0].order);
+    const auto prior_id = world.regiments[0].order->id;
+    REQUIRE(world.regiments[0].order->player_direct);
+    if (completed_maneuver)
+        REQUIRE(world.regiments[0].order->status == OrderStatus::Completed);
+    for (const auto group : {c::NodeId{2}, c::NodeId{3}}) {
+        const auto *dispatch = PlayerDispatch(world, group);
+        REQUIRE(dispatch);
+        CHECK(dispatch->channel == c::DeliveryChannel::Courier);
+        CHECK_FALSE(ReceivedPlayerOrder(world, group));
+    }
+    auto restored = Restore(nlohmann::json::parse(nlohmann::json(Capture(world)).dump()).get<Snapshot>());
+    REQUIRE(restored);
+    CHECK(StateHash(restored.value) == StateHash(world));
+    for (int i = 0; i < 160 && !ReceivedPlayerOrder(world, {2}); ++i) {
+        REQUIRE(Step(world, {}, {}, navigation));
+        REQUIRE(Step(restored.value, {}, {}, navigation));
+    }
+    CHECK(StateHash(restored.value) == StateHash(world));
+    REQUIRE(ReceivedPlayerOrder(world, {2}));
+    const bool earlier_order_survived = world.regiments[0].order->id == prior_id &&
+        (world.regiments[0].order->status == OrderStatus::Active ||
+         world.regiments[0].order->status == OrderStatus::Completed);
+    CHECK(earlier_order_survived != hold_first);
+}
+
+TEST_CASE("runtime.scoped_courier_attack_supersedes_an_earlier_courier_hold") {
+    bool new_direct = false;
+    bool overtakes_hold = false;
+    SUBCASE("attack replaces the courier hold") {}
+    SUBCASE("a still newer direct order is preserved") { new_direct = true; }
+    SUBCASE("a fast attack courier overtakes the slow hold courier") { overtakes_hold = true; }
+    auto scenario = StaffBattleWithRegimentOfficers();
+    if (overtakes_hold) {
+        auto rider = scenario.units.back();
+        scenario.units.back().speed = 2.f;
+        rider.id = {24};
+        rider.pose.position.y = 1.2f;
+        scenario.units.push_back(rider);
+        scenario.officers.push_back({{24}, {24}, 5});
+        scenario.command_setup->hierarchy.support.push_back({{24}, {1}, c::SupportDuty::Adjutant});
+    }
+    auto created = CreateWorld(scenario, 17);
+    REQUIRE(created);
+    auto &world = created.value;
+    REQUIRE(AcquireControl(world, {20}) == Status::Ok);
+    FlatNavigationService navigation;
+    const c::NodeId group{2};
+    const auto hold = PlayerGroupOrder(world, group, 1);
+    REQUIRE(Step(world, std::span(&hold, 1), {}, navigation));
+    REQUIRE(PlayerDispatch(world, group));
+    CHECK_FALSE(ReceivedPlayerOrder(world, group));
+
+    const auto plan = c::PlanScopedAttacks(world, navigation, {20});
+    const auto attack = std::ranges::find_if(plan, [&](const auto &command) {
+        return command.kind == CommandKind::IssueCommandTask && command.command_task.recipient == group;
+    });
+    REQUIRE(attack != plan.end());
+    std::vector<CommandEnvelope> commands{{world.tick, 2, *attack}};
+    if (new_direct) {
+        Command latest;
+        latest.kind = CommandKind::IssueOrder;
+        latest.unit = {20};
+        latest.order.issuer = {20};
+        latest.order.recipient = {1};
+        latest.order.type = OrderType::HoldLine;
+        latest.order.point = world.regiments[0].pose.position;
+        latest.order.priority = PlayerOrderPriority;
+        latest.order.created_tick = latest.order.delivery_tick = world.tick;
+        commands.push_back({world.tick, 3, latest});
+    }
+    REQUIRE(Step(world, commands, {}, navigation));
+    const auto received = [&](c::TaskKind action) -> const c::CommandTask * {
+        const auto &orders = OrdersFor(world, group).orders;
+        const auto found = std::ranges::find_if(orders, [&](const auto &task) {
+            return task.action == action && task.priority == PlayerOrderPriority && task.received_tick;
+        });
+        return found != orders.end() ? &*found : nullptr;
+    };
+    auto restored = Restore(nlohmann::json::parse(nlohmann::json(Capture(world)).dump()).get<Snapshot>());
+    REQUIRE(restored);
+    bool courier_hold = false;
+    for (int i = 0; i < 500 && (!received(c::TaskKind::HoldArea) || !received(c::TaskKind::Attack)); ++i) {
+        REQUIRE(Step(world, {}, {}, navigation));
+        REQUIRE(Step(restored.value, {}, {}, navigation));
+        const auto &order = world.regiments[0].order;
+        courier_hold |= order && order->type == OrderType::Hold && order->player_direct &&
+            order->status == OrderStatus::Active;
+    }
+    CHECK(StateHash(restored.value) == StateHash(world));
+    const auto* sent_attack = received(c::TaskKind::Attack);
+    const auto* sent_hold = received(c::TaskKind::HoldArea);
+    REQUIRE(sent_attack);
+    REQUIRE(sent_hold);
+    CHECK((*sent_attack->received_tick < *sent_hold->received_tick) == overtakes_hold);
+    const auto &current = world.regiments[0].order;
+    if (new_direct) {
+        REQUIRE(current);
+        CHECK(current->type == OrderType::HoldLine);
+        CHECK(current->status == OrderStatus::Active);
+    } else {
+        CHECK(courier_hold != overtakes_hold);
+        CHECK_FALSE((current && current->player_direct && current->status == OrderStatus::Active));
+    }
 }
 
 TEST_CASE("runtime.staff_queues_the_second_group_until_an_adjutant_returns") {

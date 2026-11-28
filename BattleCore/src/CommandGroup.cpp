@@ -236,6 +236,11 @@ StubResult<DecisionProposal> GroupBrain::Think(const BrainContext &c) const {
         state = FsmState::Attacking;
         option.target_regiment = p.task->intent.target_regiment;
         reason = "Advance along the assigned flank and watch for its enemy.";
+    } else if (army_attack && !target && p.task->supersede_player_orders_through &&
+               Distance(c.situation->own.pose.position, option.destination) > 2.f) {
+        state = FsmState::Advancing;
+        action = TaskKind::MoveToArea;
+        reason = "Advance to the enemy position reported by the army commander.";
     } else if (attack && !target) {
         state = FsmState::Regrouping;
         option.destination = c.situation->own.pose.position;

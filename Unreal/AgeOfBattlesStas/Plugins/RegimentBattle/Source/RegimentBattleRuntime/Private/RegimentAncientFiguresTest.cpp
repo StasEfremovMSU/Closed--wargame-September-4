@@ -187,6 +187,34 @@ bool FRegimentHeadgearClearanceTest::RunTest(const FString&)
     const FTransform HatOnRider = RegimentEraHeadgearPose(MovingRider);
     TestTrue(TEXT("An officer hat follows the same local attachment after yaw, lean, saddle height and rank scaling"),
         HatOnRider.GetRelativeTransform(MovingRider).Equals(RegimentEraHeadgearPose(FTransform::Identity), .001));
+    TestTrue(TEXT("Shakos and samurai protect the head while leaving a visible face"),
+        !RegimentHeadgearCoversFace(H::Fusilier, V::Shako) && !RegimentHeadgearCoversFace(H::SengokuSamurai, V::Sengoku));
+    TestTrue(TEXT("Knight visors and undead skulls keep their own face silhouette"),
+        RegimentHeadgearCoversFace(H::GothicPlate, V::Plate) && RegimentHeadgearCoversFace(H::None, V::Undead));
+    const auto Exposed = BuildRegimentCostumeFace(false);
+    const auto Covered = BuildRegimentCostumeFace(true);
+    TestTrue(TEXT("Only open costumes gain the visible sculpted face and both eyes"), Exposed.Parts.Num() > 10 &&
+        Covered.Parts.Num() == 1 && Covered.Bounds.Max.Z < 150.0);
+    return !HasAnyErrors();
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentCostumeSegmentsTest, "RegimentBattle.Presentation.CostumeSegments",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+
+bool FRegimentCostumeSegmentsTest::RunTest(const FString&)
+{
+    using A = ERegimentFigureAnchor;
+    using F = ERegimentAncientFeature;
+    using H = ERegimentHistoricalFigure;
+    const auto Samurai = BuildRegimentHistoricalDress(H::SengokuSamurai);
+    TestTrue(TEXT("The chest stays rigid and each sode follows its own shoulder"),
+        RegimentHistoricalDressSegment(Samurai, A::LeftShoulder).Count(F::Sode) == 1 &&
+        RegimentHistoricalDressSegment(Samurai, A::RightShoulder).Count(F::Sode) == 1 &&
+        RegimentHistoricalDressSegment(Samurai, A::Torso).Count(F::Sode) == 0);
+    TestTrue(TEXT("The leg plates are mounted on both thighs"),
+        !RegimentHistoricalDressSegment(Samurai, A::LeftThigh).Parts.IsEmpty() &&
+        !RegimentHistoricalDressSegment(Samurai, A::RightThigh).Parts.IsEmpty());
+    TestEqual(TEXT("The adjutant kit carries one dispatch satchel"), BuildRegimentAdjutantKit().Count(F::DispatchSatchel), 1);
     return !HasAnyErrors();
 }
 
@@ -300,7 +328,7 @@ bool FRegimentCavalrySilhouetteTest::RunTest(const FString&)
         RegimentHistoricalSeatOffset(Cuirassier) > RegimentHistoricalSeatOffset(Cossack) &&
         RegimentHistoricalSeatOffset(Cossack) > RegimentHistoricalSeatOffset(Numidian));
 
-    for (const auto Style : {Livonian, Cuirassier, Austrian, Saxon, Cossack, Numidian})
+    for (const auto Style : {Livonian, Cuirassier, Austrian, Saxon, Cossack, Numidian, S::RomanCavalry})
     {
         const auto Mount = BuildRegimentHistoricalMount(Style);
         const auto Proxy = BuildRegimentHistoricalProxy(Style);

@@ -12,7 +12,7 @@ inline void from_json(const nlohmann::json &j, CommandKind &value) {
         raw = uint64_t(j.get<int64_t>());
     else
         throw std::invalid_argument("CommandKind must be a nonnegative integer");
-    if (raw > uint8_t(CommandKind::SetRankPriority))
+    if (raw > uint8_t(CommandKind::SetStationaryThreatFacing))
         throw std::invalid_argument("invalid CommandKind value");
     value = CommandKind(raw);
 }
@@ -169,6 +169,8 @@ inline void to_json(nlohmann::json &j, const Rules &r) {
         j["controlled_arrow_aim"] = true;
     if (r.individual_rout)
         j["individual_rout"] = true;
+    if (r.stationary_threat_facing)
+        j["stationary_threat_facing"] = *r.stationary_threat_facing;
     if (r.meeting_engagement)
         j["meeting_engagement"] = true;
 }
@@ -188,6 +190,8 @@ inline void from_json(const nlohmann::json &j, Rules &r) {
     r.sustained_melee = j.value("sustained_melee", defaults.sustained_melee);
     r.controlled_arrow_aim = j.value("controlled_arrow_aim", defaults.controlled_arrow_aim);
     r.individual_rout = j.value("individual_rout", defaults.individual_rout);
+    r.stationary_threat_facing = j.contains("stationary_threat_facing")
+        ? std::optional(j.at("stationary_threat_facing").get<bool>()) : std::nullopt;
     r.meeting_engagement = j.value("meeting_engagement", defaults.meeting_engagement);
     r.ranged_cohorts = defaults.ranged_cohorts;
     if (!j.contains("ranged_cohorts"))
@@ -317,6 +321,8 @@ inline void to_json(nlohmann::json &j, const Command &c) {
         j["follow_enabled"] = c.follow_enabled;
     if (c.kind == CommandKind::SetRankPriority)
         j["rank_priority"] = c.rank_priority;
+    if (c.kind == CommandKind::SetStationaryThreatFacing)
+        j["stationary_threat_facing"] = c.stationary_threat_facing;
 }
 inline void from_json(const nlohmann::json &j, Command &c) {
     const Command defaults;
@@ -335,6 +341,8 @@ inline void from_json(const nlohmann::json &j, Command &c) {
                        j.at("follow_enabled").get<bool>();
     c.rank_priority = c.kind == CommandKind::SetRankPriority
         ? j.at("rank_priority").get<RankPriority>() : defaults.rank_priority;
+    c.stationary_threat_facing = c.kind == CommandKind::SetStationaryThreatFacing
+        ? j.at("stationary_threat_facing").get<bool>() : defaults.stationary_threat_facing;
 }
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CommandEnvelope, tick, sequence, command)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(BattleEvent, id, tick, kind, source, target,

@@ -1,5 +1,6 @@
 #include "TestSupport.h"
 #include "battle/Combat.h"
+#include "battle/Formation.h"
 #include "doctest.h"
 
 using namespace battle;
@@ -425,6 +426,59 @@ TEST_CASE("combat.tactical_disordered_line_loses_attack_and_guard_strength") {
     REQUIRE(strikes.size() == 2);
     CHECK(strikes.front().amount < organized_damage);
     CHECK(strikes.back().amount > organized_damage);
+}
+
+TEST_CASE("combat.ordered_melee_assault_closes_a_firing_line_without_a_volley") {
+    auto scenario = test::Duel(12);
+    scenario.rules.local_melee = scenario.rules.regiment_tactics = true;
+    scenario.rules.linear_infantry = true;
+    for (auto &regiment : scenario.regiments) {
+        regiment.formation = {12, 1.f, .25f};
+        regiment.pose.position.x *= 1.5f;
+    }
+    for (auto &unit : scenario.units) {
+        unit.pose = scenario.regiments[unit.regiment.value - 1].pose;
+        unit.health = 100.f;
+        if (unit.regiment.value == 1) {
+            unit.archer = true;
+            unit.ranged_weapon = RangedWeapon::Musket;
+            unit.ammunition = 30;
+            unit.weapon.range = 40.f;
+        }
+    }
+    auto world = CreateBattle(scenario);
+    auto &line = world.regiments.front();
+    line.manual_frontage = true;
+    REQUIRE(IsLinearFiringLine(line));
+    Order hold;
+    hold.recipient = {2};
+    hold.type = OrderType::Hold;
+    hold.point = world.regiments.back().pose.position;
+    REQUIRE(SubmitOrder(world, hold) == Status::Ok);
+    Order assault;
+    assault.recipient = {1};
+    assault.type = OrderType::MeleeAssault;
+    assault.target_regiment = {2};
+    assault.point = hold.point;
+    REQUIRE(SubmitOrder(world, assault) == Status::Ok);
+    const FlatNavigationService navigation;
+    const auto initial = line.pose.position;
+    bool engaged = false;
+    unsigned shots = 0;
+    for (int i = 0; i < 420 && !engaged; ++i) {
+        const auto result = Step(world, {}, {}, navigation);
+        REQUIRE(result);
+        for (const auto &event : result.value.events) {
+            if (event.kind != EventKind::AttackLaunched || event.regiment != line.id)
+                continue;
+            shots += event.projectile;
+            engaged |= !event.projectile;
+        }
+    }
+    CHECK(engaged);
+    CHECK(shots == 0);
+    CHECK(Distance(initial, line.pose.position) > 5.f);
+    CHECK(line.formation.columns == 12u);
 }
 
 TEST_CASE("combat.tactical_melee_damage_depends_on_defender_facing_at_impact") {

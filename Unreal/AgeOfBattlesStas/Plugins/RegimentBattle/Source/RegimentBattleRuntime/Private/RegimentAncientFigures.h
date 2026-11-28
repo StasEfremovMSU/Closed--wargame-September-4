@@ -5,6 +5,7 @@
 #include "Math/Box.h"
 #include "Math/Transform.h"
 #include "Misc/Optional.h"
+#include "RegimentFigureRig.h"
 
 class UObject;
 class UMaterialInterface;
@@ -14,7 +15,7 @@ namespace battle { enum class BattlePlatform : uint8; enum class RangedWeapon : 
 enum class ERegimentEraVisual : uint8;
 enum class ERegimentEraShield : uint8;
 
-enum class ERegimentAncientPrimitive : uint8 { Block, BeveledBlock, Ellipsoid, Disc, Taper, Frustum };
+enum class ERegimentAncientPrimitive : uint8 { Block, BeveledBlock, Ellipsoid, Disc, Taper, Frustum, Ring };
 enum class ERegimentAncientMaterial : uint8
 {
     Paint, Bronze, Wood, Leather, Ivory, Hide, Dark, Skin, Iron, Linen, Scarlet, Green, Navy, Tartan,
@@ -23,7 +24,8 @@ enum class ERegimentAncientMaterial : uint8
 enum class ERegimentAncientFeature : uint8
 {
     None, Driver, TowerCrew, EngineCrew, Ear, Tusk, Horse, Scythe, ThrowingArm, BowArm,
-    Quiver, Greatcoat, Kilt, SlingPouch, Kabuto, Jingasa, Sode, Lamellar, Sashimono, Matchlock
+    Quiver, Greatcoat, Kilt, SlingPouch, Kabuto, Jingasa, Sode, Lamellar, Sashimono, Matchlock,
+    WheelRim, WheelSpoke, MuzzleLip, DispatchSatchel
 };
 enum class ERegimentAncientShield : uint8
 {
@@ -54,6 +56,7 @@ struct FRegimentAncientPart
     ERegimentAncientMaterial Material;
     FTransform Transform;
     ERegimentAncientFeature Feature;
+    ERegimentFigureAnchor Anchor = ERegimentFigureAnchor::Torso;
 };
 
 struct FRegimentAncientFigure
@@ -90,7 +93,12 @@ double RegimentHistoricalSpearLength(ERegimentHistoricalFigure Style);
 inline constexpr double RegimentHistoricalRiderHeight = 54.0;
 inline constexpr double RegimentSengokuSaddleHeight = 140.0;
 double RegimentHistoricalSeatOffset(ERegimentHistoricalFigure Style);
+FRegimentRiderTack RegimentHistoricalRiderTack(ERegimentHistoricalFigure Style);
 FRegimentAncientFigure BuildRegimentHistoricalDress(ERegimentHistoricalFigure Style);
+FRegimentAncientFigure RegimentHistoricalDressSegment(const FRegimentAncientFigure& Dress, ERegimentFigureAnchor Anchor);
+FRegimentAncientFigure BuildRegimentAdjutantKit();
+bool RegimentHeadgearCoversFace(ERegimentHistoricalFigure Dress, ERegimentEraVisual Visual);
+FRegimentAncientFigure BuildRegimentCostumeFace(bool bCovered);
 FRegimentAncientFigure BuildRegimentHistoricalProxy(ERegimentHistoricalFigure Style);
 FRegimentAncientFigure BuildRegimentHistoricalTack(ERegimentHistoricalFigure Style);
 FRegimentAncientFigure BuildRegimentHistoricalMount(ERegimentHistoricalFigure Style);

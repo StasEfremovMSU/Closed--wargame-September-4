@@ -775,20 +775,25 @@ void BuildCombatEvents(const World &w, std::vector<BattleEvent> &out, uint64_t *
             continue;
         // A closed rank can prevent the optional throw while still allowing a melee strike.
         const auto *javelin_regiment = u.ranged_attack ? FindRegiment(w, u.regiment) : nullptr;
-        const bool alternate_ready = u.ranged_attack && u.ammunition_remaining &&
+        const bool alternate_available = u.ranged_attack && u.ammunition_remaining &&
             u.ranged_ready_tick <= w.tick && RangedReadyThisTick(w, u, u.ranged_ready_tick) &&
             CanFireFromRank(w, u, javelin_regiment) &&
             (!contact || !u.regiment || contact->RangedTargetAllowed(u, false));
-        if ((!alternate_ready && u.ready_tick > w.tick &&
-             (!contact || !u.archer || u.dagger_ready_tick > w.tick)) ||
+        if ((!alternate_available && u.ready_tick > w.tick && (!u.archer || u.dagger_ready_tick > w.tick)) ||
             (contact && !contact->CanAcquire(u)))
             continue;
         const auto *r = u.ranged_attack ? javelin_regiment : FindRegiment(w, u.regiment);
         if (r && (r->panic || IsDeploying(w, *r)))
             continue;
-        const bool dagger = contact && contact->DaggerDrawn(u);
-        if (IsSiegeEngine(u.platform) && (dagger || std::ranges::binary_search(moving_siege, u.id)))
+        const bool siege = IsSiegeEngine(u.platform);
+        const bool assault = r && r->order && r->order->status == OrderStatus::Active &&
+            r->order->type == OrderType::MeleeAssault && !u.skirmisher && !siege;
+        const bool dagger = contact ? contact->DaggerDrawn(u) : assault && u.archer;
+        if (siege && (dagger || std::ranges::binary_search(moving_siege, u.id)))
             continue;
+        if (assault && u.archer && !dagger)
+            continue;
+        const bool alternate_ready = alternate_available && !assault;
         const bool projectile = (u.archer && !dagger) || alternate_ready;
         const Tick ready = alternate_ready ? u.ranged_ready_tick : dagger ? u.dagger_ready_tick : u.ready_tick;
         if (ready > w.tick ||
@@ -1013,7 +1018,7 @@ void CommitCombatEvents(World &w, std::span<const BattleEvent> launches, const L
                 continue;
             --u->ammunition_remaining;
         }
-        const bool dagger = contact && u->archer && !e.projectile;
+        const bool dagger = u->archer && !e.projectile;
         const auto weapon = e.projectile ? FiringWeapon(*u) : dagger ? DaggerWeapon(*u) : u->weapon;
         auto &cooldown = e.projectile && u->ranged_attack ? u->ranged_ready_tick
                          : dagger ? u->dagger_ready_tick : u->ready_tick;
@@ -1290,7 +1295,8 @@ void UpdateMorale(World &w) {
             r.decision_tick = 0;
             r.decision_until = 0;
             if (r.order &&
-                (r.order->type == OrderType::Attack || r.order->type == OrderType::MoveTo))
+                (r.order->type == OrderType::Attack || r.order->type == OrderType::MeleeAssault ||
+                 r.order->type == OrderType::MoveTo))
                 r.order->status = OrderStatus::Cancelled;
             Emit(w, EventKind::OrderChanged, {}, {}, r.id, 0, "panic: withdraw to rally point");
         }

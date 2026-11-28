@@ -2,6 +2,7 @@
 
 #include "ConvexVolume.h"
 #include "RegimentBattlePlayback.h"
+#include "RegimentFieldGunFigure.h"
 #include "RegimentHillPresentation.h"
 
 THIRD_PARTY_INCLUDES_START
@@ -217,9 +218,10 @@ void FRegimentBattlefieldEffects::ObserveStep(const battle::World& World, const 
         const bool bCannon = Shooter->platform == battle::BattlePlatform::FieldGun;
         const auto Kind = bCannon ? ERegimentEffectKind::Cannon : ERegimentEffectKind::Musket;
         const battle::Vec3 Aim = battle::Forward(Shooter->pose.yaw);
-        const auto Muzzle = Shooter->pose.position + Aim * (bCannon ? 1.35f : .70f);
-        const double MuzzleHeight = bCannon ? 131.0 : Shooter->troop == battle::UnitTroop::Mounted ? 235.0 : 147.0;
-        const FVector Center = RegimentTerrainLocation(Muzzle, Origin, Hill) + FVector(0, 0, MuzzleHeight);
+        const double MusketHeight = Shooter->troop == battle::UnitTroop::Mounted ? 235.0 : 147.0;
+        const FVector Center = bCannon ? RegimentFieldGun::MuzzleAt(
+            RegimentTerrainLocation(Shooter->pose.position, Origin, Hill), Shooter->pose.yaw)
+            : RegimentTerrainLocation(Shooter->pose.position + Aim * .70f, Origin, Hill) + FVector(0, 0, MusketHeight);
         AddBurst(Kind, {Center, FVector(Aim.x, Aim.y, 0) * (bCannon ? 115.0 : 54.0),
             World.tick, Shooter->regiment.value, true}, Camera);
     }

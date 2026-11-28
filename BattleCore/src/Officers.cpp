@@ -220,17 +220,36 @@ std::optional<Pose> HoldingThreatFacing(const World &world, const RegimentState 
     const auto size = Footprint(regiment);
     const float threat_range = std::max(30.f, 12.f + .5f * std::max(size.width_m, size.depth_m));
     const auto origin = regiment.pose.position;
+    const bool enhanced = world.scenario.rules.stationary_threat_facing.value_or(false);
+    const float facing = enhanced && regiment.waypoint < regiment.route.size()
+        ? regiment.route.back().yaw : regiment.pose.yaw;
+    constexpr float SwitchMargin = 4.f;
+    std::optional<Pose> closest, aligned;
+    float closest_distance = 0.f, aligned_distance = 0.f;
     for (const auto &contact : perception.enemies) {
-        if (contact.distance > threat_range)
+        if (contact.distance > threat_range + (enhanced ? SwitchMargin : 0.f))
             break;
         const auto delta = contact.position - origin;
         if (std::hypot(delta.x, delta.y) <= .01f ||
+            (enhanced && FindRegiment(world, contact.id)->panic) ||
             !command::HasLineOfSight(origin, contact.position, world.scenario.obstacles) ||
             SmokeObscures(world, origin, contact.position))
             continue;
-        return Pose{origin, std::atan2(delta.y, delta.x)};
+        const Pose aim{origin, std::atan2(delta.y, delta.x)};
+        if (!enhanced)
+            return aim;
+        if (!closest && contact.distance <= threat_range) {
+            closest = aim;
+            closest_distance = contact.distance;
+        }
+        if (!aligned && std::abs(std::remainder(aim.yaw - facing, 2.f * Pi)) <= .35f) {
+            aligned = aim;
+            aligned_distance = contact.distance;
+        }
+        if (closest && aligned)
+            break;
     }
-    return std::nullopt;
+    return aligned && (!closest || aligned_distance <= closest_distance + SwitchMargin) ? aligned : closest;
 }
 
 PathResult FindHoldPivot(const NavigationService &nav, const World &world,
@@ -448,6 +467,8 @@ Decision Evaluate(const Perception &p, const OfficerTraits &traits, const Order 
         } else {
             d.target = target->id;
             d.point = AttackPosition(p.pose.position, target->position, p.preferred_range);
+            if (d.action == OrderType::MeleeAssault)
+                d.reason = "close with the enemy in an ordered melee assault";
         }
     }
     return d;
@@ -650,6 +671,8 @@ void UpdateOfficers(World &w, const NavigationService &nav) {
                 }
             }
         }
+        if (active && resolved.type == OrderType::MeleeAssault)
+            p.preferred_range = Perception{}.preferred_range;
         Decision d;
         const bool standing_position = !active && r.order && r.order->player_direct &&
             r.order->status == OrderStatus::Completed &&
@@ -676,7 +699,8 @@ void UpdateOfficers(World &w, const NavigationService &nav) {
                 d.reason = "pursue the fleeing regiment";
             }
         }
-        if (w.scenario.rules.regiment_tactics && d.action == OrderType::Attack && d.target &&
+        if (w.scenario.rules.regiment_tactics &&
+            (d.action == OrderType::Attack || d.action == OrderType::MeleeAssault) && d.target &&
             !r.pursuit_target && FindRegiment(w, d.target)->panic) {
             d.action = OrderType::HoldLine;
             d.reason = "hold the line as the enemy breaks";
@@ -774,6 +798,14 @@ void UpdateOfficers(World &w, const NavigationService &nav) {
                                                  task->action == command::TaskKind::Defend);
             const bool holding_post = standing_position ||
                 (active && (resolved.player_direct || assigned_guard || !w.command_state));
+            const bool stationary = r.waypoint >= r.route.size() ||
+                (r.route[r.waypoint].position == r.pose.position && r.route.back().position == r.pose.position);
+            const auto auto_facing = w.scenario.rules.stationary_threat_facing;
+            const bool watch_threat = auto_facing ? *auto_facing && stationary && !r.disordered &&
+                !IsRecoveringFromMelee(w, r) && d.action != OrderType::Brace &&
+                !HasOutwardRanks(r.formation.shape) && r.formation.shape != FormationShape::Testudo &&
+                (!active || IsHolding(resolved.type)) && (!task || assigned_guard)
+                : holding_post;
             if (prescribed) {
                 const Pose facing{r.pose.position, *prescribed};
                 if (std::abs(std::remainder(r.pose.yaw - facing.yaw, 2 * Pi)) >= .01f) {
@@ -782,7 +814,7 @@ void UpdateOfficers(World &w, const NavigationService &nav) {
                     if (!d.keep_route)
                         d.path = FindHoldPivot(nav, w, r, facing);
                 }
-            } else if (w.scenario.rules.regiment_tactics && holding_post && !approach_report) {
+            } else if (w.scenario.rules.regiment_tactics && watch_threat && !approach_report) {
                 // A hold may turn its front toward local pressure, but it does not leave its post.
                 constexpr float FacingTolerance = .08f;
                 const auto aim = HoldingThreatFacing(w, r, p);

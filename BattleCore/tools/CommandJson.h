@@ -147,11 +147,40 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CommandIntent, purpose, objectiv
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(AuthorityLimits, initiative, may_pursue,
                                                 may_break_formation, may_change_target,
                                                 pursuit_limit_m, acceptable_loss_fraction)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CommandTask, id, parent_task, issuer, recipient,
-                                                author, action, intent, authority, priority,
-                                                created_tick, not_before_tick, expiry_tick,
-                                                duration_ticks, duration_origin, status,
-                                                formation_columns, formation_spacing_m, received_tick)
+inline void to_json(nlohmann::json &j, const CommandTask &t) {
+    j = {{"id", t.id}, {"parent_task", t.parent_task}, {"issuer", t.issuer}, {"recipient", t.recipient},
+         {"author", t.author}, {"action", t.action}, {"intent", t.intent}, {"authority", t.authority},
+         {"priority", t.priority}, {"created_tick", t.created_tick}, {"not_before_tick", t.not_before_tick},
+         {"expiry_tick", t.expiry_tick}, {"duration_ticks", t.duration_ticks},
+         {"duration_origin", t.duration_origin}, {"status", t.status}, {"formation_columns", t.formation_columns},
+         {"formation_spacing_m", t.formation_spacing_m}, {"received_tick", t.received_tick}};
+    if (t.supersede_player_orders_through)
+        j["supersede_player_orders_through"] = *t.supersede_player_orders_through;
+}
+inline void from_json(const nlohmann::json &j, CommandTask &t) {
+    const CommandTask defaults;
+    t.id = j.value("id", defaults.id);
+    t.parent_task = j.value("parent_task", defaults.parent_task);
+    t.issuer = j.value("issuer", defaults.issuer);
+    t.recipient = j.value("recipient", defaults.recipient);
+    t.author = j.value("author", defaults.author);
+    t.action = j.value("action", defaults.action);
+    t.intent = j.value("intent", defaults.intent);
+    t.authority = j.value("authority", defaults.authority);
+    t.priority = j.value("priority", defaults.priority);
+    t.created_tick = j.value("created_tick", defaults.created_tick);
+    t.not_before_tick = j.value("not_before_tick", defaults.not_before_tick);
+    t.expiry_tick = j.value("expiry_tick", defaults.expiry_tick);
+    t.duration_ticks = j.value("duration_ticks", defaults.duration_ticks);
+    t.duration_origin = j.value("duration_origin", defaults.duration_origin);
+    t.status = j.value("status", defaults.status);
+    t.formation_columns = j.value("formation_columns", defaults.formation_columns);
+    t.formation_spacing_m = j.value("formation_spacing_m", defaults.formation_spacing_m);
+    t.received_tick = j.value("received_tick", defaults.received_tick);
+    t.supersede_player_orders_through.reset();
+    if (const auto cutoff = j.find("supersede_player_orders_through"); cutoff != j.end())
+        t.supersede_player_orders_through = json_detail::Unsigned(*cutoff, "supersede_player_orders_through");
+}
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(SituationReport, kind, sender, recipient,
                                                 about_task, observed_tick, created_tick, situation,
                                                 explanation)

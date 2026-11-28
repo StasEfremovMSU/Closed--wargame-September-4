@@ -495,17 +495,20 @@ TSharedRef<SWidget> MakePossessionEntry(TWeakObjectPtr<ARegimentBattleField> Fie
 }
 
 TSharedRef<SWidget> MakeOfficerOrder(TWeakObjectPtr<ARegimentBattleField> Field, ERegimentPlayerOrder Order,
-    const FText& Key, const FText& Label, const FText& Help)
+    const FText& Key, const FText& Label, const FText& Help, TAttribute<bool> ArtillerySelected)
 {
-    return SNew(SBox).HeightOverride(34.f)
-        .Visibility_Lambda([Field, Order]
+    return SNew(SBox).HeightOverride(Order == ERegimentPlayerOrder::CommandAttackNearest ? 47.f : 34.f)
+        .Visibility_Lambda([Field, Order, ArtillerySelected]
         {
             const uint8 Special = RegimentSpecialFormationBit(Order);
+            if (Order == ERegimentPlayerOrder::Attack && ArtillerySelected.Get(false))
+                return EVisibility::Collapsed;
             if (IsRegimentRankOrder(Order) && !OfficerState(Field).Order.bCanSetRanks)
                 return EVisibility::Collapsed;
             if (Special && !(OfficerState(Field).SpecialFormations & Special))
                 return EVisibility::Collapsed;
-            if ((Order == ERegimentPlayerOrder::CommandHold && OfficerState(Field).CommandTier < 2) ||
+            if (((Order == ERegimentPlayerOrder::CommandHold || Order == ERegimentPlayerOrder::CommandAttackNearest) &&
+                 OfficerState(Field).CommandTier < 2) ||
                 (Order == ERegimentPlayerOrder::WingHold && OfficerState(Field).CommandTier < 3))
                 return EVisibility::Collapsed;
             return (Order == ERegimentPlayerOrder::NextRegiment || Order == ERegimentPlayerOrder::GroupManeuver) &&
@@ -539,7 +542,12 @@ TSharedRef<SWidget> MakeOfficerOrder(TWeakObjectPtr<ARegimentBattleField> Field,
                     return State.bAdditionalRegiments;
                 return State.bCanCommand;
             })
-            .ToolTipText(Help)
+            .ToolTipText_Lambda([Order, Help, ArtillerySelected]
+            {
+                return Order == ERegimentPlayerOrder::MeleeAssault && ArtillerySelected.Get(false)
+                    ? LOCTEXT("BatteryAttackHelp", "Атаковать ближайший видимый полк орудиями. Для конкретной цели наведите прицел и нажмите 4.")
+                    : Help;
+            })
             .OnClicked_Lambda([Field, Order]
             {
                 if (auto* Battle = Field.Get())
@@ -565,12 +573,15 @@ TSharedRef<SWidget> MakeOfficerOrder(TWeakObjectPtr<ARegimentBattleField> Field,
                 + SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)
                 [
                     SNew(STextBlock)
-                    .Text_Lambda([Field, Order, Label]
+                    .Text_Lambda([Field, Order, Label, ArtillerySelected]
                     {
+                        if (Order == ERegimentPlayerOrder::MeleeAssault && ArtillerySelected.Get(false))
+                            return LOCTEXT("BatteryAttackOrder", "Атаковать орудиями");
                         return Order == ERegimentPlayerOrder::Pace ? OfficerState(Field).Pace : Label;
                     })
                     .ColorAndOpacity(Ink)
                     .Font(FCoreStyle::GetDefaultFontStyle("Regular", 14))
+                    .AutoWrapText(Order == ERegimentPlayerOrder::CommandAttackNearest)
                     .OverflowPolicy(ETextOverflowPolicy::Ellipsis)
                 ]
             ]
@@ -597,7 +608,7 @@ public:
     }
 };
 
-TSharedRef<SWidget> MakeOfficerControlMenu()
+TSharedRef<SWidget> MakeOfficerControlMenu(TWeakObjectPtr<ARegimentBattleField> Field)
 {
     using Action = ERegimentOfficerInputAction;
     auto Notice = MakeShared<FText>();
@@ -662,10 +673,13 @@ TSharedRef<SWidget> MakeOfficerControlMenu()
                         SNew(SButton)
                         .ButtonStyle(&OfficerControlStyle())
                         .Text(LOCTEXT("ResetPersonalControls", "Сбросить"))
-                        .OnClicked_Lambda([Notice]
+                        .OnClicked_Lambda([Notice, Field]
                         {
                             RegimentOfficerSettings() = FRegimentOfficerSettings{};
-                            SaveRegimentOfficerSettings();
+                            if (auto* Battle = Field.Get())
+                                Battle->SetStationaryThreatFacing(true);
+                            else
+                                SaveRegimentOfficerSettings();
                             *Notice = FText::GetEmpty();
                             return FReply::Handled();
                         })
@@ -788,19 +802,19 @@ TSharedRef<SWidget> MakeOfficerOrderFeedback(TWeakObjectPtr<ARegimentBattleField
         .AutoWrapText(true);
 }
 
-TSharedRef<SWidget> MakeOfficerCommandSheet(TWeakObjectPtr<ARegimentBattleField> Field)
+TSharedRef<SWidget> MakeOfficerCommandSheet(TWeakObjectPtr<ARegimentBattleField> Field, TAttribute<bool> ArtillerySelected)
 {
     auto Regiment = SNew(SVerticalBox);
     auto Higher = SNew(SVerticalBox);
     auto Formation = SNew(SVerticalBox);
     auto Advanced = SNew(SVerticalBox);
     auto Navigation = SNew(SVerticalBox);
-    const auto AddOrder = [Field](const TSharedRef<SVerticalBox>& Group, ERegimentPlayerOrder Order,
+    const auto AddOrder = [Field, ArtillerySelected](const TSharedRef<SVerticalBox>& Group, ERegimentPlayerOrder Order,
         const FText& Key, const FText& Label, const FText& Help)
     {
         Group->AddSlot().AutoHeight().Padding(0, 0, 0, 3)
         [
-            MakeOfficerOrder(Field, Order, Key, Label, Help)
+            MakeOfficerOrder(Field, Order, Key, Label, Help, ArtillerySelected)
         ];
     };
 
@@ -808,8 +822,8 @@ TSharedRef<SWidget> MakeOfficerCommandSheet(TWeakObjectPtr<ARegimentBattleField>
         LOCTEXT("GuardButton", "Держать фронт"), LOCTEXT("GuardHelp", "Удерживать участок, оставаться в строю и встречать противника лицом."));
     AddOrder(Regiment, ERegimentPlayerOrder::Follow, LOCTEXT("FollowKey", "F"),
         LOCTEXT("FollowOrder", "Следовать за офицером"), LOCTEXT("FollowHelp", "Полк повторяет движение и направление офицера. Повторный приказ прекращает следование."));
-    AddOrder(Regiment, ERegimentPlayerOrder::Attack, LOCTEXT("AttackKey", "4"),
-        LOCTEXT("AttackOrder", "Атаковать противника"), LOCTEXT("AttackHelp", "Атаковать ближайший видимый полк. Для конкретной цели наведите прицел и нажмите 4."));
+    AddOrder(Regiment, ERegimentPlayerOrder::MeleeAssault, LOCTEXT("MeleeAssaultKey", "4"),
+        LOCTEXT("MeleeAssaultOrder", "В рукопашную"), LOCTEXT("MeleeAssaultHelp", "Сблизиться с противником для рукопашного боя. Для конкретной цели наведите прицел и нажмите 4."));
     AddOrder(Regiment, ERegimentPlayerOrder::Maneuver, LOCTEXT("ManeuverKey", "M"),
         LOCTEXT("MoveButton", "Переместить полк"), LOCTEXT("MoveHelp", "Щёлкните по местности. Перетаскивание задаёт ширину и направление фронта."));
     AddOrder(Regiment, ERegimentPlayerOrder::Withdraw, LOCTEXT("WithdrawKey", "5"),
@@ -817,6 +831,9 @@ TSharedRef<SWidget> MakeOfficerCommandSheet(TWeakObjectPtr<ARegimentBattleField>
 
     AddOrder(Higher, ERegimentPlayerOrder::GroupManeuver, LOCTEXT("GroupManeuverKey", "H"),
         LOCTEXT("GroupMoveButton", "Переместить группу"), LOCTEXT("GroupMoveHelp", "Переместить группу выбранного полка с сохранением интервалов."));
+    AddOrder(Higher, ERegimentPlayerOrder::CommandAttackNearest, FText::GetEmpty(),
+        LOCTEXT("ScopedAttackButton", "Всем атаковать ближайшего противника"),
+        LOCTEXT("ScopedAttackHelp", "Подчинённые части получают приказ атаковать ближайшую известную цель, к которой есть путь."));
     AddOrder(Higher, ERegimentPlayerOrder::CommandHold, LOCTEXT("CommandHoldKey", "J"),
         LOCTEXT("CommandHoldLabel", "Удерживать позиции"), LOCTEXT("CommandHoldHelp", "Приказ получают все полки в вашем подчинении."));
     AddOrder(Higher, ERegimentPlayerOrder::WingHold, LOCTEXT("WingHoldKey", "K"),
@@ -863,6 +880,9 @@ TSharedRef<SWidget> MakeOfficerCommandSheet(TWeakObjectPtr<ARegimentBattleField>
 
     AddOrder(Advanced, ERegimentPlayerOrder::Hold, LOCTEXT("HoldKey", "3"),
         LOCTEXT("HoldOrder", "Стоять на месте"), LOCTEXT("HoldHelp", "Остановить перемещение на текущей позиции."));
+    AddOrder(Advanced, ERegimentPlayerOrder::Attack, FText::GetEmpty(),
+        LOCTEXT("TacticalAttackOrder", "Атаковать по обстановке"),
+        LOCTEXT("TacticalAttackHelp", "Атаковать ближайший видимый полк. Стрелки в огневой линии могут открыть огонь с дистанции."));
     AddOrder(Advanced, ERegimentPlayerOrder::Brace, LOCTEXT("BraceKey", "8"),
         LOCTEXT("BraceButton", "Приготовиться к атаке конницы"), LOCTEXT("BraceHelp", "Пехота останавливается и встречает конницу строем."));
     AddOrder(Advanced, ERegimentPlayerOrder::Pursue, LOCTEXT("PursueKey", "9"),
@@ -1023,7 +1043,7 @@ TSharedRef<SWidget> MakeOfficerCommandSheet(TWeakObjectPtr<ARegimentBattleField>
                             .ButtonStyle(&OfficerControlStyle())
                             .ContentPadding(FMargin(9, 4))
                             .MenuPlacement(MenuPlacement_AboveAnchor)
-                            .OnGetMenuContent_Static(&MakeOfficerControlMenu)
+                            .OnGetMenuContent_Lambda([Field] { return MakeOfficerControlMenu(Field); })
                             .ButtonContent()
                             [
                                 SNew(STextBlock)
@@ -2116,7 +2136,7 @@ void SRegimentBattleHud::Construct(const FArguments& InArgs)
             ]
             + SHorizontalBox::Slot().FillWidth(1.f).HAlign(HAlign_Right).VAlign(VAlign_Top).Padding(8, 0, 0, 0)
             [
-                MakeOfficerCommandSheet(Field)
+                MakeOfficerCommandSheet(Field, InArgs._ArtillerySelected)
             ]
         ]
         + SOverlay::Slot()
@@ -2182,6 +2202,24 @@ void SRegimentBattleHud::Construct(const FArguments& InArgs)
                         [
                             MakeSpeedControl(Field, ERegimentBattleSpeed::Double, LOCTEXT("Double", "×2"),
                                 LOCTEXT("DoubleHelp", "Двойная скорость"))
+                        ]
+                        + SHorizontalBox::Slot().AutoWidth().Padding(0, 0, 10, 0)
+                        [
+                            MakeControl(TAttribute<FText>::CreateLambda([]
+                            {
+                                return RegimentOfficerSettings().StationaryThreatFacing()
+                                    ? LOCTEXT("ThreatFacingOn", "Автоповорот: вкл.")
+                                    : LOCTEXT("ThreatFacingOff", "Автоповорот: выкл.");
+                            }), LOCTEXT("ThreatFacingHelp", "Стоящие полки поворачиваются к близкой видимой угрозе."),
+                                206.f, FSlateColor(ControlTint), FOnClicked::CreateLambda([Field]
+                            {
+                                if (auto* Battle = Field.Get())
+                                {
+                                    Battle->SetStationaryThreatFacing(!RegimentOfficerSettings().StationaryThreatFacing());
+                                    PlayMenuSound(Battle->GetWorld(), EMenuSound::Click);
+                                }
+                                return FReply::Handled();
+                            }))
                         ]
                         + SHorizontalBox::Slot().AutoWidth().Padding(0, 0, 4, 0)
                         [

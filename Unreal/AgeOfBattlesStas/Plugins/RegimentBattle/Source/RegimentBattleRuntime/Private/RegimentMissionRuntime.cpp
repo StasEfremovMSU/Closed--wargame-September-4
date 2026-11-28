@@ -162,6 +162,7 @@ void FRegimentMissionRuntime::AttachHud(APlayerController* Controller)
             Preset.Roster[int32(Id - 1)].bEnabled)
         {
             Selected = Id;
+            LastMarchHoverPoint.Reset();
             Board.SetRoutePreview({});
             NextRoutePreview = 0.0;
         }
@@ -427,6 +428,8 @@ void FRegimentMissionRuntime::StartMission(FMissionPreset Setup)
     auto Opening = MakeMissionOpening(Preset);
     Accumulator = 0.0;
     Selected = Opening.front().id.value;
+    LastMarchHoverPoint.Reset();
+    NextRoutePreview = 0.0;
     PlayerOrders.Reset();
     bMarchResumed = false;
     if (Preset.StartsInBattle())
@@ -498,31 +501,37 @@ void FRegimentMissionRuntime::HandleMapInput(APlayerController& Controller)
     const bool bCrossingOrder = Preset.bRegimentTactics &&
         battle::MarchHasWaterCrossings(Preset.Terrain) &&
         (Controller.IsInputKeyDown(EKeys::LeftControl) || Controller.IsInputKeyDown(EKeys::RightControl));
-    if (!March->EnemyFound() && !bCrossingOrder &&
-        (Controller.WasInputKeyJustReleased(EKeys::LeftControl) || Controller.WasInputKeyJustReleased(EKeys::RightControl)))
-        Board.SetRoutePreview({});
-    const bool bShiftChanged = Controller.WasInputKeyJustPressed(EKeys::LeftShift) ||
-        Controller.WasInputKeyJustReleased(EKeys::LeftShift) ||
-        Controller.WasInputKeyJustPressed(EKeys::RightShift) ||
-        Controller.WasInputKeyJustReleased(EKeys::RightShift);
+    const auto KeyChanged = [&](const FKey& Key)
+    {
+        return Controller.WasInputKeyJustPressed(Key) || Controller.WasInputKeyJustReleased(Key);
+    };
+    const bool bModifiersChanged = KeyChanged(EKeys::LeftShift) || KeyChanged(EKeys::RightShift) ||
+        KeyChanged(EKeys::LeftControl) || KeyChanged(EKeys::RightControl);
     const double Now = FPlatformTime::Seconds();
-    if (!bClick && ((!March->EnemyFound() && !bCrossingOrder) || (!bShiftChanged && Now < NextRoutePreview)))
+    if (!bClick && !bModifiersChanged && Now < NextRoutePreview)
         return;
     NextRoutePreview = Now + .14;
     FVector RayOrigin;
     FVector RayDirection;
     if (!Controller.DeprojectMousePositionToWorld(RayOrigin, RayDirection))
     {
+        LastMarchHoverPoint.Reset();
         Board.SetRoutePreview({});
         return;
     }
     const auto Surface = RegimentGroundPoint(RayOrigin, RayDirection, Origin, battle::MarchHill(Preset.Terrain, Preset.Field));
     if (!Surface)
     {
+        LastMarchHoverPoint.Reset();
         Board.SetRoutePreview({});
         return;
     }
     const FVector Point = *Surface;
+    // Revalidate clicks and modifier changes, without repeating terrain searches under a parked cursor.
+    if (!March->EnemyFound() && !bClick && !bModifiersChanged && LastMarchHoverPoint &&
+        FVector::DistSquared2D(Point, *LastMarchHoverPoint) < FMath::Square(100.0))
+        return;
+    LastMarchHoverPoint = Point;
     for (const auto& Regiment : March->Regiments())
     {
         if (Regiment.team != PlayerTeam || !bClick)
@@ -534,13 +543,12 @@ void FRegimentMissionRuntime::HandleMapInput(APlayerController& Controller)
             FMath::Abs(Offset.Y) <= FRegimentMarchBoard::TokenWidthCm * Size.Y * .5 + 30.0)
         {
             Selected = Regiment.id.value;
+            LastMarchHoverPoint.Reset();
             Board.SetRoutePreview({});
             NextRoutePreview = 0.0;
             return;
         }
     }
-    if (!March->EnemyFound() && !bCrossingOrder)
-        return;
     const auto& Regiments = March->Regiments();
     const auto Anchor = std::ranges::find(Regiments, battle::RegimentId{Selected}, &battle::MarchRegiment::id);
     if (Anchor == Regiments.end())

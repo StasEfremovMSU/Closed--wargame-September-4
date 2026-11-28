@@ -43,7 +43,7 @@ enum class ERegimentPlayerOrder : uint8
     Line, Column, Hold, Attack, Withdraw, Skirmishers, Follow, NextRegiment, Release,
     Maneuver, GroupManeuver, Pace, HoldLine, Brace, Pursue, Cover, FireSector, CommandHold, WingHold,
     Wedge, Square, Testudo, Circle,
-    RankAuto, RankRanged, RankMelee
+    RankAuto, RankRanged, RankMelee, CommandAttackNearest, MeleeAssault
 };
 
 constexpr bool IsRegimentRankOrder(ERegimentPlayerOrder Order)
@@ -255,6 +255,7 @@ public:
     void CloseOfficerPicker();
     void ChooseOfficer(uint64 NodeId);
     void IssueOfficerOrder(ERegimentPlayerOrder Order, bool bAimAtCursor = true);
+    void SetStationaryThreatFacing(bool bEnabled);
 
     UPROPERTY(EditInstanceOnly, Category = "Battle")
     TObjectPtr<ACameraActor> OverviewCamera;

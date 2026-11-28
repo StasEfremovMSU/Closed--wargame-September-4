@@ -3,6 +3,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 #include "Layout/Children.h"
 #include "RegimentGameModules.h"
+#include "RegimentHistoricalCampaign.h"
 #include "SRegimentMissionHud.h"
 #include "Widgets/Input/SSearchBox.h"
 #include "Widgets/Text/STextBlock.h"
@@ -63,7 +64,7 @@ bool FRegimentScenarioFlowTest::RunTest(const FString&)
     const auto Options = RegimentGameModules::PlayablePresets(TEXT("sengoku"), RegimentMissionPresets::Directory());
     const auto* Alternate = Options.FindByPredicate([&](const FMissionPresetListItem& Item)
     {
-        return Item.bBuiltIn && Item.Name != Draft.Name;
+        return Item.bBuiltIn && Item.bHistorical && Item.Name != Draft.Name;
     });
     if (!TestNotNull(TEXT("Another Sengoku historical scenario is available"), Alternate))
         return false;
@@ -87,12 +88,22 @@ bool FRegimentScenarioFlowTest::RunTest(const FString&)
     Hud->PreviewScenario(*Alternate);
     TestEqual(TEXT("Preview preserves the active draft"), Hud->Draft.Name, Draft.Name);
     TestEqual(TEXT("Preview shows the selected scenario"), Hud->PreviewedPreset().Name, Alternate->Name);
+    TestTrue(TEXT("Historical previews carry both terrain and opening geometry"),
+        Hud->ScenarioBriefingMap.IsSet() && !Hud->ScenarioBriefingMap->Spawns.IsEmpty());
+    TestTrue(TEXT("The historical briefing labels both map views"),
+        HasCaption(Hud, TEXT("Местность")) && HasCaption(Hud, TEXT("Стартовая расстановка")));
     Hud->SetSetupStep(EStep::Launch);
     TestTrue(TEXT("Navigation cannot accidentally launch the old draft"), Hud->SetupStep == EStep::Scenario);
 
     Hud->AdvanceSetup();
     TestTrue(TEXT("Applying continues to the battlefield"), Hud->SetupStep == EStep::Battlefield);
     TestEqual(TEXT("Applying uses the selected scenario"), Hud->Draft.Name, Alternate->Name);
+    const float InitialWidth = Hud->Draft.Field.width_m;
+    Hud->Draft.Field.width_m += 20.f;
+    Hud->SetSetupStep(EStep::Scenario);
+    TestTrue(TEXT("Returning to the briefing refreshes edited terrain and deployment"),
+        Hud->ScenarioBriefingMap && Hud->ScenarioBriefingMap->Field.width_m == InitialWidth + 20.f);
+    Hud->Draft.Field.width_m = InitialWidth;
     Hud->SetSetupStep(EStep::Deployment);
     TestFalse(TEXT("Opening the deployment step does not build over thousands of figures"), Hud->DeploymentPreview.IsSet());
     Hud->RefreshDeploymentPreview();
@@ -152,6 +163,18 @@ bool FRegimentScenarioFlowTest::RunTest(const FString&)
         HasCaption(Hud->ScenarioList.ToSharedRef(), Draft.Name));
     TestTrue(TEXT("Era switches update the terrain list in place"),
         HasCaption(TerrainSelector, TEXT("Аустерлиц"), true));
+    int32 Launches = 0;
+    Hud->OnCampaignUnlocked = [](int32, int32 Stage) { return Stage == 0; };
+    Hud->OnStartCampaign = [&Launches](int32, int32) { ++Launches; };
+    Hud->ShowCampaignMenu();
+    Hud->PreviewCampaignStage(0, 1);
+    TestFalse(TEXT("Locked campaign missions cannot be selected"), Hud->CampaignPreview.IsSet());
+    Hud->PreviewCampaignStage(0, 0);
+    TestTrue(TEXT("Opening a campaign stage presents its briefing first"),
+        Hud->CampaignPreview.IsSet() && Hud->CampaignBriefingMap.IsSet());
+    TestEqual(TEXT("Viewing the stage never launches the mission"), Launches, 0);
+    Hud->LaunchCampaignStage();
+    TestEqual(TEXT("The launch action starts the selected campaign stage"), Launches, 1);
     return true;
 }
 #endif

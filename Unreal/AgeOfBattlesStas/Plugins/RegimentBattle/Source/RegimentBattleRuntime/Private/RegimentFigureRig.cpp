@@ -26,13 +26,28 @@ FTransform RegimentHistoricalDressPose(const FTransform& FigureTransform, double
     return FTransform(Rotation, Feet, FVector(FigureHeight / RegimentFigureReferenceHeight));
 }
 
+FRegimentRiderLeg SolveRegimentRiderLeg(FVector Hip, FVector Target, double Upper, double Lower, FVector Forward)
+{
+    const FVector Change = Target - Hip;
+    const FVector Axis = Change.GetSafeNormal(UE_DOUBLE_SMALL_NUMBER, -FVector::UpVector);
+    const double Distance = FMath::Clamp(Change.Size(), FMath::Abs(Upper - Lower) + .001, Upper + Lower - .001);
+    const double KneeAlong = (Upper * Upper - Lower * Lower + Distance * Distance) / (2.0 * Distance);
+    const double KneeOut = FMath::Sqrt(FMath::Max(0.0, Upper * Upper - KneeAlong * KneeAlong));
+    FVector Bend = FVector::VectorPlaneProject(Forward, Axis).GetSafeNormal();
+    if (Bend.IsNearlyZero())
+    {
+        FVector Other;
+        Axis.FindBestAxisVectors(Bend, Other);
+    }
+    return {Hip + Axis * KneeAlong + Bend * KneeOut, Hip + Axis * Distance};
+}
+
 FRegimentFigureRig::FRegimentFigureRig(const FReferenceSkeleton& Skeleton)
     : BindPose(Skeleton.GetRefBonePose())
 {
     const int32 NumBones = BindPose.Num();
     Parents.Reserve(NumBones);
     JointByBone.Init(INDEX_NONE, NumBones);
-    TArray<FTransform, TInlineAllocator<48>> RestSpace;
     RestSpace.Reserve(NumBones);
     for (int32 Bone = 0; Bone < NumBones; ++Bone)
     {
@@ -44,14 +59,16 @@ FRegimentFigureRig::FRegimentFigureRig(const FReferenceSkeleton& Skeleton)
     const int32 PelvisBone = Skeleton.FindBoneIndex(TEXT("spine"));
     if (RestSpace.IsValidIndex(PelvisBone))
         Pelvis = RestSpace[PelvisBone].GetTranslation();
-    const int32 Foot = Skeleton.FindBoneIndex(TEXT("foot_L"));
+    LeftFoot = Skeleton.FindBoneIndex(TEXT("foot_L"));
+    RightFoot = Skeleton.FindBoneIndex(TEXT("foot_R"));
     const int32 Toe = Skeleton.FindBoneIndex(TEXT("toe_L"));
     LeftHand = Skeleton.FindBoneIndex(TEXT("hand_L"));
     RightHand = Skeleton.FindBoneIndex(TEXT("hand_R"));
-    if (Foot == INDEX_NONE || Toe == INDEX_NONE || LeftHand == INDEX_NONE || RightHand == INDEX_NONE)
+    if (LeftFoot == INDEX_NONE || RightFoot == INDEX_NONE || Toe == INDEX_NONE ||
+        LeftHand == INDEX_NONE || RightHand == INDEX_NONE)
         return;
 
-    const FVector FootForward = (RestSpace[Toe].GetLocation() - RestSpace[Foot].GetLocation()).GetSafeNormal2D();
+    const FVector FootForward = (RestSpace[Toe].GetLocation() - RestSpace[LeftFoot].GetLocation()).GetSafeNormal2D();
     if (FootForward.IsNearlyZero())
         return;
     Forward = FootForward;
@@ -72,23 +89,56 @@ FRegimentFigureRig::FRegimentFigureRig(const FReferenceSkeleton& Skeleton)
         if (Bone == INDEX_NONE || Child == INDEX_NONE || Parents[Child] != Bone)
             return;
         BoneDirection[Joint] = BindPose[Child].GetLocation().GetSafeNormal();
+        // Stirrup targets and hips are in component centimeters. The imported rigs
+        // store joint offsets below a scaled root, so local lengths are not usable here.
+        BoneLength[Joint] = FVector::Distance(RestSpace[Bone].GetLocation(), RestSpace[Child].GetLocation());
         if (BoneDirection[Joint].IsNearlyZero())
             return;
         JointByBone[Bone] = static_cast<int8>(Joint);
     }
+    const FName AttachmentBones[] = { NAME_None, TEXT("spine_006"), TEXT("upper_arm_L"), TEXT("upper_arm_R"), TEXT("forearm_L"),
+        TEXT("thigh_L"), TEXT("thigh_R") };
+    static_assert(UE_ARRAY_COUNT(AttachmentBones) == int32(ERegimentFigureAnchor::Count));
+    for (int32 Index = 1; Index < UE_ARRAY_COUNT(AttachmentBones); ++Index)
+        AnchorBones[Index] = Skeleton.FindBoneIndex(AttachmentBones[Index]);
     bValid = true;
+    FRegimentFigureAnchors Neutral;
+    TArray<FTransform> Idle;
+    Evaluate({}, Idle, &Neutral);
+    NeutralLeftForearm = Neutral.At(ERegimentFigureAnchor::LeftForearm);
 }
 
 FVector FRegimentFigureRig::SeatMountedRider(const FTransform& HorseTransform,
     const FTransform& FigureTransform, double SaddleHeight) const
 {
-    if (!Pelvis)
-        return FigureTransform.GetTranslation();
-    const FVector Saddle = HorseTransform.TransformPosition(FVector(0, 0, SaddleHeight));
-    return Saddle - FigureTransform.TransformVector(*Pelvis);
+    return SeatMountedRider(HorseTransform, FigureTransform, FVector(0, 0, SaddleHeight));
 }
 
-FTransform FRegimentFigureRig::Evaluate(const FRegimentFigureMotion& Motion, TArray<FTransform>& LocalPose) const
+FVector FRegimentFigureRig::SeatMountedRider(const FTransform& HorseTransform,
+    const FTransform& FigureTransform, FVector Saddle) const
+{
+    if (!Pelvis)
+        return FigureTransform.GetTranslation();
+    return HorseTransform.TransformPosition(Saddle) - FigureTransform.TransformVector(*Pelvis);
+}
+
+FRegimentMountedBoots FRegimentFigureRig::MountedBoots(const FTransform& Horse,
+    const FTransform& Figure, FVector RightAnkle) const
+{
+    FVector LeftAnkle = RightAnkle;
+    LeftAnkle.Y = -LeftAnkle.Y;
+    return {Figure.InverseTransformPosition(Horse.TransformPosition(LeftAnkle)),
+        Figure.InverseTransformPosition(Horse.TransformPosition(RightAnkle)),
+        (Figure.GetRotation().Inverse() * Horse.GetRotation() * FQuat(FVector::UpVector, -GetMeshForwardYaw())).GetNormalized()};
+}
+
+FTransform FRegimentFigureRig::LeftShieldDelta(const FRegimentFigureAnchors& Anchors) const
+{
+    return NeutralLeftForearm.Inverse() * Anchors.At(ERegimentFigureAnchor::LeftForearm);
+}
+
+FTransform FRegimentFigureRig::Evaluate(const FRegimentFigureMotion& Motion, TArray<FTransform>& LocalPose,
+    FRegimentFigureAnchors* Anchors) const
 {
     LocalPose = BindPose;
     if (!bValid)
@@ -111,6 +161,19 @@ FTransform FRegimentFigureRig::Evaluate(const FRegimentFigureMotion& Motion, TAr
         Directions[RightThigh] = -Up * .40 + Forward * .72 + Right * .56;
         Directions[LeftShin] = -Up - Forward * .40;
         Directions[RightShin] = -Up - Forward * .40;
+        if (Motion.MountedBoots)
+        {
+            const auto Fit = [&](EJoint Thigh, EJoint Shin, ERegimentFigureAnchor Anchor, FVector Ankle)
+            {
+                const FVector Hip = RestSpace[AnchorBones[int32(Anchor)]].GetLocation();
+                const auto Leg = SolveRegimentRiderLeg(Hip, Ankle, BoneLength[Thigh], BoneLength[Shin],
+                    Motion.MountedBoots->FootTurn.RotateVector(Forward));
+                Directions[Thigh] = Leg.Knee - Hip;
+                Directions[Shin] = Leg.Ankle - Leg.Knee;
+            };
+            Fit(LeftThigh, LeftShin, ERegimentFigureAnchor::LeftThigh, Motion.MountedBoots->Left);
+            Fit(RightThigh, RightShin, ERegimentFigureAnchor::RightThigh, Motion.MountedBoots->Right);
+        }
     }
     else if (Motion.bAirborne)
     {
@@ -144,6 +207,13 @@ FTransform FRegimentFigureRig::Evaluate(const FRegimentFigureMotion& Motion, TAr
         Directions[RightForearm] = FMath::Lerp(Directions[RightForearm], Forward + Right * Sweep + Up * 0.32, Attack);
     }
 
+    if (Motion.bMounted && Motion.bCourier)
+    {
+        Directions[LeftArm] = -Up * .64 + Forward * .51 - Right * .16;
+        Directions[LeftForearm] = Forward * .93 + Up * .22 + Right * .20;
+        Directions[RightArm] = FMath::Lerp(-Up * .78 + Forward * .36 + Right * .23, Directions[RightArm], Attack);
+        Directions[RightForearm] = FMath::Lerp(Forward * .79 + Up * .28 - Right * .24, Directions[RightForearm], Attack);
+    }
     if (Motion.Windup > 0.f)
     {
         const bool bThrust = Motion.bPolearm;
@@ -169,16 +239,27 @@ FTransform FRegimentFigureRig::Evaluate(const FRegimentFigureMotion& Motion, TAr
         const FTransform& ParentPose = Parent == INDEX_NONE ? FTransform::Identity : MeshPose[Parent];
         MeshPose[Bone] = BindPose[Bone] * ParentPose;
         const int32 Joint = JointByBone[Bone];
-        if (Joint == INDEX_NONE)
+        const bool bRidingBoot = Motion.bMounted && Motion.MountedBoots && (Bone == LeftFoot || Bone == RightFoot);
+        if (Joint == INDEX_NONE && !bRidingBoot)
             continue;
 
         const FQuat Rest = MeshPose[Bone].GetRotation();
-        const FQuat Turn = FQuat::FindBetweenNormals(Rest.RotateVector(BoneDirection[Joint]),
-            Directions[Joint].GetSafeNormal());
-        const FQuat Posed = (Turn * Rest).GetNormalized();
+        const FQuat Posed = bRidingBoot
+            ? (Motion.MountedBoots->FootTurn * RestSpace[Bone].GetRotation()).GetNormalized()
+            : (FQuat::FindBetweenNormals(Rest.RotateVector(BoneDirection[Joint]),
+                Directions[Joint].GetSafeNormal()) * Rest).GetNormalized();
         LocalPose[Bone].SetRotation((ParentPose.GetRotation().Inverse() * Posed).GetNormalized());
         MeshPose[Bone].SetRotation(Posed);
     }
+    if (Anchors)
+        for (int32 Index = 1; Index < int32(ERegimentFigureAnchor::Count); ++Index)
+        {
+            const int32 Bone = AnchorBones[Index];
+            Anchors->Deltas[Index] = Bone == INDEX_NONE ? FTransform::Identity : RestSpace[Bone].Inverse() * MeshPose[Bone];
+        }
+    if (Motion.bHideStockHead && HasStockHead())
+        // Preserve the sampled pose for the exposed face and headwear before collapsing the stock hood/helmet.
+        LocalPose[AnchorBones[int32(ERegimentFigureAnchor::Head)]].SetScale3D(FVector::ZeroVector);
 
     if (Motion.bArcher)
     {
