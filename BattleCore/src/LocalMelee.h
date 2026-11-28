@@ -16,7 +16,8 @@ class LocalMelee {
     bool HoldForWindup(UnitState &) const;
     bool CanYieldForOfficer(const RegimentState &) const;
     Vec3 OfficerClearanceGoal(const UnitState &, const RegimentState &) const;
-    Vec3 Constrain(const UnitState &, Vec3 destination, float march_speed = 0.f, float dt = 0.f) const;
+    Vec3 Constrain(const UnitState &, Vec3 destination, float march_speed = 0.f, float dt = 0.f,
+                   bool yield_rout = false) const;
     float BodyRadius(const UnitState &) const;
     float MeleeReach(const UnitState &, const UnitState &, float weapon_range) const;
     const UnitState *StrikeTarget(const UnitState &, int32_t team) const;
@@ -27,7 +28,7 @@ class LocalMelee {
   private:
     bool ClearMove(const UnitState &, Vec3 destination) const;
     bool ClearMove(const UnitState &, Vec3 destination, std::span<const size_t> neighbors,
-                   const UnitState **blocker = nullptr) const;
+                   const UnitState **blocker = nullptr, bool yield_rout = false) const;
     std::optional<Vec3> BypassStaff(const UnitState &, const UnitState &staff, Vec3 from,
                                     Vec3 travel, float speed, float dt) const;
     bool ClearStrike(const UnitState &, const UnitState &, std::span<const size_t>) const;
@@ -46,9 +47,10 @@ class LocalMelee {
     };
     std::optional<OpposingFront> FindOpposingFront(const RegimentState &, size_t columns) const;
     bool AdvanceWing(UnitState &, const RegimentState &, const Pose &lane,
-                     const OpposingFront &, float dt) const;
+                     const OpposingFront &, float dt, float looseness, float wing) const;
     const UnitState *AdvanceLead(UnitState &, const RegimentState &, const Pose &lane,
-                     const std::optional<OpposingFront> &, float dt) const;
+                     const std::optional<OpposingFront> &, float dt,
+                     float looseness = 0.f, float wing = 0.f) const;
     void AdvanceSupport(UnitState &, const UnitState &lead, const RegimentState &, float edge,
                         float dt) const;
     void QueueRankShove(const UnitState &, const UnitState &support, const UnitState &,

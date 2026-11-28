@@ -1,5 +1,6 @@
 #include "RegimentDiscipline.h"
 #include "FieldCombat.h"
+#include "Routing.h"
 #include "battle/Control.h"
 #include "battle/Formation.h"
 #include "battle/Officers.h"
@@ -152,6 +153,7 @@ void CollectRetreats(const World &world, std::vector<Pressure> &pressures) {
     for (const auto &retreating : world.regiments) {
         if (retreating.units.empty() ||
             !retreating.panic ||
+            retreating.individual_routing ||
             Distance(retreating.pose.position, retreating.rally_point) <=
                 world.scenario.rules.rally_tolerance_m)
             continue;
@@ -191,27 +193,33 @@ void ClearManeuver(RegimentState &regiment) {
     regiment.ai_target = {};
 }
 
+void LeaveBattlefield(World &world, UnitId id) {
+    if (auto *unit = FindUnit(world, id)) {
+        unit->health = 0.f;
+        unit->alive = false;
+        unit->control = ControlMode::Dead;
+        unit->dagger_drawn = unit->skirmisher = unit->skirmisher_returning = unit->bypassing = false;
+        unit->contact_travel = {};
+        unit->rout_waypoint = 0;
+        if (unit->jump_started_tick || unit->parry_ready_tick)
+            ClearPersonalActions(*unit);
+    }
+    if (world.controlled == id) {
+        ClearRegimentFollowing(world, id);
+        world.controlled = {};
+    }
+}
+
 void RemoveRoutedRegiment(World &world, RegimentState &regiment, const char *reason) {
     ClearRegimentFollowing(world, regiment.following_officer);
-    for (const auto id : regiment.units) {
-        if (auto *unit = FindUnit(world, id)) {
-            unit->health = 0.f;
-            unit->alive = false;
-            unit->control = ControlMode::Dead;
-            unit->dagger_drawn = unit->skirmisher = unit->skirmisher_returning = unit->bypassing = false;
-            unit->contact_travel = {};
-            if (unit->jump_started_tick || unit->parry_ready_tick)
-                ClearPersonalActions(*unit);
-        }
-        if (world.controlled == id) {
-            ClearRegimentFollowing(world, id);
-            world.controlled = {};
-        }
-    }
+    for (const auto id : regiment.units)
+        LeaveBattlefield(world, id);
     regiment.units.clear();
     regiment.slots.clear();
     regiment.order.reset();
     regiment.pursuit_target = {};
+    regiment.individual_routing = regiment.rout_to_rally = false;
+    regiment.rout_progress_tick = 0;
     ClearManeuver(regiment);
     command::WakeCommandForPanicChange(world, regiment.id);
     Emit(world, regiment, reason);
@@ -233,6 +241,15 @@ bool RallyAreaClear(const World &world, const RegimentState &regiment) {
     if (regiment.cannot_rally || !regiment.order || regiment.order->type != OrderType::Rally ||
         regiment.order->status != OrderStatus::Active ||
         Distance(regiment.pose.position, regiment.rally_point) > rules.rally_tolerance_m)
+        return false;
+    if (regiment.individual_routing &&
+        (!regiment.rout_to_rally || regiment.route.empty() ||
+         std::ranges::any_of(regiment.units, [&](UnitId id) {
+             const auto &unit = *FindUnit(world, id);
+             return unit.control != ControlMode::PlayerControlled &&
+                 (unit.rout_waypoint < regiment.route.size() ||
+                  Distance(unit.pose.position, unit.slot.position) > RallySlotArrivalM);
+         })))
         return false;
     if (std::any_of(world.regiments.begin(), world.regiments.end(), [&](const auto &enemy) {
             return enemy.pursuit_target == regiment.id && !enemy.units.empty() && !enemy.panic;
@@ -347,12 +364,23 @@ void UpdateRegiment(World &world, RegimentState &regiment, const Pressure &press
     const bool undisturbed = !retreat_through && !regiment.melee_engaged &&
                              regiment.last_damage_tick <= world.tick;
     if (regiment.panic) {
-        if (ReachedFieldEdge(world, regiment)) {
+        if (regiment.individual_routing && !regiment.rout_to_rally &&
+            world.scenario.field_bounds && !regiment.route.empty()) {
+            std::erase_if(regiment.units, [&](UnitId id) {
+                const auto &unit = *FindUnit(world, id);
+                if (unit.control == ControlMode::PlayerControlled || unit.rout_waypoint < regiment.route.size())
+                    return false;
+                LeaveBattlefield(world, id);
+                return true;
+            });
+        }
+        if (regiment.units.empty() || (!regiment.individual_routing && ReachedFieldEdge(world, regiment))) {
             RemoveRoutedRegiment(world, regiment, "rout: fled off the battlefield");
             return;
         }
         regiment.panic_loss_count = count;
-        if (undisturbed && RallyAreaClear(world, regiment)) {
+        const bool rally_clear = RallyAreaClear(world, regiment);
+        if (undisturbed && rally_clear) {
             if (regiment.calm_counter < std::numeric_limits<Tick>::max())
                 ++regiment.calm_counter;
         } else {
@@ -360,7 +388,7 @@ void UpdateRegiment(World &world, RegimentState &regiment, const Pressure &press
         }
         const auto leadership_delay =
             Tick(double(staff.calm_ticks) * .5 * (1.f - staff.leadership));
-        if (RallyAreaClear(world, regiment) && regiment.calm_counter >= staff.calm_ticks &&
+        if (rally_clear && regiment.calm_counter >= staff.calm_ticks &&
             regiment.calm_counter - staff.calm_ticks >= leadership_delay &&
             ((world.officers.empty() && !world.command_state) ||
              DisciplineTest(world, regiment, staff.leadership, 0x52414c4cull))) {
@@ -371,6 +399,12 @@ void UpdateRegiment(World &world, RegimentState &regiment, const Pressure &press
             regiment.cohesion = std::max(regiment.cohesion, .48f);
             regiment.ai_action = OrderType::Hold;
             regiment.rout_direction = {};
+            if (regiment.individual_routing)
+                regiment.pose = regiment.route.back();
+            regiment.individual_routing = regiment.rout_to_rally = false;
+            regiment.rout_progress_tick = 0;
+            for (const auto id : regiment.units)
+                FindUnit(world, id)->rout_waypoint = 0;
             ClearManeuver(regiment);
             regiment.order->status = OrderStatus::Completed;
             Emit(world, regiment, "rallied: hold and reform ranks");

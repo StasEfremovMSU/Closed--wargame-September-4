@@ -40,8 +40,12 @@ bool RectanglesOverlap(Pose, FormationFootprint, Pose, FormationFootprint);
 float SweepLimit(Pose from, Pose to, FormationFootprint, Pose obstacle, FormationFootprint);
 void InitializeFormations(World &);
 bool IsDeploying(const World &, const RegimentState &);
+bool IsRecoveringFromMelee(const World &, const RegimentState &);
 void CompleteDeployments(World &);
 Status ReformRegiment(World &, RegimentId, FormationSpec);
+bool SupportsRankPriority(const World &, const RegimentState &);
+Status SetRegimentRankPriority(World &, RegimentId, RankPriority);
+void UpdateRegimentRankLayout(World &, RegimentState &, RankPriority automatic);
 void AdvanceFormations(World &, float dt_seconds);
 Status SetSkirmishers(World &, RegimentId, bool enabled);
 } // namespace battle

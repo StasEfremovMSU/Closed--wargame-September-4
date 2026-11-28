@@ -1,7 +1,9 @@
 #include "TestSupport.h"
 #include "../src/RegimentDiscipline.h"
+#include "battle/Formation.h"
 #include "battle/Snapshot.h"
 #include "doctest.h"
+#include <array>
 
 using namespace battle;
 
@@ -97,4 +99,118 @@ TEST_CASE("combat.mounted_rout_routes_around_an_impassable_hill") {
         REQUIRE(Step(world, {}, {}, nav));
     CHECK(regiment.units.empty());
     CHECK(regiment.pose.position.x > 20.f);
+}
+
+TEST_CASE("combat.large_rout_flows_through_a_gate_and_allied_ranks") {
+    constexpr unsigned RunnerCount = 480;
+    Scenario scenario;
+    scenario.rules.regiment_tactics = scenario.rules.local_melee = scenario.rules.individual_rout = true;
+    scenario.rules.calm_ticks = 1;
+    scenario.rules.rally_safe_radius_m = 8.f;
+    scenario.field_bounds = TerrainFieldBounds{20.f, 30.f};
+    // Only the northern boundary can be reached from this courtyard. Its gate
+    // is wider than one fighter and narrower than even the smallest side of the regiment.
+    scenario.obstacles = {{-20.f, -2.f, -.9f, 1.f}, {.9f, -2.f, 20.f, 1.f},
+                          {-20.f, -30.f, -13.f, -1.f}, {13.f, -30.f, 20.f, -1.f},
+                          {-20.f, -30.f, 20.f, -22.f}};
+    const auto add_regiment = [&](uint64_t id, int team, unsigned count, unsigned files, Vec3 at, float speed) {
+        RegimentSpec company;
+        company.id = {id};
+        company.team = team;
+        company.formation = {files, .8f, .25f};
+        company.pose = {at, Pi / 2};
+        company.rally_point = {0, 20, 0};
+        company.speed = speed;
+        scenario.regiments.push_back(company);
+        for (unsigned i = 0; i < count; ++i) {
+            UnitSpec unit;
+            unit.id = {id * 1000 + i + 1};
+            unit.regiment = company.id;
+            unit.pose = company.pose;
+            unit.speed = speed;
+            unit.weapon.damage = 0.f;
+            scenario.units.push_back(unit);
+        }
+    };
+    add_regiment(1, 0, RunnerCount, 24, {0, -12, 0}, 5.f);
+    add_regiment(2, 0, 12, 4, {0, 3, 0}, 0.f);
+    add_regiment(3, 1, 1, 1, {15, 20, 0}, 0.f);
+    auto created = CreateWorld(scenario, 42);
+    REQUIRE(created);
+    auto &world = created.value;
+    auto &runners = world.regiments.front();
+    runners.panic = true;
+    bool rally = false;
+    SUBCASE("flee the battlefield") { runners.cannot_rally = true; }
+    SUBCASE("reach an active and safe rally point") { rally = true; }
+    runners.rout_direction = {0, 1, 0};
+    const GridNavigationService navigation(scenario.obstacles, 1.f, 41, 61, {-20, -30, 0});
+    if (rally) {
+        Order order;
+        order.recipient = runners.id;
+        order.type = OrderType::Rally;
+        order.point = runners.rally_point;
+        REQUIRE(SubmitOrder(world, order) == Status::Ok);
+    }
+    unsigned passed = 0;
+    float max_step = 0.f;
+    bool checked_snapshot = false;
+    std::optional<uint64_t> restored_next_hash;
+    bool exited_in_sequence = false;
+    bool entered_wall = false;
+    std::optional<Pose> rally_center;
+    std::array<Vec3, RunnerCount> previous{};
+    for (unsigned i = 0; i < RunnerCount; ++i)
+        previous[i] = world.units[i].pose.position;
+    for (unsigned tick = 0; tick < 2200 && !runners.units.empty() && runners.panic; ++tick) {
+        if (rally && runners.rout_to_rally && !runners.route.empty())
+            rally_center = runners.route.back();
+        REQUIRE(Step(world, {}, {}, navigation));
+        if (restored_next_hash) {
+            CHECK(StateHash(world) == *restored_next_hash);
+            restored_next_hash.reset();
+        }
+        passed = 0;
+        for (unsigned i = 0; i < RunnerCount; ++i) {
+            const auto now = world.units[i].pose.position;
+            passed += now.y > 4.f;
+            entered_wall |= now.y > -2.249f && now.y < 1.249f && std::abs(now.x) > .651f;
+            max_step = std::max(max_step, Distance(now, previous[i]));
+            previous[i] = now;
+        }
+        exited_in_sequence |= passed < RunnerCount && runners.units.size() < RunnerCount;
+        const bool underway = rally ? passed >= RunnerCount / 4 : runners.units.size() < RunnerCount;
+        if (!checked_snapshot && underway && passed < RunnerCount) {
+            auto restored = Restore(Capture(world));
+            REQUIRE(restored);
+            CHECK(StateHash(world) == StateHash(restored.value));
+            REQUIRE(Step(restored.value, {}, {}, navigation));
+            restored_next_hash = StateHash(restored.value);
+            checked_snapshot = true;
+        }
+    }
+    CHECK(checked_snapshot);
+    CHECK(passed == RunnerCount);
+    if (rally) {
+        CHECK_FALSE(runners.panic);
+        CHECK(runners.units.size() == RunnerCount);
+        REQUIRE(runners.order);
+        CHECK(runners.order->status == OrderStatus::Completed);
+        REQUIRE(rally_center);
+        const auto slots = BuildFormationSlots(runners.formation, *rally_center, RunnerCount);
+        float most_distant = 0.f;
+        for (const auto id : runners.units) {
+            const auto &unit = *FindUnit(world, id);
+            most_distant = std::max(most_distant, Distance(unit.pose.position, slots[unit.slot_index].position));
+        }
+        CHECK(most_distant <= .10f);
+    } else {
+        CHECK(exited_in_sequence);
+        CHECK(runners.units.empty());
+    }
+    CHECK(max_step <= .251f);
+    CHECK_FALSE(entered_wall);
+    CHECK_FALSE(world.regiments[1].panic);
+    CHECK(world.regiments[1].units.size() == 12);
+    CHECK(Restore(Capture(world)));
 }

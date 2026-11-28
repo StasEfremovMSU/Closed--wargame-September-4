@@ -54,6 +54,8 @@ struct CommandTask {
     std::optional<uint32_t> formation_columns;
     std::optional<float> formation_spacing_m;
     std::optional<Tick> received_tick;
+    // Scoped player dispatches replace only direct orders submitted before this cutoff.
+    std::optional<uint64_t> supersede_player_orders_through;
 };
 
 enum class ReportKind : uint8_t {

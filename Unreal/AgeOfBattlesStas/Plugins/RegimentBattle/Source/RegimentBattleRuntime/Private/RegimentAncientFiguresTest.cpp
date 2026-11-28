@@ -125,6 +125,99 @@ bool FRegimentAdditionalEraStyleTest::RunTest(const FString&)
     return !HasAnyErrors();
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentHeadgearClearanceTest, "RegimentBattle.Presentation.HeadgearFaceClearance",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+
+bool FRegimentHeadgearClearanceTest::RunTest(const FString&)
+{
+    using H = ERegimentHistoricalFigure;
+    using V = ERegimentEraVisual;
+    const auto BlocksEye = [](const FRegimentAncientFigure& Figure, FVector Shift)
+    {
+        const FBox UnitBox(FVector(-.5), FVector(.5));
+        for (const double Side : {-1.0, 1.0})
+        {
+            const FVector Eye = Shift + FVector(15.0, Side * 6.0, 150.0);
+            // Keep the probe inside the helmet envelope, behind the ears of taller horses.
+            const FVector Front = Eye + FVector(25.0, 0.0, 0.0);
+            const FVector ThreeQuarter = Eye + FVector(25.0, Side * 11.0, 6.0);
+            for (const auto& Piece : Figure.Parts)
+            {
+                if (Piece.Material == ERegimentAncientMaterial::Skin)
+                    continue;
+                const FVector Start = Piece.Transform.InverseTransformPosition(Eye);
+                for (const FVector& View : {Front, ThreeQuarter})
+                {
+                    const FVector End = Piece.Transform.InverseTransformPosition(View);
+                    if (FMath::LineBoxIntersection(UnitBox, Start, End, End - Start))
+                        return true;
+                }
+            }
+        }
+        return false;
+    };
+    for (int32 Index = int32(H::Legionary); Index <= int32(H::NorthernCuirassier); ++Index)
+    {
+        const auto Style = H(Index);
+        const bool bVisoredHelm = Style == H::MedievalKnight || Style == H::LivonianKnight ||
+            Style == H::GothicPlate || Style == H::LateKnight;
+        const auto Dress = BuildRegimentHistoricalDress(Style);
+        const auto Proxy = BuildRegimentHistoricalProxy(Style);
+        const auto* Head = Proxy.Parts.FindByPredicate([](const FRegimentAncientPart& Piece)
+        {
+            return Piece.Material == ERegimentAncientMaterial::Skin && Piece.Transform.GetScale3D().Z == 27.0;
+        });
+        if (!TestNotNull(TEXT("The historical proxy has a head"), Head))
+            continue;
+        const FVector Offset(0, 0, Head->Transform.GetLocation().Z - 144.0);
+        TestEqual(FString::Printf(TEXT("Historical dress %d respects the visor policy"), Index),
+            BlocksEye(Dress, FVector::ZeroVector), bVisoredHelm);
+        TestEqual(FString::Printf(TEXT("Historical proxy %d matches the dress eye clearance at its own height"), Index),
+            BlocksEye(Proxy, Offset), bVisoredHelm);
+    }
+    for (int32 Index = 1; Index < int32(V::Count); ++Index)
+    {
+        const auto Style = V(Index);
+        const auto Hat = BuildRegimentEraHeadgear(Style);
+        const FVector Shift = -RegimentEraHeadgearPose(FTransform::Identity).GetTranslation();
+        TestEqual(FString::Printf(TEXT("Fallback headgear %d respects the face opening"), Index),
+            BlocksEye(Hat, Shift), Style == V::Undead);
+    }
+    const FTransform MovingRider(FRotator(13, 155, -8), FVector(200, -130, 105), FVector(1.2));
+    const FTransform HatOnRider = RegimentEraHeadgearPose(MovingRider);
+    TestTrue(TEXT("An officer hat follows the same local attachment after yaw, lean, saddle height and rank scaling"),
+        HatOnRider.GetRelativeTransform(MovingRider).Equals(RegimentEraHeadgearPose(FTransform::Identity), .001));
+    TestTrue(TEXT("Shakos and samurai protect the head while leaving a visible face"),
+        !RegimentHeadgearCoversFace(H::Fusilier, V::Shako) && !RegimentHeadgearCoversFace(H::SengokuSamurai, V::Sengoku));
+    TestTrue(TEXT("Knight visors and undead skulls keep their own face silhouette"),
+        RegimentHeadgearCoversFace(H::GothicPlate, V::Plate) && RegimentHeadgearCoversFace(H::None, V::Undead));
+    const auto Exposed = BuildRegimentCostumeFace(false);
+    const auto Covered = BuildRegimentCostumeFace(true);
+    TestTrue(TEXT("Only open costumes gain the visible sculpted face and both eyes"), Exposed.Parts.Num() > 10 &&
+        Covered.Parts.Num() == 1 && Covered.Bounds.Max.Z < 150.0);
+    return !HasAnyErrors();
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentCostumeSegmentsTest, "RegimentBattle.Presentation.CostumeSegments",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+
+bool FRegimentCostumeSegmentsTest::RunTest(const FString&)
+{
+    using A = ERegimentFigureAnchor;
+    using F = ERegimentAncientFeature;
+    using H = ERegimentHistoricalFigure;
+    const auto Samurai = BuildRegimentHistoricalDress(H::SengokuSamurai);
+    TestTrue(TEXT("The chest stays rigid and each sode follows its own shoulder"),
+        RegimentHistoricalDressSegment(Samurai, A::LeftShoulder).Count(F::Sode) == 1 &&
+        RegimentHistoricalDressSegment(Samurai, A::RightShoulder).Count(F::Sode) == 1 &&
+        RegimentHistoricalDressSegment(Samurai, A::Torso).Count(F::Sode) == 0);
+    TestTrue(TEXT("The leg plates are mounted on both thighs"),
+        !RegimentHistoricalDressSegment(Samurai, A::LeftThigh).Parts.IsEmpty() &&
+        !RegimentHistoricalDressSegment(Samurai, A::RightThigh).Parts.IsEmpty());
+    TestEqual(TEXT("The adjutant kit carries one dispatch satchel"), BuildRegimentAdjutantKit().Count(F::DispatchSatchel), 1);
+    return !HasAnyErrors();
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentHistoricalFigureTest, "RegimentBattle.Presentation.HistoricalFigureProfiles",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 
@@ -235,7 +328,7 @@ bool FRegimentCavalrySilhouetteTest::RunTest(const FString&)
         RegimentHistoricalSeatOffset(Cuirassier) > RegimentHistoricalSeatOffset(Cossack) &&
         RegimentHistoricalSeatOffset(Cossack) > RegimentHistoricalSeatOffset(Numidian));
 
-    for (const auto Style : {Livonian, Cuirassier, Austrian, Saxon, Cossack, Numidian})
+    for (const auto Style : {Livonian, Cuirassier, Austrian, Saxon, Cossack, Numidian, S::RomanCavalry})
     {
         const auto Mount = BuildRegimentHistoricalMount(Style);
         const auto Proxy = BuildRegimentHistoricalProxy(Style);
@@ -433,7 +526,79 @@ bool FRegimentSengokuFigureTest::RunTest(const FString&)
         BuildRegimentSengokuWeapon(S::SengokuArquebusier).Bounds.GetSize().X > 100.0);
     TestTrue(TEXT("Mounted tack and a cloth field sign have individual shapes"),
         BuildRegimentHistoricalTack(S::SengokuCavalry).Parts.Num() > 3 &&
-        BuildRegimentSengokuBanner().Count(F::Sashimono) == 1);
+        BuildRegimentSengokuBanner(0).Count(F::Sashimono) == 1);
     return !HasAnyErrors();
 }
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentSengokuBannerTest, "RegimentBattle.Presentation.SengokuBannerSilhouettes",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+
+bool FRegimentSengokuBannerTest::RunTest(const FString&)
+{
+    using F = ERegimentAncientFeature;
+    TSet<double> Heights, Widths, PoleTops;
+    TSet<int32> Variants;
+    for (uint64 Id = 6; Id <= 240; Id += 6)
+    {
+        const int32 Variant = RegimentSengokuBannerVariant(Id);
+        TestEqual(TEXT("A wearer keeps the same flag across frames and LODs"), RegimentSengokuBannerVariant(Id), Variant);
+        if (!TestTrue(TEXT("A wearer maps to an available cached banner"), Variant >= 0 && Variant < RegimentSengokuBannerVariantCount))
+            continue;
+        Variants.Add(Variant);
+    }
+    TestEqual(TEXT("Wearers in one formation get all banner shapes"), Variants.Num(), RegimentSengokuBannerVariantCount);
+    for (const int32 Variant : Variants)
+    {
+        const auto Banner = BuildRegimentSengokuBanner(Variant);
+        const auto* Cloth = Banner.Parts.FindByPredicate([](const auto& Part) { return Part.Feature == F::Sashimono; });
+        if (!TestNotNull(TEXT("The back banner has an identifiable cloth panel"), Cloth))
+            continue;
+        const FVector Size = Cloth->Transform.GetScale3D();
+        TestTrue(TEXT("The clan color remains on a narrow, readable cloth panel"),
+            Cloth->Material == ERegimentAncientMaterial::Paint &&
+            Size.Y >= 25.0 && Size.Y <= 40.0 && Size.Z >= 50.0 && Size.Z <= 80.0);
+        TestTrue(TEXT("The L-shaped staff meets the cuirass at the same mounting point"),
+            Banner.Parts.ContainsByPredicate([](const auto& Part)
+            {
+                return Part.Material == ERegimentAncientMaterial::Wood &&
+                    Part.Transform.InverseTransformPosition(FVector(-17, 10, 94)).GetAbsMax() <= .5;
+            }));
+        Heights.Add(Size.Z);
+        Widths.Add(Size.Y);
+        PoleTops.Add(Banner.Bounds.Max.Z);
+    }
+    TestTrue(TEXT("Sashimono vary in cloth width, cloth height and pole height"),
+        Heights.Num() >= 3 && Widths.Num() >= 3 && PoleTops.Num() >= 3);
+    return !HasAnyErrors();
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentSengokuSaddleTest, "RegimentBattle.Presentation.SengokuSaddle",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+
+bool FRegimentSengokuSaddleTest::RunTest(const FString&)
+{
+    using S = ERegimentHistoricalFigure;
+    using F = ERegimentAncientFeature;
+    const auto Near = BuildRegimentHistoricalMount(S::SengokuCavalry);
+    const auto Far = BuildRegimentHistoricalProxy(S::SengokuCavalry);
+    TestEqual(TEXT("Mounted samurai use a Japanese mount with both rendering paths"), Near.Count(F::Horse), 1);
+    const auto IsHorse = [](const auto& Part) { return Part.Feature == F::Horse; };
+    const auto* NearHorse = Near.Parts.FindByPredicate(IsHorse);
+    const auto* FarHorse = Far.Parts.FindByPredicate(IsHorse);
+    if (!TestNotNull(TEXT("The near mounted samurai has a horse barrel"), NearHorse) ||
+        !TestNotNull(TEXT("The far mounted samurai has a horse barrel"), FarHorse))
+        return false;
+    TestTrue(TEXT("Both rendering paths use the same horse silhouette"), NearHorse->Transform.Equals(FarHorse->Transform));
+    const double Back = FarHorse->Transform.GetLocation().Z + FarHorse->Transform.GetScale3D().Z * .5;
+    TestTrue(TEXT("The seated proxy pelvis clears the back of the horse"),
+        RegimentHistoricalSeatOffset(S::SengokuCavalry) + 65.0 > Back);
+    const auto IsSeat = [](const auto& Part)
+    {
+        return Part.Material == ERegimentAncientMaterial::Leather &&
+            Part.Transform.InverseTransformPosition(FVector(0, 0, RegimentSengokuSaddleHeight - 1)).GetAbsMax() <= .5;
+    };
+    TestTrue(TEXT("The saddle has a surface beneath the rider in both meshes"),
+        Near.Parts.ContainsByPredicate(IsSeat) && Far.Parts.ContainsByPredicate(IsSeat));
+    return !HasAnyErrors();
+}
+
 #endif

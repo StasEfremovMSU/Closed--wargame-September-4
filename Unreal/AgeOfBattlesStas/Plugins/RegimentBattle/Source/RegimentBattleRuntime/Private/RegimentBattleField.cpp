@@ -48,6 +48,7 @@
 #include "RegimentFigureAppearance.h"
 #include "RegimentFigureRig.h"
 #include "RegimentFigureEquipment.h"
+#include "RegimentFieldGunFigure.h"
 #include "RegimentFigureLod.h"
 #include "RegimentFallenPresentation.h"
 #include "RegimentArtilleryCameraKick.h"
@@ -84,6 +85,19 @@ namespace
 {
 constexpr double OfficerDefaultCameraPitch = -13.0;
 constexpr double OfficerDefaultCameraDistance = 365.0;
+
+struct FOfficerSwingVisual
+{
+    uint64 StartTick;
+    uint64 WindupTicks;
+
+    double Age(uint64 Tick, double Alpha) const
+    {
+        return FMath::Max(0.0, double(Tick - StartTick) - 1.0 + Alpha) * FRegimentBattlePlayback::StepSeconds;
+    }
+
+    double Windup() const { return double(WindupTicks) * FRegimentBattlePlayback::StepSeconds; }
+};
 
 bool ChangesControlledUnit(const battle::CommandEnvelope& Entry)
 {
@@ -413,6 +427,16 @@ struct FDeathVisual
     FVector GroundLocation;
 };
 
+struct FRegimentOutfitAttachment
+{
+    UStaticMesh* Mesh;
+    FTransform RelativePose;
+    int32 PaintSlot;
+    bool bOnMount;
+    int32 TintSlot = INDEX_NONE;
+    FLinearColor Tint = FLinearColor::White;
+};
+
 struct FFigureComponents
 {
     TWeakObjectPtr<UPoseableMeshComponent> Figure;
@@ -421,9 +445,19 @@ struct FFigureComponents
     TWeakObjectPtr<UStaticMeshComponent> Insignia;
     TWeakObjectPtr<UStaticMeshComponent> Shield;
     TWeakObjectPtr<UInstancedStaticMeshComponent> Mount;
+    TArray<TWeakObjectPtr<UStaticMeshComponent>> AttachedOutfit;
 
-    void DestroyFigure() const
+    void DestroyAttachedOutfit()
     {
+        for (const auto& Prop : AttachedOutfit)
+            if (auto* Mesh = Prop.Get())
+                Mesh->DestroyComponent();
+        AttachedOutfit.Reset();
+    }
+
+    void DestroyFigure()
+    {
+        DestroyAttachedOutfit();
         if (auto* Horse = Mount.Get())
             Horse->DestroyComponent();
         if (auto* Prop = Insignia.Get())
@@ -451,6 +485,9 @@ struct FUnitView : FFigureComponents
     float IdlePhase = 0.f;
     FVector StandardHand = FVector::ZeroVector;
     FRegimentFigureAppearance Appearance{};
+    TUniquePtr<FRegimentFigureAnchors> Anchors;
+    TArray<FRegimentOutfitAttachment> OutfitPose;
+    FTransform ShieldRestPose;
     bool bPoseInitialized = false;
     bool bPoseWasMoving = false;
     bool bDagger = false;
@@ -463,6 +500,8 @@ struct FUnitView : FFigureComponents
     {
         DestroyFigure();
         static_cast<FFigureComponents&>(*this) = {};
+        Anchors.Reset();
+        OutfitPose.Reset();
         bPoseInitialized = bPoseWasMoving = bDagger = bRoofShield = false;
     }
 
@@ -480,6 +519,43 @@ struct FFallenFigure
     FQuat UprightRotation;
     FQuat MountRotation;
     bool bSettled = false;
+};
+
+struct FOfficerFigureMotion
+{
+    FTransform PreviousBody;
+    FTransform Body;
+    FTransform PreviousMount;
+    FTransform Mount;
+    bool bSampled = false;
+
+    void Sample(const FTransform& NewBody, const FTransform& NewMount, bool bSnap)
+    {
+        PreviousBody = bSampled && !bSnap ? Body : NewBody;
+        PreviousMount = bSampled && !bSnap ? Mount : NewMount;
+        Body = NewBody;
+        Mount = NewMount;
+        bSampled = true;
+    }
+
+    void Present(FUnitView& View, double Alpha) const
+    {
+        if (!bSampled)
+            return;
+        FTransform Pose;
+        if (auto* Figure = View.Figure.Get())
+        {
+            Pose.Blend(PreviousBody, Body, Alpha);
+            if (!Pose.Equals(Figure->GetComponentTransform()))
+                Figure->SetWorldTransform(Pose);
+        }
+        if (auto* Horse = View.Mount.Get())
+        {
+            Pose.Blend(PreviousMount, Mount, Alpha);
+            if (!Pose.Equals(Horse->GetComponentTransform()))
+                Horse->SetWorldTransform(Pose);
+        }
+    }
 };
 
 struct FAttackVisual
@@ -558,7 +634,8 @@ struct FPresentationCamera
     }
 };
 
-FPresentationCamera PlayerPresentationCamera(const APlayerController* Controller, bool bBuildFrustum)
+FPresentationCamera PlayerPresentationCamera(const APlayerController* Controller, bool bBuildFrustum,
+    const ACameraActor* CurrentCamera = nullptr)
 {
     FPresentationCamera Camera;
     if (!Controller)
@@ -566,13 +643,28 @@ FPresentationCamera PlayerPresentationCamera(const APlayerController* Controller
     Controller->GetPlayerViewPoint(Camera.Location, Camera.Rotation);
     if (Controller->PlayerCameraManager)
         Camera.FieldOfView = Controller->PlayerCameraManager->GetFOVAngle();
+    if (CurrentCamera)
+    {
+        const auto* View = CurrentCamera->GetCameraComponent();
+        Camera.Location = View->GetComponentLocation();
+        Camera.Rotation = View->GetComponentRotation();
+        Camera.FieldOfView = View->FieldOfView;
+    }
     if (bBuildFrustum)
         if (const auto* Player = Controller->GetLocalPlayer(); Player && Player->ViewportClient && Player->ViewportClient->Viewport)
         {
             FSceneViewProjectionData Projection;
             if (Player->GetProjectionData(Player->ViewportClient->Viewport, Projection))
             {
-                Camera.Location = Projection.ViewOrigin;
+                if (CurrentCamera)
+                {
+                    // The cached player projection still has the previous frame's camera orientation.
+                    Projection.ViewOrigin = Camera.Location;
+                    Projection.ViewRotationMatrix = FInverseRotationMatrix(Camera.Rotation) *
+                        FMatrix(FPlane(0, 0, 1, 0), FPlane(1, 0, 0, 0), FPlane(0, 1, 0, 0), FPlane(0, 0, 0, 1));
+                }
+                else
+                    Camera.Location = Projection.ViewOrigin;
                 GetViewFrustumBounds(Camera.Frustum, Projection.ComputeViewProjectionMatrix(), true);
                 Camera.bHasFrustum = true;
             }
@@ -674,9 +766,11 @@ struct FInstanceBatch
     }
 };
 
-double ProxyFigureStature(ECommandFigure Command)
+double FigureStature(ECommandFigure Command)
 {
-    return Command == ECommandFigure::General ? 1.14 : Command == ECommandFigure::Commander ? 1.08 : 1.0;
+    const double Height = Command == ECommandFigure::General ? 198.0
+        : Command == ECommandFigure::Commander ? 181.0 : RegimentFigureReferenceHeight;
+    return Height / RegimentFigureReferenceHeight;
 }
 
 battle::RangedWeapon HistoricalHandProp(bool bAncient, ERegimentHistoricalFigure Style, const battle::UnitSpec& Unit)
@@ -714,8 +808,9 @@ void AddTrainingTarget(FInstanceBatch& Batch, const FTransform& Transform)
 }
 
 void AddProxyFigure(FInstanceBatch& Batch, const FTransform& Transform, const battle::UnitState& Unit,
-    ECommandFigure Command, ERegimentHistoricalFigure Dress, bool bBakedBody, bool bHandProp, bool bMusket,
-    double PikeLength, double FigureScale, bool bRefreshedPolearm,
+    ECommandFigure Command, bool bBakedBody, bool bHandProp, bool bMusket,
+    double PikeLength, double FigureScale, double RiderHeight, const FRegimentRiderTack& Tack, double MountScale,
+    bool bRefreshedPolearm,
     const FRegimentEraTroop* MountedProfile, const FLinearColor& TeamColor,
     const FRegimentFigureAppearance& Appearance)
 {
@@ -735,18 +830,40 @@ void AddProxyFigure(FInstanceBatch& Batch, const FTransform& Transform, const ba
     const FLinearColor Timber = FLinearColor(.15f, .078f, .039f) * Appearance.LeatherShade;
     const FLinearColor Steel(.24f, .26f, .28f);
     const bool bMounted = Unit.troop == battle::UnitTroop::Mounted;
-    const double Height = bMounted ? (bBakedBody ? RegimentHistoricalSeatOffset(Dress) : 105.0) : 0.0;
-    const double Stature = ProxyFigureStature(Command);
+    const double Height = RiderHeight / FigureScale;
+    const double Stature = FigureStature(Command);
+    const double MountRelativeScale = MountScale / FigureScale;
+    const double RiderX = bMounted ? Tack.Seat.X * MountRelativeScale : 0.0;
     if (!bBakedBody)
     {
-        Part({0, 0, 74 * Stature + Height}, {37, 48, 111 * Stature}, Uniform, Cloth);
-        Part({0, 0, 145 * Stature + Height}, {29, 29, 35}, Appearance.Skin, Hide);
+        const double TorsoHeight = bMounted ? 75.0 : 111.0;
+        const double TorsoCenter = bMounted ? 92.0 : 74.0;
+        Part({RiderX, 0, TorsoCenter * Stature + Height}, {37, 48, TorsoHeight * Stature}, Uniform, Cloth);
+        Part({RiderX, 0, 145 * Stature + Height}, FVector(29, 29, 35) * Stature, Appearance.Skin, Hide);
     }
     if (bMounted && !bBakedBody)
     {
-        Part({0, 0, 72}, {122, 43, 83}, Appearance.Coat.Body, Hide);
-        Part({64, 0, 106}, {53, 35, 43}, Appearance.Coat.Body * .74f + Appearance.Coat.Points * .26f,
+        Part(FVector(0, 0, 72) * MountRelativeScale, FVector(122, 43, 83) * MountRelativeScale, Appearance.Coat.Body, Hide);
+        Part(FVector(64, 0, 106) * MountRelativeScale, FVector(53, 35, 43) * MountRelativeScale,
+            Appearance.Coat.Body * .74f + Appearance.Coat.Points * .26f,
             Hide, -22.0);
+        const auto Segment = [&](FVector From, FVector To, double Width, const FLinearColor& Color)
+        {
+            const FQuat Rotation = Transform.GetRotation() * FRotationMatrix::MakeFromZ(To - From).ToQuat();
+            Batch.Transforms.Emplace(Rotation, Transform.TransformPositionNoScale((From + To) * (.5 * FigureScale)),
+                FVector(Width, Width, (To - From).Size()) * (FigureScale / 100.0));
+            Batch.AddPartData(Color, Hide);
+        };
+        for (double Side : {-1.0, 1.0})
+        {
+            const FVector Hip = Tack.Seat * MountRelativeScale + FVector(0, Side * 13.0 * Stature, 0);
+            FVector Ankle = Tack.RightAnkle * MountRelativeScale;
+            Ankle.Y *= Side;
+            const auto Leg = SolveRegimentRiderLeg(Hip, Ankle, 39.0 * Stature, 38.0 * Stature, FVector::ForwardVector);
+            Segment(Hip, Leg.Knee, 16.0 * Stature, Uniform);
+            Segment(Leg.Knee, Leg.Ankle, 13.0 * Stature, Timber);
+            Part(Leg.Ankle + FVector(4, 0, -4) * Stature, FVector(23, 16, 12) * Stature, Timber, Hide);
+        }
     }
     if (Command == ECommandFigure::Standard)
     {
@@ -759,8 +876,7 @@ void AddProxyFigure(FInstanceBatch& Batch, const FTransform& Transform, const ba
         Part({27, 0, 100 + Height}, {31, 44, 32}, TeamColor, Cloth);
     else if (bHandProp)
         return;
-    else if (Command == ECommandFigure::None && (bMusket || battle::UsesGunpowder(Unit.ranged_weapon)) &&
-        !(Dress == ERegimentHistoricalFigure::SengokuArquebusier && Unit.dagger_drawn))
+    else if (Command == ECommandFigure::None && (bMusket || battle::UsesGunpowder(Unit.ranged_weapon)) && !Unit.dagger_drawn)
     {
         constexpr double Pitch = 12.0;
         const FVector Grip(12, 28, 96 + Height);
@@ -788,11 +904,10 @@ void AddProxyFigure(FInstanceBatch& Batch, const FTransform& Transform, const ba
         Part(Grip + Axis * (PikeLength * .24), {PikeLength, 7, 7}, Timber, Wood, Pitch);
         Part(Grip + Axis * (PikeLength * .74 + 9), {19, 11, 11}, Steel, Metal, Pitch);
     }
-    else if (Unit.archer && !(Unit.dagger_drawn &&
-        (Dress == ERegimentHistoricalFigure::SengokuArcher || Dress == ERegimentHistoricalFigure::SengokuArquebusier)))
+    else if (Unit.archer && !Unit.dagger_drawn)
         Part({25, 28, 94 + Height}, {14, 19, 83}, Timber, Wood, -29.0);
     else if (!bMounted || Command == ECommandFigure::None)
-        Part({31, 26, 68 + Height}, {61, 14, 17}, Steel, Metal, 29.0);
+        Part({31, 26, 68 + Height}, Unit.dagger_drawn ? FVector(33, 9, 11) : FVector(61, 14, 17), Steel, Metal, 29.0);
 }
 
 template <typename ComponentType>
@@ -867,6 +982,11 @@ struct FAncientMeshBatch
     }
 };
 
+struct FHistoricalOutfitBatch
+{
+    FAncientMeshBatch Segments[int32(ERegimentFigureAnchor::Count)];
+};
+
 UStaticMeshComponent* NewFigureProp(AActor& Owner, USceneComponent& Parent, UStaticMesh& Mesh,
     UMaterialInterface* Material)
 {
@@ -877,6 +997,47 @@ UStaticMeshComponent* NewFigureProp(AActor& Owner, USceneComponent& Parent, USta
     Prop->RegisterComponent();
     Prop->SetComponentTickEnabled(false);
     return Prop;
+}
+
+void PresentAttachedOutfit(AActor& Owner, FFigureComponents& Figure, TConstArrayView<FRegimentOutfitAttachment> Pose,
+    UMaterialInterface* Paint, UMaterialInterface* PartMaterial)
+{
+    for (int32 Index = Pose.Num(); Index < Figure.AttachedOutfit.Num(); ++Index)
+        if (auto* Part = Figure.AttachedOutfit[Index].Get())
+            Part->DestroyComponent();
+    Figure.AttachedOutfit.SetNum(Pose.Num());
+    for (int32 Index = 0; Index < Pose.Num(); ++Index)
+    {
+        const auto& Item = Pose[Index];
+        USceneComponent* Parent = Item.bOnMount ? static_cast<USceneComponent*>(Figure.Mount.Get()) : Figure.Figure.Get();
+        if (!Parent)
+            continue;
+        auto* Mesh = Item.Mesh;
+        auto& Slot = Figure.AttachedOutfit[Index];
+        auto* Component = Slot.Get();
+        if (Component && (Component->GetStaticMesh() != Mesh || Component->GetAttachParent() != Parent))
+        {
+            Component->DestroyComponent();
+            Component = nullptr;
+        }
+        if (!Component)
+        {
+            Component = NewFigureProp(Owner, *Parent, *Mesh, nullptr);
+            Component->SetVisibility(Parent->IsVisible());
+            if (Paint && Item.PaintSlot != INDEX_NONE)
+                Component->SetMaterial(Item.PaintSlot, Paint);
+            if (PartMaterial && Item.TintSlot != INDEX_NONE)
+                if (auto* Tint = UMaterialInstanceDynamic::Create(PartMaterial, Component))
+                {
+                    Tint->SetVectorParameterValue(TEXT("PartColor"), Item.Tint);
+                    Tint->SetScalarParameterValue(TEXT("PartSurface"), float(ERegimentFigureSurface::Leather));
+                    Component->SetMaterial(Item.TintSlot, Tint);
+                }
+            Component->SetCastShadow(false);
+            Slot = Component;
+        }
+        Component->SetRelativeTransform(Item.RelativePose);
+    }
 }
 
 void AddPaintedPart(UInstancedStaticMeshComponent& Mesh, const FTransform& Transform,
@@ -1010,6 +1171,14 @@ struct FRegimentBattleSession
             }
             OfficerUnits.Add(Officer.unit.value, Figure);
         }
+        if (Simulation.command_state)
+            for (const auto& Assignment : Simulation.command_state->hierarchy.support)
+                if (Assignment.duty == battle::command::SupportDuty::Adjutant)
+                {
+                    const auto Staff = std::ranges::find(Simulation.officers, Assignment.officer, &battle::OfficerSpec::id);
+                    if (Staff != Simulation.officers.end())
+                        AdjutantUnits.Add(Staff->unit.value);
+                }
         TMap<uint64, int32> MountedBalance;
         for (const auto& Unit : Simulation.units)
             if (Unit.regiment && !OfficerUnits.Contains(Unit.id.value) && !battle::IsSiegeEngine(Unit.platform) &&
@@ -1115,13 +1284,16 @@ struct FRegimentBattleSession
     TMap<ERegimentAncientShield, FAncientMeshBatch> AncientShields;
     TMap<ERegimentEraVisual, FAncientMeshBatch> EraHeadgear;
     TArray<ERegimentHistoricalFigure> HistoricalFigures;
-    TMap<ERegimentHistoricalFigure, FAncientMeshBatch> HistoricalDress;
+    TMap<ERegimentHistoricalFigure, FHistoricalOutfitBatch> HistoricalDress;
+    TSet<uint64> AdjutantUnits;
+    FAncientMeshBatch AdjutantKit;
+    FAncientMeshBatch CostumeFaces[2];
     TMap<ERegimentHistoricalFigure, FAncientMeshBatch> HistoricalProxies;
     TMap<ERegimentHistoricalFigure, FAncientMeshBatch> HistoricalMounts;
     TMap<ERegimentHistoricalFigure, FAncientMeshBatch> HistoricalTack;
     TMap<battle::RangedWeapon, FAncientMeshBatch> LooseWeapons;
     TMap<ERegimentHistoricalFigure, FAncientMeshBatch> SengokuWeapons;
-    FAncientMeshBatch SengokuBanners;
+    FAncientMeshBatch SengokuBanners[RegimentSengokuBannerVariantCount];
     FPresentationCamera LastPresentationCamera;
     double LastPresentationTime = 0.0;
     bool bRichPromotionPending = false;
@@ -1144,6 +1316,11 @@ struct FRegimentBattleSession
     TOptional<FMeleeSmoke> MeleeSmoke;
     TArray<FArrowFlight> Arrows;
     FRegimentBattlePlayback Playback;
+    TOptional<FOfficerSwingVisual> OfficerSwing;
+    TMap<uint64, FOfficerFigureMotion> OfficerMotion;
+    battle::Tick AttemptedMeleeWindup = 0;
+    battle::UnitId PreviousControlledOfficer;
+    battle::Vec3 PreviousOfficerPosition;
     FVector ReleasedBowGrip = FVector::ZeroVector;
     FVector LastMassOrigin = FVector::ZeroVector;
     int32 PresentedArrowCount = 0;
@@ -1152,6 +1329,43 @@ struct FRegimentBattleSession
     void QueueCommand(const battle::Command& Command)
     {
         PendingCommands.push_back({Simulation.tick, NextCommandSequence++, Command});
+    }
+
+    void PresentOfficerMotion(double Alpha)
+    {
+        for (const auto& Entry : OfficerMotion)
+            if (auto* View = Units.Find(Entry.Key))
+                Entry.Value.Present(*View, Alpha);
+    }
+
+    void TrackOfficerMotion(battle::UnitId Controlled)
+    {
+        PresentOfficerMotion(1.0);
+        OfficerMotion.Reset();
+        if (!Controlled)
+            return;
+        OfficerMotion.Add(Controlled.value);
+        if (!Simulation.command_state)
+            return;
+        const auto Commander = std::ranges::find(Simulation.officers, Controlled, &battle::OfficerSpec::unit);
+        if (Commander == Simulation.officers.end())
+            return;
+        const auto& Hierarchy = Simulation.command_state->hierarchy;
+        const auto Army = std::ranges::find_if(Hierarchy.nodes, [Commander](const auto& Node)
+        {
+            return Node.level == battle::command::Level::Army && Node.commander == Commander->id;
+        });
+        if (Army == Hierarchy.nodes.end())
+            return;
+        for (const auto& Staff : Hierarchy.support)
+        {
+            if (Staff.command != Army->id || (Staff.duty != battle::command::SupportDuty::Bodyguard &&
+                Staff.duty != battle::command::SupportDuty::Adjutant))
+                continue;
+            const auto Rider = std::ranges::find(Simulation.officers, Staff.officer, &battle::OfficerSpec::id);
+            if (Rider != Simulation.officers.end())
+                OfficerMotion.Add(Rider->unit.value);
+        }
     }
 
     bool IsOpening() const { return Opening && Opening->IsActive(); }
@@ -1411,8 +1625,8 @@ struct FRegimentBattleSession
                     }
                     else if (Source->platform == battle::BattlePlatform::FieldGun)
                     {
-                        Start.Z = SourcePos.Z + 82.0;
-                        ForwardOffset = 120.0;
+                        Start = RegimentFieldGun::MuzzleAt(SourcePos, Source->pose.yaw);
+                        ForwardOffset = 0.0;
                     }
                     else if (View && View->Figure.IsValid() && Rigs[Archer] && Rigs[Archer]->IsValid())
                     {
@@ -1627,7 +1841,7 @@ struct FRegimentBattleSession
             case EventKind::Hit:
             {
                 // Charge impacts already have a separate event at this contact.
-                if (Event.amount <= 0.f || Event.reason.starts_with("cavalry impact"))
+                if (Event.reason.starts_with("cavalry impact") || (Event.amount <= 0.f && (!bPersonal || Event.projectile)))
                     continue;
                 Unit = battle::FindUnit(Simulation, Event.target);
                 const auto* Attacker = battle::FindUnit(Simulation, Event.source);
@@ -1643,8 +1857,9 @@ struct FRegimentBattleSession
                 else
                 {
                     LastMeleeAudioTick = Event.tick;
-                    Sound = Attacker && battle::IsElephant(Attacker->platform)
-                        ? ERegimentSound::ElephantImpact : (bPersonal ? ERegimentSound::OfficerHit : ERegimentSound::Steel);
+                    Sound = Attacker && battle::IsElephant(Attacker->platform) ? ERegimentSound::ElephantImpact
+                        : bPersonal ? (Event.amount > 0.f ? ERegimentSound::OfficerHit : ERegimentSound::OfficerParry)
+                                    : ERegimentSound::Steel;
                 }
                 break;
             }
@@ -1773,7 +1988,7 @@ struct FRegimentBattleSession
                 if (Body->IsVisible() != bVisible)
                     Body->SetVisibility(bVisible, true);
                 if (auto* Horse = Fall.Components.Mount.Get(); Horse && Horse->IsVisible() != bVisible)
-                    Horse->SetVisibility(bVisible);
+                    Horse->SetVisibility(bVisible, true);
                 if (!bVisible)
                     continue;
             }
@@ -1982,7 +2197,9 @@ void FRegimentMissionDeleter::operator()(FRegimentMissionRuntime* InMission) con
 ARegimentBattleField::ARegimentBattleField()
 {
     PrimaryActorTick.bCanEverTick = true;
-    PrimaryActorTick.TickGroup = TG_PostUpdateWork;
+    // The world refreshes PlayerCameraManager after PostPhysics. The view target and its blade
+    // must both be in their current positions before that refresh.
+    PrimaryActorTick.TickGroup = TG_PostPhysics;
     SetRootComponent(CreateDefaultSubobject<USceneComponent>(TEXT("FieldOrigin")));
 
     BlueMarkers = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("BlueMarkers"));
@@ -2066,7 +2283,9 @@ void ARegimentBattleField::BeginPlay()
 bool ARegimentBattleField::StartBattle()
 {
     const bool bCampaign = Mission && Mission->TacticalScenario.has_value();
-    auto Created = battle::CreateWorld(bCampaign ? *Mission->TacticalScenario : MakeBattle(), 42);
+    auto Scenario = bCampaign ? *Mission->TacticalScenario : MakeBattle();
+    Scenario.rules.stationary_threat_facing = RegimentOfficerSettings().StationaryThreatFacing();
+    auto Created = battle::CreateWorld(Scenario, 42);
     if (!Created)
     {
         UE_LOG(LogRegimentBattle, Error, TEXT("BattleCore rejected the field scenario."));
@@ -2181,8 +2400,10 @@ bool ARegimentBattleField::StartBattle()
                     if (Faction->Visual != ERegimentEraVisual::Classic && !Session->EraHeadgear.Contains(Faction->Visual))
                         Session->EraHeadgear.Add(Faction->Visual).Create(*this,
                             BuildRegimentEraHeadgear(Faction->Visual), BaseMaterial);
-                    if (Faction->Visual == ERegimentEraVisual::Sengoku && !Session->SengokuBanners.Mesh)
-                        Session->SengokuBanners.Create(*this, BuildRegimentSengokuBanner(), BaseMaterial);
+                    if (Faction->Visual == ERegimentEraVisual::Sengoku)
+                        for (int32 Variant = 0; Variant < RegimentSengokuBannerVariantCount; ++Variant)
+                            if (auto& Banner = Session->SengokuBanners[Variant]; !Banner.Mesh)
+                                Banner.Create(*this, BuildRegimentSengokuBanner(Variant), BaseMaterial);
                     if (Session->bAncient || Faction->Visual != ERegimentEraVisual::Classic)
                     {
                         if (auto* TeamMaterial = Team == 0 ? BlueFigureMaterial.Get() : OrangeFigureMaterial.Get())
@@ -2218,7 +2439,11 @@ bool ARegimentBattleField::StartBattle()
             const bool bMounted = Unit.troop == battle::UnitTroop::Mounted;
             if (Dress != ERegimentHistoricalFigure::None && !Session->HistoricalDress.Contains(Dress))
             {
-                Session->HistoricalDress.Add(Dress).Create(*this, BuildRegimentHistoricalDress(Dress), BaseMaterial);
+                const auto Model = BuildRegimentHistoricalDress(Dress);
+                auto& Outfit = Session->HistoricalDress.Add(Dress);
+                for (int32 Index = 0; Index < int32(ERegimentFigureAnchor::Count); ++Index)
+                    Outfit.Segments[Index].Create(*this,
+                        RegimentHistoricalDressSegment(Model, ERegimentFigureAnchor(Index)), BaseMaterial);
                 const auto Mount = bMounted ? BuildRegimentHistoricalMount(Dress) : FRegimentAncientFigure{};
                 const bool bHasHistoricalMount = !Mount.Parts.IsEmpty();
                 Session->HistoricalProxies.Add(Dress).Create(*this, BuildRegimentHistoricalProxy(Dress), BaseMaterial,
@@ -2265,6 +2490,11 @@ bool ARegimentBattleField::StartBattle()
     if (ProjectileSphere && (Session->Platforms.Contains(battle::BattlePlatform::Catapult) ||
         Session->Platforms.Contains(battle::BattlePlatform::FieldGun)))
         Session->StoneVisuals = AddSphericalProjectile(FColor(117, 122, 128));
+    if (!Session->AdjutantUnits.IsEmpty())
+        Session->AdjutantKit.Create(*this, BuildRegimentAdjutantKit(), BaseMaterial);
+    if ((!Session->HistoricalDress.IsEmpty() || !Session->EraHeadgear.IsEmpty()) && FigurePartMaterial.IsValid())
+        for (int32 Covered = 0; Covered < 2; ++Covered)
+            Session->CostumeFaces[Covered].Create(*this, BuildRegimentCostumeFace(Covered != 0), BaseMaterial, true);
     if (ProjectileSphere && bArcane)
         Session->ArcaneVisuals = AddSphericalProjectile(FColor(89, 183, 254));
     RefreshDecisionEntries();
@@ -2333,6 +2563,11 @@ void ARegimentBattleField::IntroduceReserve()
 {
     if (CanIntroduceReserve())
         Session->MissionProgress->ReleaseReserve(Session->Simulation);
+}
+
+FText ARegimentBattleField::GetMissionName() const
+{
+    return Mission ? FText::FromString(Mission->GetPreset().Name) : FText::GetEmpty();
 }
 
 FText ARegimentBattleField::GetMissionObjectiveText() const
@@ -2784,6 +3019,31 @@ void ARegimentBattleField::ShowOfficerNotice(FText Notice)
     OfficerNoticeSeconds = OfficerHudState.Notice.IsEmpty() ? 0.f : 4.f;
 }
 
+void ARegimentBattleField::SetStationaryThreatFacing(bool bEnabled)
+{
+    RegimentOfficerSettings().SetStationaryThreatFacing(bEnabled);
+    SaveRegimentOfficerSettings();
+    if (Session && Session->Simulation.outcome == battle::BattleOutcome::Running)
+    {
+        battle::Command Command;
+        Command.kind = battle::CommandKind::SetStationaryThreatFacing;
+        Command.stationary_threat_facing = bEnabled;
+        Session->QueueCommand(Command);
+    }
+}
+
+namespace
+{
+bool IsSelectedArtillery(const battle::World& World, const battle::RegimentState* Regiment)
+{
+    return Regiment && std::ranges::any_of(Regiment->units, [&](battle::UnitId Id)
+    {
+        const auto* Unit = battle::FindUnit(World, Id);
+        return Unit && battle::IsSiegeEngine(Unit->platform);
+    });
+}
+}
+
 void ARegimentBattleField::IssueOfficerOrder(ERegimentPlayerOrder Order, bool bAimAtCursor)
 {
     if (!Session || !Session->Simulation.controlled)
@@ -2842,6 +3102,17 @@ void ARegimentBattleField::IssueOfficerOrder(ERegimentPlayerOrder Order, bool bA
         ShowOfficerNotice(FText::GetEmpty());
         return;
     }
+    if (Order == ERegimentPlayerOrder::CommandAttackNearest)
+    {
+        std::vector<battle::RegimentId> Excluded;
+        if (Session->MissionProgress)
+            for (const auto& Regiment : World.regiments)
+                if (Session->MissionProgress->AwaitsReserveRelease(Regiment.id))
+                    Excluded.push_back(Regiment.id);
+        ShowOfficerNotice(RegimentOfficerOrders::QueueScopedAttack(World, *Session->Navigation, Excluded,
+            Session->PendingCommands, Session->NextCommandSequence));
+        return;
+    }
     if (Order == ERegimentPlayerOrder::CommandHold || Order == ERegimentPlayerOrder::WingHold)
     {
         if (OfficerHudState.CommandTier < (Order == ERegimentPlayerOrder::WingHold ? 3 : 2))
@@ -2873,13 +3144,17 @@ void ARegimentBattleField::IssueOfficerOrder(ERegimentPlayerOrder Order, bool bA
             : LOCTEXT("ReserveWaitsForExerciseOrder", "Нажмите «Ввести резерв» и дождитесь доставки приказа."));
         return;
     }
-    if ((Order == ERegimentPlayerOrder::Attack || Order == ERegimentPlayerOrder::Pursue) &&
+    const auto* Regiment = battle::FindRegiment(World, {SelectedOfficerRegiment});
+    if (Order == ERegimentPlayerOrder::MeleeAssault && IsSelectedArtillery(World, Regiment))
+        Order = ERegimentPlayerOrder::Attack;
+    const bool bTargetsEnemy = Order == ERegimentPlayerOrder::Attack ||
+        Order == ERegimentPlayerOrder::MeleeAssault || Order == ERegimentPlayerOrder::Pursue;
+    if (bTargetsEnemy &&
         Session->MissionProgress && Session->MissionProgress->HidesRegiment({MissionRegimentsPerTeam + 2}))
     {
         ShowOfficerNotice(LOCTEXT("AcademyAttackAfterTargets", "Полк противника появится после стрельбы по мишеням."));
         return;
     }
-    const auto* Regiment = battle::FindRegiment(World, {SelectedOfficerRegiment});
     if (Order == ERegimentPlayerOrder::GroupManeuver && !OfficerHudState.bAdditionalRegiments)
     {
         ShowOfficerNotice(LOCTEXT("GroupOfficerRequired", "Возьмите управление командиром группы или армии."));
@@ -2909,7 +3184,7 @@ void ARegimentBattleField::IssueOfficerOrder(ERegimentPlayerOrder Order, bool bA
         return;
     }
     std::optional<battle::Vec3> Cursor;
-    if ((Order == ERegimentPlayerOrder::Attack || Order == ERegimentPlayerOrder::Pursue) && bAimAtCursor)
+    if (bTargetsEnemy && bAimAtCursor)
         if (auto* Controller = GetWorld()->GetFirstPlayerController())
         {
             FVector Origin, Ray;
@@ -2980,7 +3255,8 @@ void ARegimentBattleField::SelectRegimentCard(uint64 Id)
     const auto& World = Session->Simulation;
     if (!World.controlled)
     {
-        EnterRegimentCardOfficer(Id);
+        if (Mission && !IsChoosingOfficer())
+            Mission->FollowRegiment(Id, Card->Starting);
         return;
     }
     if (!battle::CanCommandRegiment(World, World.controlled, {Id}))
@@ -2991,6 +3267,17 @@ void ARegimentBattleField::SelectRegimentCard(uint64 Id)
     SelectedOfficerRegiment = Id;
     Session->DragAnchor.Reset();
     Session->NextFieldRefresh = 0.0;
+}
+
+uint64 ARegimentBattleField::GetCameraRegiment() const
+{
+    return Mission && Session && !Session->Simulation.controlled ? Mission->CameraRegiment() : 0;
+}
+
+void ARegimentBattleField::StopFollowingRegiment()
+{
+    if (Mission)
+        Mission->StopFollowingRegiment();
 }
 
 void ARegimentBattleField::RefreshRegimentCards()
@@ -3394,12 +3681,9 @@ void ARegimentBattleField::QueueOfficerActions(float AimYaw, bool bDirect)
         if (Actions.Attack == FRegimentOfficerInput::EAttack::Strike)
         {
             Attack.target = RegimentOfficerOrders::PersonalTarget(World, AimYaw);
-            if (!Attack.target)
-            {
-                const auto* Officer = battle::FindUnit(World, World.controlled);
-                if (Officer && (!Officer->archer || Officer->dagger_drawn) && Officer->parry_until <= World.tick)
-                    OfficerInput.ShowMissedSwing();
-            }
+            const auto* Officer = battle::FindUnit(World, World.controlled);
+            if (Officer && (!Officer->archer || Officer->dagger_drawn) && OfficerHudState.bAttackReady)
+                Session->AttemptedMeleeWindup = FMath::Max<battle::Tick>(1, Officer->weapon.windup_ticks);
         }
         Session->QueueCommand(Attack);
     }
@@ -3456,7 +3740,7 @@ void ARegimentBattleField::ProcessOfficerInput()
 
     const TPair<FKey, ERegimentPlayerOrder> Keys[] = {
         {EKeys::One, ERegimentPlayerOrder::Line}, {EKeys::Two, ERegimentPlayerOrder::Column},
-        {EKeys::Three, ERegimentPlayerOrder::Hold}, {EKeys::Four, ERegimentPlayerOrder::Attack},
+        {EKeys::Three, ERegimentPlayerOrder::Hold}, {EKeys::Four, ERegimentPlayerOrder::MeleeAssault},
         {EKeys::Five, ERegimentPlayerOrder::Withdraw}, {EKeys::Six, ERegimentPlayerOrder::Skirmishers},
         {EKeys::Seven, ERegimentPlayerOrder::HoldLine}, {EKeys::Eight, ERegimentPlayerOrder::Brace},
         {EKeys::Nine, ERegimentPlayerOrder::Pursue}, {EKeys::M, ERegimentPlayerOrder::Maneuver},
@@ -3579,13 +3863,25 @@ void ARegimentBattleField::RestoreOfficerCamera()
     }
     OfficerCamera.Reset();
     OfficerViewBlade.Reset();
+    OfficerGuardAlpha = 0.0;
+    OfficerAimSeconds = OfficerCueSeconds = 0.f;
+    OfficerHudState.AimPoint.Reset();
+    OfficerHudState.ImpactPoint.Reset();
+    OfficerHudState.CombatText = FText::GetEmpty();
+    OfficerHudState.CombatCue = ERegimentOfficerCombatCue::None;
+    OfficerHudState.bIncomingArrow = false;
+    if (Session)
+    {
+        Session->OfficerSwing.Reset();
+        Session->TrackOfficerMotion({});
+    }
     PreviousBattleView.Reset();
     ClearOfficerDirectInput();
     OfficerInput = {};
     SetOfficerMouseCapture(false);
 }
 
-void ARegimentBattleField::UpdateOfficerViewBlade(ACameraActor& Camera, double Swing, bool bParrying)
+void ARegimentBattleField::UpdateOfficerViewBlade(ACameraActor& Camera, double Swing)
 {
     auto* Sword = CaptainWeapon ? CaptainWeapon.Get() : SwordsmanWeapon.Get();
     if (!Sword)
@@ -3605,12 +3901,107 @@ void ARegimentBattleField::UpdateOfficerViewBlade(ACameraActor& Camera, double S
     const FVector Rest(.12, -.24, .96);
     const FVector Guard(.11, -.96, .26);
     const FVector Attack(.45, -1.0, .15);
-    const FVector Direction = (bParrying ? Guard : FMath::Lerp(Rest, Attack, Swing)).GetSafeNormal();
+    const FVector Direction = FMath::Lerp(FMath::Lerp(Rest, Attack, Swing), Guard, OfficerGuardAlpha).GetSafeNormal();
     const FQuat Rotation = FQuat::FindBetweenNormals(MeshAxis, Direction);
     const double Scale = 56.0 / FMath::Max(1.0, 2.0 * Bounds.BoxExtent[Longest]);
-    const FVector Center = bParrying ? FVector(54, 8, -14) : FVector(56, 33 - 31 * Swing, -29 + 17 * Swing);
+    const FVector Center = FMath::Lerp(FVector(56 + 12 * Swing, 33 - 38 * Swing, -29 + 17 * Swing),
+        FVector(54, 8, -14), OfficerGuardAlpha);
     Blade->SetRelativeTransform(FTransform(Rotation, Center - Rotation.RotateVector(Bounds.Origin * Scale), FVector(Scale)));
     Blade->SetVisibility(true);
+}
+
+void ARegimentBattleField::UpdateOfficerCombatEvents()
+{
+    auto& World = Session->Simulation;
+    const auto Windup = Session->AttemptedMeleeWindup;
+    Session->AttemptedMeleeWindup = 0;
+    if (!World.controlled || PossessedOfficer != World.controlled.value)
+        return;
+
+    using ECue = ERegimentOfficerCombatCue;
+    ECue Cue = ECue::None;
+    battle::UnitId Impact;
+    bool bLaunched = false;
+    for (const auto& Event : World.events)
+    {
+        const bool bOwnAttack = Event.source == World.controlled;
+        const bool bIncoming = Event.target == World.controlled;
+        switch (Event.kind)
+        {
+        case battle::EventKind::AttackLaunched:
+            if (bOwnAttack)
+            {
+                bLaunched = true;
+                if (!Event.projectile)
+                    Session->OfficerSwing = FOfficerSwingVisual{Event.tick,
+                        FMath::Max<battle::Tick>(1, Event.due_tick - Event.tick)};
+            }
+            break;
+        case battle::EventKind::Hit:
+            if (bOwnAttack || (bIncoming && Event.amount > 0.f))
+            {
+                Cue = bOwnAttack ? (Event.amount > 0.f ? ECue::Hit : ECue::Armour) : ECue::Wounded;
+                Impact = bOwnAttack ? Event.target : battle::UnitId{};
+            }
+            break;
+        case battle::EventKind::Parried:
+            if (bOwnAttack || bIncoming)
+            {
+                Cue = bOwnAttack ? ECue::Parried : ECue::Blocked;
+                Impact = bOwnAttack ? Event.target : Event.source;
+            }
+            break;
+        case battle::EventKind::Miss:
+            if (bOwnAttack && Cue == ECue::None)
+                Cue = ECue::Miss;
+            else if (bIncoming && Event.reason == battle::OfficerArrowDodgeReason &&
+                (Cue == ECue::None || Cue == ECue::Miss))
+                Cue = ECue::ArrowDodged;
+            break;
+        default:
+            break;
+        }
+    }
+    if (Windup && !bLaunched)
+    {
+        Session->OfficerSwing = FOfficerSwingVisual{World.tick - 1, Windup};
+        if (Cue == ECue::None)
+            Cue = ECue::Miss;
+    }
+    if (Cue == ECue::None)
+        return;
+    OfficerHudState.CombatCue = Cue;
+    OfficerCueSeconds = 1.12f;
+    OfficerHudState.ImpactPoint.Reset();
+    if (const auto* Target = battle::FindUnit(World, Impact))
+        OfficerHudState.ImpactPoint = Session->WorldLocation(Target->pose.position, GetBattleOrigin()) +
+            FVector(0, 0, Target->troop == battle::UnitTroop::Mounted ? 176.0 : 113.0);
+    switch (Cue)
+    {
+    case ECue::Hit:
+        OfficerHudState.CombatText = LOCTEXT("OfficerContactHit", "Попадание");
+        break;
+    case ECue::Armour:
+        OfficerHudState.CombatText = LOCTEXT("OfficerContactArmour", "Броня выдержала");
+        break;
+    case ECue::Miss:
+        OfficerHudState.CombatText = LOCTEXT("OfficerContactMiss", "Промах");
+        break;
+    case ECue::Blocked:
+        OfficerHudState.CombatText = LOCTEXT("OfficerContactBlocked", "Противник парировал");
+        break;
+    case ECue::Parried:
+        OfficerHudState.CombatText = LOCTEXT("OfficerContactParried", "Удар отражён");
+        break;
+    case ECue::ArrowDodged:
+        OfficerHudState.CombatText = LOCTEXT("OfficerContactArrowDodged", "Вы уклонились от стрелы");
+        break;
+    case ECue::Wounded:
+        OfficerHudState.CombatText = LOCTEXT("OfficerContactWounded", "Вы ранены");
+        break;
+    default:
+        break;
+    }
 }
 
 void ARegimentBattleField::UpdateOfficerCamera(float DeltaSeconds)
@@ -3663,13 +4054,19 @@ void ARegimentBattleField::UpdateOfficerCamera(float DeltaSeconds)
         OfficerCameraPitch = bFirstPerson ? 0.0 : OfficerDefaultCameraPitch;
         OfficerCameraDistance = OfficerCameraZoom = OfficerDefaultCameraDistance;
         OfficerInput = {};
+        Session->OfficerSwing.Reset();
+        Session->TrackOfficerMotion(Unit->id);
+        OfficerGuardAlpha = 0.0;
+        OfficerAimSeconds = OfficerCueSeconds = 0.f;
+        OfficerHudState.AimPoint.Reset();
+        OfficerHudState.ImpactPoint.Reset();
+        OfficerHudState.CombatCue = ERegimentOfficerCombatCue::None;
+        OfficerHudState.CombatText = FText::GetEmpty();
         SetOfficerMouseCapture(CanDirectControlOfficer());
         ShowOfficerNotice(FText::GetEmpty());
         if (FSlateApplication::IsInitialized())
             FSlateApplication::Get().SetAllUserFocusToGameViewport();
     }
-    if (!IsBattlePaused())
-        OfficerInput.Advance(DeltaSeconds);
     OfficerHudState.bActive = true;
     OfficerHudState.bFirstPerson = bFirstPerson;
     // BattleCore stores the defining unit specs sorted by id and tracks damage on UnitState.
@@ -3782,22 +4179,44 @@ void ARegimentBattleField::UpdateOfficerCamera(float DeltaSeconds)
         const FRotator Rotation(OfficerCameraPitch, OfficerCameraYaw, 0.0);
         const bool bMounted = Unit->troop == battle::UnitTroop::Mounted;
         const FVector Origin = GetBattleOrigin();
+        const double Alpha = Session->Playback.RenderAlpha();
+        const FVector CurrentFooting = Session->WorldLocation(Unit->pose.position, Origin);
+        const FVector Footing = Session->PreviousControlledOfficer == Unit->id && !bNewOfficer
+            ? FMath::Lerp(Session->WorldLocation(Session->PreviousOfficerPosition, Origin), CurrentFooting, Alpha)
+            : CurrentFooting;
         Camera->GetCameraComponent()->SetFieldOfView(RegimentOfficerView::FieldOfView(bFirstPerson));
-        const FVector Footing = Session->WorldLocation(Unit->pose.position, Origin);
+
+        OfficerAimSeconds -= DeltaSeconds;
+        if (!CanDirectControlOfficer())
+        {
+            OfficerHudState.AimPoint.Reset();
+            OfficerAimSeconds = 0.f;
+        }
+        else if (OfficerAimSeconds <= 0.f)
+        {
+            OfficerAimSeconds = .05f;
+            OfficerHudState.AimPoint.Reset();
+            if (OfficerHudState.bAttackReady && OfficerHudState.FieldGunStatus.IsEmpty())
+                if (const auto* Aim = battle::FindUnit(World,
+                    RegimentOfficerOrders::PersonalTarget(World, float(FMath::DegreesToRadians(OfficerCameraYaw)))))
+                    OfficerHudState.AimPoint = Session->WorldLocation(Aim->pose.position, Origin) +
+                        FVector(0, 0, Aim->troop == battle::UnitTroop::Mounted ? 176.0 : 113.0);
+            OfficerHudState.bIncomingArrow = std::ranges::any_of(World.attacks, [Unit, &World](const auto& Attack)
+            {
+                return Attack.officer_arrow && Attack.target == Unit->id &&
+                    Attack.due_tick <= World.tick + 18;
+            });
+        }
         if (bFirstPerson)
         {
             Camera->SetActorLocationAndRotation(RegimentOfficerView::Eyes(Footing, bMounted), Rotation);
-            double Swing = OfficerInput.SwingPhase();
-            if (const auto* Attack = Session->Attacks.Find(Unit->id.value))
-            {
-                const double Duration = FMath::Max(AttackPoseTicks,
-                    double(Attack->TelegraphImpactTick ? Attack->TelegraphImpactTick - Attack->StartTick + 5 : 0));
-                const double Progress = double(World.tick - Attack->StartTick) / Duration;
-                if (Progress < 1.0)
-                    Swing = FMath::Max(Swing, Progress);
-            }
+            const auto& Swing = Session->OfficerSwing;
+            const double Reach = Swing ? RegimentOfficerView::BladeReach(Swing->Age(World.tick, Alpha), Swing->Windup()) : 0.0;
+            if (!IsBattlePaused())
+                OfficerGuardAlpha = FMath::Lerp(OfficerGuardAlpha, OfficerHudState.bParryActive ? 1.0 : 0.0,
+                    1.0 - FMath::Exp(-34.0 * DeltaSeconds));
             if (Unit->platform == battle::BattlePlatform::None && OfficerHudState.FieldGunStatus.IsEmpty())
-                UpdateOfficerViewBlade(*Camera, FMath::Sin(PI * Swing), OfficerHudState.bParryActive);
+                UpdateOfficerViewBlade(*Camera, Reach);
             else if (auto* Blade = OfficerViewBlade.Get())
                 Blade->SetVisibility(false);
             return;
@@ -3831,7 +4250,15 @@ void ARegimentBattleField::AttachHud()
     if (!Player || !Player->ViewportClient || !Player->ViewportClient->GetGameLayerManager())
         return;
 
-    auto Widget = SNew(SRegimentBattleHud).Field(this);
+    auto Widget = SNew(SRegimentBattleHud).Field(this)
+        .ArtillerySelected_Lambda([Field = TWeakObjectPtr<ARegimentBattleField>(this)]
+        {
+            const auto* Battle = Field.Get();
+            if (!Battle || !Battle->Session)
+                return false;
+            const auto& World = Battle->Session->Simulation;
+            return IsSelectedArtillery(World, battle::FindRegiment(World, {Battle->SelectedOfficerRegiment}));
+        });
     Player->ViewportClient->AddViewportWidgetForPlayer(Player, Widget, 10);
     BattleHud = Widget;
     HudPlayer = Player;
@@ -3850,6 +4277,16 @@ void ARegimentBattleField::Tick(float DeltaSeconds)
         OfficerNoticeSeconds -= DeltaSeconds;
         if (OfficerNoticeSeconds <= 0.f)
             ShowOfficerNotice(FText::GetEmpty());
+    }
+    if (OfficerCueSeconds > 0.f)
+    {
+        OfficerCueSeconds -= DeltaSeconds;
+        if (OfficerCueSeconds <= 0.f)
+        {
+            OfficerHudState.CombatCue = ERegimentOfficerCombatCue::None;
+            OfficerHudState.CombatText = FText::GetEmpty();
+            OfficerHudState.ImpactPoint.Reset();
+        }
     }
     if (Mission && !Mission->TacticalScenario)
     {
@@ -3999,6 +4436,9 @@ void ARegimentBattleField::Tick(float DeltaSeconds)
         const auto Options = RegimentGroupPolicy::SimulationOptions(Session->GroupPolicy ? &*Session->GroupPolicy : nullptr);
         if (Simulation.controlled)
             QueueOfficerMotion();
+        Session->PreviousControlledOfficer = Simulation.controlled;
+        if (const auto* Unit = battle::FindUnit(Simulation, Simulation.controlled))
+            Session->PreviousOfficerPosition = Unit->pose.position;
         const bool bMeasureStep = Session->Perf && Session->Perf->IsMeasuring() && !Session->Perf->IsReady();
         Session->Trace.BeforeStep(Simulation);
         const double StepStart = bMeasureStep ? FPlatformTime::Seconds() : 0.0;
@@ -4092,11 +4532,7 @@ void ARegimentBattleField::Tick(float DeltaSeconds)
                 Mission ? Mission->GetPreset().Terrain : battle::MarchTerrain::StoneWalls, CameraLocation);
         }
         Session->RecordCombatEvents(*GetWorld(), Origin);
-        if (Simulation.controlled && std::ranges::any_of(Simulation.events, [&](const auto& Event)
-        {
-            return Event.kind == battle::EventKind::Parried && Event.source == Simulation.controlled;
-        }))
-            ShowOfficerNotice(LOCTEXT("OfficerParried", "Удар отражён. Можно контратаковать."));
+        UpdateOfficerCombatEvents();
         if (!bSmokeRun && !(Mission && Mission->bSmoke))
             Session->PlayBattleSounds(*GetWorld(), Origin);
         for (const auto& Regiment : Simulation.regiments)
@@ -4123,13 +4559,15 @@ void ARegimentBattleField::Tick(float DeltaSeconds)
     if (!bSimulationFrame && !bSmokeRun && !(Mission && Mission->bSmoke) && !Session->bPerfFullDetail &&
         FPlatformTime::Seconds() - Session->LastPresentationTime >= .08)
     {
-        const auto Camera = PlayerPresentationCamera(GetWorld()->GetFirstPlayerController(), false);
+        const auto Camera = PlayerPresentationCamera(GetWorld()->GetFirstPlayerController(), false,
+            Session->IsScriptedPerf() ? Session->PerfCamera.Get() : OfficerCamera.Get());
         const auto& Previous = Session->LastPresentationCamera;
         bCameraFrame = Session->bRichPromotionPending || !Camera.Location.Equals(Previous.Location, 35.0) ||
             !Camera.Rotation.Equals(Previous.Rotation, .65) || !FMath::IsNearlyEqual(Camera.FieldOfView, Previous.FieldOfView, .2f);
     }
     if ((bSimulationFrame || bCameraFrame || bOfficerPresentationDirty) && !PresentFrame())
         return;
+    Session->PresentOfficerMotion(Session->Playback.RenderAlpha());
     bOfficerPresentationDirty = false;
     if (Session->Perf && (Session->Perf->IsReady() || Simulation.outcome != battle::BattleOutcome::Running))
         Session->ReportPerf();
@@ -4321,7 +4759,11 @@ bool ARegimentBattleField::PresentFrame()
     for (auto& Entry : Session->EraHeadgear)
         Entry.Value.Reset();
     for (auto& Entry : Session->HistoricalDress)
-        Entry.Value.Reset();
+        for (auto& Segment : Entry.Value.Segments)
+            Segment.Reset();
+    Session->AdjutantKit.Reset();
+    for (auto& Face : Session->CostumeFaces)
+        Face.Reset();
     for (auto& Entry : Session->HistoricalProxies)
         Entry.Value.Reset();
     for (auto& Entry : Session->HistoricalTack)
@@ -4330,7 +4772,8 @@ bool ARegimentBattleField::PresentFrame()
         Entry.Value.Reset();
     for (auto& Entry : Session->SengokuWeapons)
         Entry.Value.Reset();
-    Session->SengokuBanners.Reset();
+    for (auto& Banner : Session->SengokuBanners)
+        Banner.Reset();
     if (!bAllRich || bTrainingInfantry)
         for (FInstanceBatch& Batch : Session->ProxyBatches)
         {
@@ -4339,7 +4782,8 @@ bool ARegimentBattleField::PresentFrame()
         }
     if (!bAllRich)
     {
-        Session->LastPresentationCamera = PlayerPresentationCamera(GetWorld()->GetFirstPlayerController(), true);
+        Session->LastPresentationCamera = PlayerPresentationCamera(GetWorld()->GetFirstPlayerController(), true,
+            Session->IsScriptedPerf() ? Session->PerfCamera.Get() : OfficerCamera.Get());
         Session->LastPresentationTime = FPlatformTime::Seconds();
         Session->LodCandidates.Reset();
         Session->VisibleUnits.Init(false, int32(Simulation.units.size()));
@@ -4365,8 +4809,10 @@ bool ARegimentBattleField::PresentFrame()
             {
                 const auto Bounds = Platform->Mesh->GetBounds();
                 const FQuat Facing(FVector::UpVector, Unit.pose.yaw);
-                Session->VisibleUnits[Index] = bControlled
-                    || Camera.Sees(Ground + Facing.RotateVector(Bounds.Origin), Bounds.SphereRadius);
+                const double RecoilPadding = Unit.platform == battle::BattlePlatform::FieldGun
+                    ? RegimentFieldGun::MaxRecoilCm : 0.0;
+                Session->VisibleUnits[Index] = bControlled || Camera.Sees(
+                    Ground + Facing.RotateVector(Bounds.Origin), Bounds.SphereRadius + RecoilPadding);
                 continue;
             }
             const FVector Center = Ground + FVector(0, 0, 105);
@@ -4379,8 +4825,10 @@ bool ARegimentBattleField::PresentFrame()
             const double DistanceSquared = bOfficerView ? FVector::DistSquaredXY(Center, DetailOrigin)
                 : FVector::DistSquared(Center, DetailOrigin);
             const double Limit = bAlreadyRich ? NearDistance * 1.19 : NearDistance;
-            if (bControlled || DistanceSquared <= FMath::Square(Limit))
-                Session->LodCandidates.Add({Unit.id.value, DistanceSquared, bAlreadyRich, bControlled});
+            const bool bCloseEscort = bOfficerView && DistanceSquared < FMath::Square(2200.0) &&
+                Session->OfficerMotion.Contains(Unit.id.value);
+            if (bControlled || bCloseEscort || DistanceSquared <= FMath::Square(Limit))
+                Session->LodCandidates.Add({Unit.id.value, DistanceSquared, bAlreadyRich, bControlled || bCloseEscort});
         }
         SelectRegimentRichFigures(Session->LodCandidates, RichFigureLimit, RichPromotionsPerFrame, Session->RichUnitIds);
         Session->bRichPromotionPending = false;
@@ -4425,6 +4873,7 @@ bool ARegimentBattleField::PresentFrame()
         if (bTrainingInfantry && Session->MissionProgress && Session->MissionProgress->HidesRegiment(Unit.regiment))
             continue;
         const uint64 Id = Unit.id.value;
+        auto* Motion = Session->OfficerMotion.IsEmpty() ? nullptr : Session->OfficerMotion.Find(Id);
         const bool bBlue = battle::UnitTeam(Simulation, Unit) == 0;
         const bool bTrainingTarget = bTrainingInfantry && Unit.regiment == PracticeTargets;
         if (!Unit.alive)
@@ -4443,6 +4892,8 @@ bool ARegimentBattleField::PresentFrame()
                     const FQuat Upright(FVector::UpVector,
                         FMath::DegreesToRadians(Removed.Facing) - Rig->GetMeshForwardYaw());
                     const FQuat MountRotation(FVector::UpVector, FMath::DegreesToRadians(Removed.Facing));
+                    PresentAttachedOutfit(*this, Removed, Removed.OutfitPose, FactionMaterials[bBlue ? 0 : 1],
+                        FigurePartMaterial.Get());
                     Session->Fallen.Add(Id, FFallenFigure{ Removed, *Removed.Death, Removed.MeshScale, Upright, MountRotation });
                 }
                 else
@@ -4506,6 +4957,8 @@ bool ARegimentBattleField::PresentFrame()
         {
             if (View.Figure.IsValid())
                 View.ReleaseRichFigure();
+            if (Motion)
+                Motion->bSampled = false;
             View.LastLocation = Location;
             ++Culled;
             continue;
@@ -4527,7 +4980,15 @@ bool ARegimentBattleField::PresentFrame()
             View.LastLocation = Location;
             if (View.bPlatformVisible)
             {
-                Platform->Batches[Side].Transforms.Add(Transform);
+                FTransform ModelPose = Transform;
+                if (Unit.platform == battle::BattlePlatform::FieldGun)
+                    if (const auto* Shot = Session->Attacks.Find(Id);
+                        Shot && Shot->bProjectile && DisplayTick >= Shot->StartTick)
+                    {
+                        const double Recoil = RegimentFieldGun::RecoilAt(double(DisplayTick - Shot->StartTick));
+                        ModelPose.AddToTranslation(-Rotation.GetForwardVector() * Recoil);
+                    }
+                Platform->Batches[Side].Transforms.Add(ModelPose);
                 ++Proxy;
             }
             else
@@ -4543,10 +5004,19 @@ bool ARegimentBattleField::PresentFrame()
         const auto Dress = Session->HistoricalFigures[Index];
         const auto* HistoricalMount = bMounted ? Session->HistoricalMounts.Find(Dress) : nullptr;
         const bool bHistoricalMount = HistoricalMount && HistoricalMount->Mesh;
-        const double SeatOffset = bMounted ? RegimentHistoricalSeatOffset(Dress) : 0.0;
-        const double RiderHeight = SeatOffset * (bHistoricalMount ? EraScale : 1.0);
+        const auto MountedTack = RegimentHistoricalRiderTack(Dress);
+        const double MountScale = bHistoricalMount ? EraScale : 1.0;
+        const double ProxyPelvisHeight = Dress == ERegimentHistoricalFigure::None ? 53.0 : 65.0;
+        const double RiderHeight = bMounted ?
+            MountedTack.Seat.Z * MountScale - ProxyPelvisHeight * EraScale * FigureStature(CommandFigure) : 0.0;
+        const bool bAdjutant = Session->AdjutantUnits.Contains(Id);
         auto* HistoricalDress = Session->HistoricalDress.Find(Dress);
+        if (HistoricalDress && !HistoricalDress->Segments[int32(ERegimentFigureAnchor::Torso)].Mesh)
+            HistoricalDress = nullptr;
         auto* Headgear = HistoricalDress ? nullptr : Session->EraHeadgear.Find(Visual);
+        const bool bAuthoredHeadgear = HistoricalDress || (Headgear && Headgear->Mesh);
+        const auto Costume = HistoricalDress ? Dress : ERegimentHistoricalFigure::None;
+        auto* CostumeFace = bAuthoredHeadgear ? &Session->CostumeFaces[RegimentHeadgearCoversFace(Costume, Visual)] : nullptr;
         auto* Tack = bMounted ? Session->HistoricalTack.Find(Dress) : nullptr;
         const auto HandWeapon = HistoricalHandProp(Session->bAncient, Dress, Unit);
         auto* HandProp = Session->LooseWeapons.Find(HandWeapon);
@@ -4557,25 +5027,12 @@ bool ARegimentBattleField::PresentFrame()
         const bool bSengokuWeapon = SengokuWeapon && SengokuWeapon->Mesh;
         const bool bSengokuYumi = bSengokuWeapon && Dress == ERegimentHistoricalFigure::SengokuArcher;
         const bool bSengokuGun = bSengokuWeapon && Dress == ERegimentHistoricalFigure::SengokuArquebusier;
-        const bool bSashimono = Visual == ERegimentEraVisual::Sengoku && HistoricalDress && Unit.id.value % 6 == 0;
-        const auto AddSashimono = [&](const FQuat& Facing, const FVector& Ground)
+        auto* Sashimono = Visual == ERegimentEraVisual::Sengoku && HistoricalDress && Unit.id.value % 6 == 0
+            ? &Session->SengokuBanners[RegimentSengokuBannerVariant(Unit.id.value)] : nullptr;
+        const auto AddOutfitPart = [Side](FAncientMeshBatch* Part, const FTransform& Pose)
         {
-            if (bSashimono)
-                Session->SengokuBanners.Batches[Side].Transforms.Emplace(Facing,
-                    Ground + FVector(0, 0, RiderHeight), FVector(EraScale));
-        };
-        const auto AddHeadgear = [&](const FQuat& Facing, double AboveGround)
-        {
-            if (Headgear && Headgear->Mesh)
-                Headgear->Batches[Side].Transforms.Emplace(Facing, Location + FVector(0, 0, AboveGround), FVector(EraScale));
-        };
-        const auto AddDress = [&](const FQuat& Facing, const FVector& Ground, double RiderHeight)
-        {
-            if (HistoricalDress && HistoricalDress->Mesh)
-                HistoricalDress->Batches[Side].Transforms.Emplace(
-                    Facing, Ground + FVector(0, 0, RiderHeight), FVector(EraScale));
-            if (!bHistoricalMount && Tack && Tack->Mesh)
-                Tack->Batches[Side].Transforms.Emplace(Facing, Ground, FVector(EraScale));
+            if (Part && Part->Mesh)
+                Part->Batches[Side].Transforms.Add(Pose);
         };
         const bool bMusket = CommandFigure == ECommandFigure::None && RegimentShowsBayonetMusket(Unit, EraFaction);
         const auto ShieldStyle = Session->ShieldStyle(Side, Dress, bMounted, Unit.id.value);
@@ -4607,13 +5064,21 @@ bool ARegimentBattleField::PresentFrame()
                 if (HistoricalProxy->CoatSlot != INDEX_NONE && FigurePartMaterial.IsValid())
                     Batch.AddPartData(View.Appearance.Coat.Body, ERegimentFigureSurface::Leather);
             }
-            const bool bShowHandProp = bHandProp && (!bPilum || Unit.ammunition_remaining > 0);
+            const bool bShowHandProp = bHandProp && !Unit.dagger_drawn && (!bPilum || Unit.ammunition_remaining > 0);
             const bool bShowSengokuWeapon = bSengokuWeapon && !Unit.dagger_drawn;
-            AddProxyFigure(Session->ProxyBatches[Side], Transform, Unit, CommandFigure, Dress,
-                bBakedBody, bShowHandProp || bShowSengokuWeapon, bMusket, PikeLength, EraScale,
+            AddProxyFigure(Session->ProxyBatches[Side], Transform, Unit, CommandFigure,
+                bBakedBody, bShowHandProp || bShowSengokuWeapon, bMusket, PikeLength, EraScale, RiderHeight, MountedTack, MountScale,
                 Session->bAncient || Dress >= ERegimentHistoricalFigure::Egyptian, MountedProfile,
                 ProxyColors[Side], View.Appearance);
-            AddHeadgear(Rotation, ((bMounted ? 105.0 : 0.0) + 156.0 * ProxyFigureStature(CommandFigure)) * EraScale);
+            if (Headgear || bAdjutant)
+            {
+                const FVector ProxyFeet = Transform.TransformPositionNoScale(FVector(
+                    bMounted ? MountedTack.Seat.X * MountScale : 0.0, 0, RiderHeight));
+                const FTransform ProxyDress(Rotation, ProxyFeet, FVector(EraScale * FigureStature(CommandFigure)));
+                AddOutfitPart(Headgear, RegimentEraHeadgearPose(ProxyDress));
+                if (bAdjutant)
+                    AddOutfitPart(&Session->AdjutantKit, ProxyDress);
+            }
             if (PaintedShield && PaintedShield->Mesh)
                 PaintedShield->Batches[Side].Transforms.Emplace(
                     bRoofShield ? Rotation * FRotator(90, 0, 0).Quaternion() : Rotation,
@@ -4631,13 +5096,17 @@ bool ARegimentBattleField::PresentFrame()
                 const auto Pitch = FRotator(bSengokuGun ? 8.0 : bSengokuYumi ? -12.0 : -35.0, 0, 0).Quaternion();
                 SengokuWeapon->Batches[Side].Transforms.Emplace(Rotation * Pitch, Grip, FVector(EraScale));
             }
-            AddSashimono(Rotation, Location);
+            AddOutfitPart(Sashimono, FTransform(Rotation,
+                Transform.TransformPositionNoScale(FVector(bMounted ? MountedTack.Seat.X * MountScale : 0.0, 0, RiderHeight)),
+                FVector(EraScale)));
             ++Proxy;
         };
         if (!bAllRich && !Session->RichUnitIds.Contains(Id))
         {
             if (View.Figure.IsValid())
                 View.ReleaseRichFigure();
+            if (Motion)
+                Motion->bSampled = false;
             if (Session->VisibleUnits[Index])
                 AddProxy();
             else
@@ -4645,11 +5114,10 @@ bool ARegimentBattleField::PresentFrame()
             continue;
         }
         const ERegimentFigureRole UnitRole = Session->FigureRole(Unit);
-        const bool bDagger = UnitRole == Archer && Unit.dagger_drawn;
-        const bool bGunpowder = bMusket || (UnitRole == Archer && battle::UsesGunpowder(Unit.ranged_weapon));
-        const bool bArcane = UnitRole == Archer && Unit.ranged_weapon == battle::RangedWeapon::Arcane;
-        const double Height = EraScale * (CommandFigure == ECommandFigure::General ? 198.0
-            : CommandFigure == ECommandFigure::Commander ? 181.0 : 165.0);
+        const bool bDagger = Unit.dagger_drawn;
+        const bool bGunpowder = bMusket || (Unit.archer && battle::UsesGunpowder(Unit.ranged_weapon));
+        const bool bArcane = Unit.archer && Unit.ranged_weapon == battle::RangedWeapon::Arcane;
+        const double Height = EraScale * FigureStature(CommandFigure) * RegimentFigureReferenceHeight;
         const bool bPolearm = !bHeldLoose && CommandFigure == ECommandFigure::None && StaffCylinder && SpearPoint &&
             RegimentShowsPolearm(Unit, bMusket, MountedProfile);
         auto& Rig = Session->Rigs[UnitRole];
@@ -4745,6 +5213,8 @@ bool ARegimentBattleField::PresentFrame()
                             View.Shield = Shield;
                         }
                     }
+                    if (auto* Shield = View.Shield.Get())
+                        View.ShieldRestPose = Shield->GetRelativeTransform();
                     if (bSengokuWeapon)
                     {
                         View.Weapon = NewFigureProp(*this, *Figure, *SengokuWeapon->Mesh, nullptr);
@@ -4756,7 +5226,7 @@ bool ARegimentBattleField::PresentFrame()
                             View.Weapon = NewBayonetMusket(*this, *Figure, *StaffBlock, FigurePartMaterial.Get(), WoodProp);
                         else
                             View.Weapon = NewFigureProp(*this, *Figure, *StaffBlock, SteelProp);
-                        View.Weapon->SetVisibility(bMusket || !bDagger);
+                        View.Weapon->SetVisibility(!bDagger);
                         if (bMusket && SpearPoint)
                             View.Insignia = NewFigureProp(*this, *Figure, *SpearPoint, SteelProp);
                     }
@@ -4772,7 +5242,7 @@ bool ARegimentBattleField::PresentFrame()
                         View.Weapon = NewFigureProp(*this, *Figure, *HandProp->Mesh, nullptr);
                         View.Weapon->SetVisibility(!bDagger);
                     }
-                    else if (UnitRole == Archer && ArcherWeapon)
+                    else if (Unit.archer && ArcherWeapon)
                     {
                         auto* Bow = NewFigureComponent<USkeletalMeshComponent>(*this, *Figure);
                         Bow->SetSkeletalMeshAsset(ArcherWeapon);
@@ -4829,7 +5299,7 @@ bool ARegimentBattleField::PresentFrame()
             AddProxy();
             continue;
         }
-        if (auto* Figure = View.Figure.Get(); Figure && (bSimulationFrame || bNewRich))
+        if (auto* Figure = View.Figure.Get(); Figure && (bSimulationFrame || bNewRich || (Motion && !Motion->bSampled)))
         {
             if (auto* Shield = View.Shield.Get(); PaintedShield && Shield && bRoofShield != View.bRoofShield)
             {
@@ -4842,6 +5312,7 @@ bool ARegimentBattleField::PresentFrame()
                 Shield->SetRelativeTransform(FTransform(
                     bRoofShield ? ShieldRotation * FRotator(90, 0, 0).Quaternion() : ShieldRotation,
                     ShieldLocation, FVector(1.0 / View.MeshScale)));
+                View.ShieldRestPose = Shield->GetRelativeTransform();
                 View.bRoofShield = bRoofShield;
             }
             const auto* Attack = Session->Attacks.Find(Id);
@@ -4856,13 +5327,13 @@ bool ARegimentBattleField::PresentFrame()
             }
             if (auto* Sword = bPilum ? View.Weapon.Get() : nullptr)
                 Sword->SetVisibility(!bShowPilum);
-            if (bDagger && !bMusket && !View.Dagger.IsValid() && SwordsmanWeapon)
+            if (bDagger && !View.Dagger.IsValid() && SwordsmanWeapon)
                 View.Dagger = NewFigureProp(*this, *Figure, *SwordsmanWeapon, WeaponMaterial);
             if (bWeaponChanged)
             {
                 if (auto* Bow = bPilum ? nullptr : View.Weapon.Get())
-                    Bow->SetVisibility(bMusket || !bDagger);
-                if (bArcane && View.Insignia.IsValid())
+                    Bow->SetVisibility(!bDagger);
+                if ((bArcane || bMusket) && View.Insignia.IsValid())
                     View.Insignia->SetVisibility(!bDagger);
                 if (auto* Dagger = View.Dagger.Get())
                     Dagger->SetVisibility(bDagger);
@@ -4873,7 +5344,7 @@ bool ARegimentBattleField::PresentFrame()
             const bool bControlled = Simulation.controlled == Unit.id;
             const bool bAirborne = Unit.jump_started_tick != 0;
             const bool bParrying = Simulation.tick < Unit.parry_until;
-            const double FullGaitSpeed = bControlled ? FMath::Max(170.0, Unit.speed * 90.0) : 170.0;
+            const double FullGaitSpeed = bControlled || bMounted ? FMath::Max(170.0, Unit.speed * 90.0) : 170.0;
             const float Gait = FrameSeconds > 0.0 && !bAirborne
                 ? FMath::Clamp(float(Distance / FrameSeconds / FullGaitSpeed), 0.f, 1.f) : 0.f;
             View.StridePhase = FMath::Fmod(View.StridePhase + float(Distance * (2.0 * PI / 130.0)), 2.0f * UE_PI);
@@ -4881,7 +5352,7 @@ bool ARegimentBattleField::PresentFrame()
             float AttackPhase = 0.f;
             float Windup = 0.f;
             double DesiredFacing = FMath::RadiansToDegrees(double(Unit.pose.yaw));
-            const bool bBow = UnitRole == Archer && !bDagger;
+            const bool bBow = Unit.archer && !bDagger;
             const auto* Regiment = battle::FindRegiment(Simulation, Unit.regiment);
             if (Attack && !(Regiment && Regiment->panic) && Attack->bProjectile == (bBow || bShowPilum) &&
                 Simulation.outcome == battle::BattleOutcome::Running)
@@ -4905,9 +5376,12 @@ bool ARegimentBattleField::PresentFrame()
                         DesiredFacing = FMath::RadiansToDegrees(FMath::Atan2(Aim.Y, Aim.X));
                 }
             }
-            if (bControlled && AttackPhase == 0.f)
+            if (bControlled && AttackPhase == 0.f && Session->OfficerSwing)
             {
-                AttackPhase = OfficerInput.SwingPhase();
+                const auto& Swing = *Session->OfficerSwing;
+                const double Age = Swing.Age(Simulation.tick, 1.0);
+                const double Duration = Swing.Windup() + .24;
+                AttackPhase = Age < Duration ? float(Age / Duration) : 0.f;
                 if (AttackPhase > 0.f)
                     DesiredFacing = OfficerCameraYaw;
             }
@@ -4917,9 +5391,10 @@ bool ARegimentBattleField::PresentFrame()
             FTransform FigureTransform = Transform;
             const double MotionLift = bMounted ? FMath::Sin(View.StridePhase * 2.0) * Gait * 3.0 : 0.0;
             FigureTransform.AddToTranslation(FVector(0, 0, View.FeetOffset + MotionLift));
+            const FTransform HorseTransform(FRotator(0.0, View.Facing, 0.0),
+                Location + FVector(0, 0, MotionLift), FVector(bHistoricalMount ? EraScale : 1.0));
             if (auto* Horse = View.Mount.Get())
-                Horse->SetWorldTransform(FTransform(FRotator(0.0, View.Facing, 0.0),
-                    Location + FVector(0, 0, MotionLift), FVector(bHistoricalMount ? EraScale : 1.0)));
+                Horse->SetWorldTransform(HorseTransform);
             FigureTransform.SetScale3D(FVector(View.MeshScale));
             FQuat FigureRotation(FVector::UpVector,
                 FMath::DegreesToRadians(View.Facing) - Rig->GetMeshForwardYaw());
@@ -4934,16 +5409,27 @@ bool ARegimentBattleField::PresentFrame()
                 }
             }
             FigureTransform.SetRotation(FigureRotation);
+            if (bMounted && View.Mount.IsValid())
+                FigureTransform.SetTranslation(Rig->SeatMountedRider(HorseTransform, FigureTransform, MountedTack.Seat));
             Figure->SetWorldTransform(FigureTransform);
-            const bool bPoseIsMoving = Gait > 0.f || AttackPhase > 0.f || Windup > 0.f || bAirborne || bParrying;
+            if (Motion)
+                Motion->Sample(FigureTransform, HorseTransform, bNewRich);
+            const bool bPoseIsMoving = Gait > 0.f || AttackPhase > 0.f || Windup > 0.f || bAirborne || bParrying ||
+                (bMounted && HitWeight > 0.0);
             if ((bPoseIsMoving || View.bPoseWasMoving || !View.bPoseInitialized || bWeaponChanged) &&
                 Rig->IsValid() && Figure->BoneSpaceTransforms.Num() > 0)
             {
-                const bool bThrust = bPolearm || (bMusket && !bBow) || (bSengokuGun && !bDagger) ||
+                const bool bThrust = bPolearm || (bMusket && !bDagger && !bBow) || (bSengokuGun && !bDagger) ||
                     (!bDagger && bHeldLoose && HandWeapon == battle::RangedWeapon::Javelin) || bShowPilum;
-                auto Grip = Rig->Evaluate({ View.StridePhase, Gait, AttackPhase, bBow && !bHeldLoose && !bSengokuGun, bMounted, bThrust,
-                    bAirborne, bParrying, Windup },
-                    Figure->BoneSpaceTransforms);
+                FRegimentFigureMotion Pose{ View.StridePhase, Gait, AttackPhase, bBow && !bHeldLoose && !bSengokuGun,
+                    bMounted, bThrust, bAirborne, bParrying, Windup };
+                if (bMounted && View.Mount.IsValid())
+                    Pose.MountedBoots = Rig->MountedBoots(HorseTransform, FigureTransform, MountedTack.RightAnkle);
+                Pose.bCourier = bAdjutant;
+                Pose.bHideStockHead = CostumeFace && CostumeFace->Mesh;
+                if (!View.Anchors && (HistoricalDress || View.Shield.IsValid() || Pose.bHideStockHead))
+                    View.Anchors = MakeUnique<FRegimentFigureAnchors>();
+                auto Grip = Rig->Evaluate(Pose, Figure->BoneSpaceTransforms, View.Anchors.Get());
                 Figure->RefreshBoneTransforms();
                 if (CommandFigure == ECommandFigure::Standard && View.Insignia.IsValid())
                 {
@@ -4983,7 +5469,7 @@ bool ARegimentBattleField::PresentFrame()
                     Grip.SetScale3D(FVector(EraScale / View.MeshScale));
                     View.Weapon->SetRelativeTransform(Grip);
                 }
-                else if (bGunpowder && (bMusket || !bDagger) && View.Weapon.IsValid())
+                else if (bGunpowder && !bDagger && View.Weapon.IsValid())
                 {
                     const auto Forward = Rig->GetMeshForward();
                     const auto GunRotation = FRotationMatrix::MakeFromXZ(Forward, FVector::UpVector).ToQuat();
@@ -5028,6 +5514,8 @@ bool ARegimentBattleField::PresentFrame()
                 View.bPoseInitialized = true;
                 View.bPoseWasMoving = bPoseIsMoving;
             }
+            if (auto* Shield = View.Shield.Get(); Shield && View.Anchors && !View.bRoofShield)
+                Shield->SetRelativeTransform(View.ShieldRestPose * Rig->LeftShieldDelta(*View.Anchors));
         }
         if (CommandFigure == ECommandFigure::Standard && View.bPoseInitialized && View.Insignia.IsValid())
         {
@@ -5040,13 +5528,61 @@ bool ARegimentBattleField::PresentFrame()
             View.Insignia->SetRelativeTransform(FTransform(FlagRotation, View.StandardHand + Center / View.MeshScale,
                 FVector(.72, .045, .52) / View.MeshScale));
         }
-        const FQuat Facing = FRotator(0, View.Facing, 0).Quaternion();
-        AddHeadgear(Facing, Height * .94 + RiderHeight);
-        if (const auto* Figure = View.Figure.Get())
+        if (auto* Figure = View.Figure.Get())
         {
-            const FVector Ground = Figure->GetComponentLocation() - FVector(0, 0, View.FeetOffset);
-            AddDress(Facing, Ground, RiderHeight);
-            AddSashimono(Facing, Ground);
+            const bool bInterpolated = Motion && Motion->bSampled;
+            const auto& FigurePose = bInterpolated ? Motion->Body : Figure->GetComponentTransform();
+            const FTransform Dressed = RegimentHistoricalDressPose(FigurePose, Rig->GetMeshForwardYaw(),
+                View.FeetOffset - RiderHeight, Height);
+            auto* Horse = View.Mount.Get();
+            View.OutfitPose.Reset();
+            const auto PresentPart = [&](FAncientMeshBatch* Asset, const FTransform& WorldPose,
+                const FTransform& ParentPose, bool bOnMount = false, const FLinearColor* Tint = nullptr)
+            {
+                if (!Asset || !Asset->Mesh)
+                    return;
+                View.OutfitPose.Add({Asset->Mesh.Get(), WorldPose.GetRelativeTransform(ParentPose), Asset->PaintSlot,
+                    bOnMount, Tint ? Asset->CoatSlot : INDEX_NONE, Tint ? *Tint : FLinearColor::White});
+                if (!bInterpolated)
+                {
+                    AddOutfitPart(Asset, WorldPose);
+                    if (Tint && Asset->CoatSlot != INDEX_NONE)
+                        Asset->Batches[Side].AddPartData(*Tint, ERegimentFigureSurface::Leather);
+                }
+            };
+            if (HistoricalDress)
+                for (int32 Anchor = 0; Anchor < int32(ERegimentFigureAnchor::Count); ++Anchor)
+                {
+                    auto& Segment = HistoricalDress->Segments[Anchor];
+                    if (!Segment.Mesh)
+                        continue;
+                    FTransform Posed = Dressed;
+                    if (View.Anchors && Anchor != int32(ERegimentFigureAnchor::Torso))
+                        Posed = (Dressed.GetRelativeTransform(FigurePose) * View.Anchors->At(ERegimentFigureAnchor(Anchor))) * FigurePose;
+                    PresentPart(&Segment, Posed, FigurePose);
+                }
+            FTransform HeadPose = Dressed;
+            if (CostumeFace && CostumeFace->Mesh && Rig->HasStockHead())
+            {
+                if (View.Anchors)
+                    HeadPose = (Dressed.GetRelativeTransform(FigurePose) * View.Anchors->At(ERegimentFigureAnchor::Head)) * FigurePose;
+                PresentPart(CostumeFace, HeadPose, FigurePose, false, &View.Appearance.Skin);
+            }
+            PresentPart(Headgear, RegimentEraHeadgearPose(HeadPose), FigurePose);
+            PresentPart(Sashimono, Dressed, FigurePose);
+            if (bAdjutant)
+                PresentPart(&Session->AdjutantKit, Dressed, FigurePose);
+            if (Horse && !bHistoricalMount && Tack)
+            {
+                const auto MountPose = bInterpolated ? Motion->Mount : Horse->GetComponentTransform();
+                FTransform TackPose = MountPose;
+                TackPose.SetScale3D(FVector(EraScale));
+                PresentPart(Tack, TackPose, MountPose, true);
+            }
+            if (bInterpolated)
+                PresentAttachedOutfit(*this, View, View.OutfitPose, FactionMaterials[Side], FigurePartMaterial.Get());
+            else
+                View.DestroyAttachedOutfit();
         }
     }
     if (bHasLifecycleCommands)
@@ -5088,7 +5624,11 @@ bool ARegimentBattleField::PresentFrame()
     for (auto& Entry : Session->EraHeadgear)
         Entry.Value.Present(*this, *GetRootComponent(), FactionMaterials[0], FactionMaterials[1]);
     for (auto& Entry : Session->HistoricalDress)
-        Entry.Value.Present(*this, *GetRootComponent(), FactionMaterials[0], FactionMaterials[1]);
+        for (auto& Segment : Entry.Value.Segments)
+            Segment.Present(*this, *GetRootComponent(), FactionMaterials[0], FactionMaterials[1]);
+    Session->AdjutantKit.Present(*this, *GetRootComponent(), FactionMaterials[0], FactionMaterials[1]);
+    for (auto& Face : Session->CostumeFaces)
+        Face.Present(*this, *GetRootComponent(), nullptr, nullptr, FigurePartMaterial.Get());
     for (auto& Entry : Session->HistoricalProxies)
         Entry.Value.Present(*this, *GetRootComponent(), FactionMaterials[0], FactionMaterials[1],
             FigurePartMaterial.Get());
@@ -5098,7 +5638,8 @@ bool ARegimentBattleField::PresentFrame()
         Entry.Value.Present(*this, *GetRootComponent(), FactionMaterials[0], FactionMaterials[1]);
     for (auto& Entry : Session->SengokuWeapons)
         Entry.Value.Present(*this, *GetRootComponent(), FactionMaterials[0], FactionMaterials[1]);
-    Session->SengokuBanners.Present(*this, *GetRootComponent(), FactionMaterials[0], FactionMaterials[1]);
+    for (auto& Banner : Session->SengokuBanners)
+        Banner.Present(*this, *GetRootComponent(), FactionMaterials[0], FactionMaterials[1]);
     MeasurePhase(Profile.InstanceSubmitMs);
     if (Simulation.tick > 0)
     {
@@ -5189,15 +5730,19 @@ int32 ARegimentBattleField::CountMatchingPoses() const
         }
         if (!View->Figure.IsValid())
             continue;
-        const FVector FigureForward = View->Figure->GetComponentQuat().RotateVector(
-            Session->Rigs[Session->FigureRole(Unit)]->GetMeshForward());
+        const auto& Rig = *Session->Rigs[Session->FigureRole(Unit)];
+        const auto& FigurePose = View->Figure->GetComponentTransform();
+        const FVector FigureForward = FigurePose.GetRotation().RotateVector(Rig.GetMeshForward());
         const FVector ExpectedForward = FRotator(0.0, View->Facing, 0.0).Vector();
         const bool bFacingMatches = View->HitWeight(Session->Simulation.tick) > 0.0
             ? FVector::DotProduct(FigureForward, ExpectedForward) > 0.96
             : FigureForward.Equals(ExpectedForward, 0.001);
-        if (View->Figure->GetComponentLocation().Equals(
-                Actual.GetLocation() + FVector(0, 0, View->FeetOffset), View->Mount.IsValid() ? 3.1 : 0.02) &&
-            bFacingMatches)
+        FVector PositionedAt = Actual.GetLocation() + FVector(0, 0, View->FeetOffset);
+        const auto* Horse = View->Mount.Get();
+        const auto Dress = Session->HistoricalFigures[int32(&Unit - Session->Simulation.units.data())];
+        if (Horse)
+            PositionedAt = Rig.SeatMountedRider(Horse->GetComponentTransform(), FigurePose, RegimentHistoricalRiderTack(Dress).Seat);
+        if (FigurePose.GetTranslation().Equals(PositionedAt, Horse ? 3.1 : .02) && bFacingMatches)
             ++Count;
     }
     return Count;
@@ -5242,9 +5787,9 @@ void ARegimentBattleField::ClearBattle()
             if (!Mass.IsProcessing())
                 Mass.FlushCommands();
         }
-        for (const auto& Entry : Session->Units)
+        for (auto& Entry : Session->Units)
             Entry.Value.DestroyFigure();
-        for (const auto& Entry : Session->Fallen)
+        for (auto& Entry : Session->Fallen)
             Entry.Value.Components.DestroyFigure();
         for (const auto& Mesh : Session->FallenMeshes)
             if (auto* Component = Mesh.Get())
@@ -5259,7 +5804,11 @@ void ARegimentBattleField::ClearBattle()
         for (const auto& Entry : Session->EraHeadgear)
             Entry.Value.Destroy();
         for (const auto& Entry : Session->HistoricalDress)
-            Entry.Value.Destroy();
+            for (const auto& Segment : Entry.Value.Segments)
+                Segment.Destroy();
+        Session->AdjutantKit.Destroy();
+        for (const auto& Face : Session->CostumeFaces)
+            Face.Destroy();
         for (const auto& Entry : Session->HistoricalProxies)
             Entry.Value.Destroy();
         for (const auto& Entry : Session->HistoricalTack)
@@ -5268,7 +5817,8 @@ void ARegimentBattleField::ClearBattle()
             Entry.Value.Destroy();
         for (const auto& Entry : Session->SengokuWeapons)
             Entry.Value.Destroy();
-        Session->SengokuBanners.Destroy();
+        for (const auto& Banner : Session->SengokuBanners)
+            Banner.Destroy();
         if (auto* Stones = Session->StoneVisuals.Get())
             Stones->DestroyComponent();
         if (auto* Arcane = Session->ArcaneVisuals.Get())

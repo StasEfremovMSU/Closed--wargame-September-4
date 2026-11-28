@@ -22,6 +22,8 @@ public:
     void SetMouse(float Multiplier);
     bool IsFirstPerson() const { return bFirstPerson; }
     void SetFirstPerson(bool bEnabled) { bFirstPerson = bEnabled; }
+    bool StationaryThreatFacing() const { return bStationaryThreatFacing; }
+    void SetStationaryThreatFacing(bool bEnabled) { bStationaryThreatFacing = bEnabled; }
     static FText ActionLabel(ERegimentOfficerInputAction Action);
     void Load(const FString& Filename);
     void Save(const FString& Filename) const;
@@ -30,6 +32,7 @@ private:
     FKey Keys[ActionCount];
     float MouseMultiplier = 1.f;
     bool bFirstPerson = true;
+    bool bStationaryThreatFacing = true;
 };
 
 FRegimentOfficerSettings& RegimentOfficerSettings();

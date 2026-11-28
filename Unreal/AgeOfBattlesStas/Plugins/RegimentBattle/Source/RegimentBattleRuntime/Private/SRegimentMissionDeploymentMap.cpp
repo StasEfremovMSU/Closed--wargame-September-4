@@ -33,13 +33,15 @@ FLinearColor TerrainColor(battle::TerrainFeature Feature)
 class SMissionDeploymentMap : public SCompoundWidget
 {
 public:
-    SLATE_BEGIN_ARGS(SMissionDeploymentMap) {}
+    SLATE_BEGIN_ARGS(SMissionDeploymentMap) : _View(EMissionMapView::Authoring) {}
         SLATE_ARGUMENT(const TOptional<FMissionAuthoringPreview>*, Preview)
+        SLATE_ARGUMENT(EMissionMapView, View)
     SLATE_END_ARGS()
 
     void Construct(const FArguments& Args)
     {
         Preview = Args._Preview;
+        View = Args._View;
         SetClipping(EWidgetClipping::ClipToBounds);
     }
 
@@ -110,6 +112,9 @@ public:
         else if (Plan.Objective)
             Ellipse(Plan.Objective->center, Plan.Objective->radius_m, Plan.Objective->radius_m);
 
+        if (View == EMissionMapView::Terrain)
+            return Layer + 3;
+
         const auto Footprint = [&](const battle::Pose& Pose, battle::FormationFootprint Size)
         {
             const auto Front = battle::Forward(Pose.yaw) * (Size.depth_m * .5f);
@@ -127,7 +132,7 @@ public:
             const auto& From = Spawn.Requested.position;
             const auto& To = Spawn.Actual.position;
             const auto Pixel = Project(To.x, To.y);
-            if (From != To || Spawn.Requested.yaw != Spawn.Actual.yaw)
+            if (View == EMissionMapView::Authoring && (From != To || Spawn.Requested.yaw != Spawn.Actual.yaw))
             {
                 Line(Footprint(Spawn.Requested, Spawn.Size), Moved, 4, 1.f);
                 Line({Project(From.x, From.y), Pixel}, Moved, 4, 1.f);
@@ -135,6 +140,8 @@ public:
             Line(Footprint(Spawn.Actual, Spawn.Size), Color, 5, 2.f);
             const auto Forward = Spawn.Actual.position + battle::Forward(Spawn.Actual.yaw) * (Spawn.Size.depth_m * .5f + 3.f);
             Line({Pixel, Project(Forward.x, Forward.y)}, Color, 5, 1.4f);
+            if (View != EMissionMapView::Authoring)
+                continue;
             const FString Number = FString::Printf(TEXT("%d"), MissionTeamSlot(Spawn.Slot) + 1);
             FSlateDrawElement::MakeText(Elements, Layer + 6,
                 Geometry.ToPaintGeometry(FVector2D(20, 16), FSlateLayoutTransform(Pixel + FVector2D(-4, -9))),
@@ -145,11 +152,13 @@ public:
 
 private:
     const TOptional<FMissionAuthoringPreview>* Preview = nullptr;
+    EMissionMapView View = EMissionMapView::Authoring;
 };
 
 }
 
-TSharedRef<SWidget> MakeMissionDeploymentMap(const TOptional<FMissionAuthoringPreview>* Preview)
+TSharedRef<SWidget> MakeMissionDeploymentMap(const TOptional<FMissionAuthoringPreview>* Preview,
+    EMissionMapView View)
 {
-    return SNew(SMissionDeploymentMap).Preview(Preview);
+    return SNew(SMissionDeploymentMap).Preview(Preview).View(View);
 }

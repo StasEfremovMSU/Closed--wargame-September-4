@@ -98,6 +98,7 @@ void FRegimentOfficerSettings::Load(const FString& Filename)
     if (File.GetFloat(Section, TEXT("MouseSensitivity"), Multiplier))
         SetMouse(Multiplier);
     File.GetBool(Section, TEXT("FirstPerson"), bFirstPerson);
+    File.GetBool(Section, TEXT("StationaryThreatFacing"), bStationaryThreatFacing);
 }
 
 void FRegimentOfficerSettings::Save(const FString& Filename) const
@@ -108,6 +109,7 @@ void FRegimentOfficerSettings::Save(const FString& Filename) const
         File.SetString(Section, ActionNames[Index], *Keys[Index].GetFName().ToString());
     File.SetFloat(Section, TEXT("MouseSensitivity"), MouseMultiplier);
     File.SetBool(Section, TEXT("FirstPerson"), bFirstPerson);
+    File.SetBool(Section, TEXT("StationaryThreatFacing"), bStationaryThreatFacing);
     File.Write(Filename, false);
 }
 

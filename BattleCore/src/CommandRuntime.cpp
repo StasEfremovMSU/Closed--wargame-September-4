@@ -255,28 +255,113 @@ void QueueMessage(CommandState &state, NodeId sender, NodeId recipient, Tick tic
     state.communications.messages.push_back(std::move(message));
 }
 
+bool ReserveEarlierCourierHolds(World &world, CommandState &state, const CommandTask &attack) {
+    std::vector<CommandTask *> holds;
+    for (auto &message : state.communications.messages) {
+        if (message.channel != DeliveryChannel::Courier || message.sender != attack.issuer ||
+            message.recipient != attack.recipient ||
+            (message.status != DeliveryStatus::Queued && message.status != DeliveryStatus::InTransit))
+            continue;
+        auto *hold = std::get_if<CommandTask>(&message.payload);
+        if (hold && hold->action == TaskKind::HoldArea && hold->author == attack.author &&
+            hold->priority == PlayerOrderPriority && !hold->supersede_player_orders_through &&
+            std::tie(hold->created_tick, hold->id) < std::tie(attack.created_tick, attack.id))
+            holds.push_back(hold);
+    }
+    if (holds.empty())
+        return true;
+    const auto count = OwnedRegiments(state.hierarchy, attack.recipient).size();
+    if (count && holds.size() > (UINT64_MAX - world.next_order_id) / count)
+        return false;
+    // Reserve the same order IDs even if some recipients are gone when the rider arrives.
+    for (auto *hold : holds) {
+        hold->supersede_player_orders_through = world.next_order_id - 1;
+        world.next_order_id += count;
+    }
+    return true;
+}
+
+bool SupersededCourierHold(const NodeRuntime &runtime, const CommandTask &hold, Tick now) {
+    return hold.supersede_player_orders_through && std::ranges::any_of(runtime.orders, [&](const auto &attack) {
+        return attack.action == TaskKind::Attack && attack.author == hold.author && attack.issuer == hold.issuer &&
+               attack.received_tick && (!attack.not_before_tick || *attack.not_before_tick <= now) &&
+               attack.supersede_player_orders_through > hold.supersede_player_orders_through &&
+               std::tie(hold.created_tick, hold.id) < std::tie(attack.created_tick, attack.id);
+    });
+}
+
 void HoldGroupAtItsPosts(World &world, const CommandHierarchy &hierarchy, const CommandTask &task) {
     const auto expiry = detail::TaskExpiry(task, world.tick);
     if ((task.not_before_tick && *task.not_before_tick > world.tick) ||
         (expiry && *expiry <= world.tick))
         return;
+    auto reserved_id = task.supersede_player_orders_through.value_or(0);
     for (const auto id : OwnedRegiments(hierarchy, task.recipient)) {
+        const OrderId order_id{task.supersede_player_orders_through ? ++reserved_id : 0};
         const auto *regiment = FindRegiment(world, id);
         if (!regiment || regiment->units.empty() || regiment->panic)
             continue;
+        if (order_id) {
+            const auto newer = [&](const Order &order) {
+                return order.recipient == id && order.player_direct && order.id > order_id &&
+                       order.created_tick >= task.created_tick;
+            };
+            if ((regiment->order && newer(*regiment->order) &&
+                 (regiment->order->status == OrderStatus::Active || regiment->order->status == OrderStatus::Completed)) ||
+                std::ranges::any_of(world.pending_orders, newer))
+                continue;
+        }
         Order hold;
+        hold.id = order_id;
         hold.issuer = task.author;
         hold.recipient = id;
         hold.type = OrderType::Hold;
         hold.point = regiment->pose.position;
         hold.priority = task.priority;
-        hold.created_tick = hold.delivery_tick = world.tick;
+        hold.created_tick = order_id ? task.created_tick : world.tick;
+        hold.delivery_tick = world.tick;
         hold.expiry_tick = expiry.value_or(0);
         hold.player_direct = true;
         if (SubmitOrder(world, hold) == Status::Ok && regiment->following_officer) {
             Command release;
             release.kind = CommandKind::SetRegimentFollowing;
             release.unit = regiment->following_officer;
+            release.regiment = id;
+            ApplyControlCommand(world, release);
+        }
+    }
+}
+
+void PrepareGroupForPlayerAttack(World &world, const CommandHierarchy &hierarchy, const CommandTask &task) {
+    const auto expiry = detail::TaskExpiry(task, world.tick);
+    if (!task.supersede_player_orders_through ||
+        (task.not_before_tick && *task.not_before_tick > world.tick) || (expiry && *expiry <= world.tick))
+        return;
+    const auto members = OwnedRegiments(hierarchy, task.recipient);
+    const auto earlier = [&](const Order &order) {
+        return order.player_direct && order.issuer == task.author && order.created_tick <= task.created_tick &&
+               order.id.value <= *task.supersede_player_orders_through;
+    };
+    std::erase_if(world.pending_orders, [&](const Order &order) {
+        return std::binary_search(members.begin(), members.end(), order.recipient) && earlier(order);
+    });
+    const auto officer = std::ranges::find(world.officers, task.author, &OfficerSpec::id);
+    for (const auto id : members) {
+        auto *regiment = FindRegiment(world, id);
+        if (!regiment || regiment->panic)
+            continue;
+        if (regiment->order && earlier(*regiment->order) &&
+            (regiment->order->status == OrderStatus::Active || regiment->order->status == OrderStatus::Completed)) {
+            regiment->order->status = OrderStatus::Cancelled;
+            regiment->route.clear();
+            regiment->waypoint = 0;
+            regiment->march_lane.reset();
+            regiment->decision_tick = regiment->decision_until = 0;
+        }
+        if (officer != world.officers.end() && regiment->following_officer == officer->unit) {
+            Command release;
+            release.kind = CommandKind::SetRegimentFollowing;
+            release.unit = officer->unit;
             release.regiment = id;
             ApplyControlCommand(world, release);
         }
@@ -763,7 +848,199 @@ void AddNeedSupportFallback(CommandState &state, NodeRuntime &runtime, const Com
         QueueMessage(state, node.id, node.parent, tick, report);
 }
 
+void AssignMeetingInitiative(const World &world, const CommandHierarchy &hierarchy,
+                             std::vector<CommandTask> &missions) {
+    if (!world.scenario.rules.meeting_engagement || world.scenario.objective)
+        return;
+    std::vector<const CommandNode *> armies;
+    for (const auto &node : hierarchy.nodes)
+        if (node.level == Level::Army && IsCommandRoot(node) && node.commander)
+            armies.push_back(&node);
+    if (armies.size() != 2 || armies[0]->team == armies[1]->team)
+        return;
+
+    std::array<std::optional<size_t>, 2> assigned;
+    for (size_t side = 0; side < armies.size(); ++side) {
+        for (size_t i = 0; i < missions.size(); ++i) {
+            const auto &mission = missions[i];
+            if (mission.recipient != armies[side]->id)
+                continue;
+            if (assigned[side] || !detail::IsAutomaticAreaAttack(mission) ||
+                mission.not_before_tick || mission.expiry_tick || mission.duration_ticks ||
+                !ValidTaskRequest(mission))
+                return;
+            assigned[side] = i;
+        }
+    }
+    // Honor a single opening assault. For equal missions, team and command IDs break the tie.
+    const auto rank = [&](size_t side) {
+        return std::tuple(!assigned[side], armies[side]->team, armies[side]->id);
+    };
+    const size_t attacker = rank(0) < rank(1) ? 0u : 1u;
+    const size_t defender = 1 - attacker;
+    const auto deployment_center = [&](NodeId army) -> std::optional<Vec3> {
+        Vec3 center{};
+        float weight = 0.f;
+        for (const auto regiment_id : OwnedRegiments(hierarchy, army))
+            if (const auto *regiment = FindRegiment(world, regiment_id)) {
+                const float living = float(regiment->units.size());
+                center = center + regiment->pose.position * living;
+                weight += living;
+            }
+        return weight > 0.f ? std::optional(center * (1.f / weight)) : std::nullopt;
+    };
+    const auto assault_post = deployment_center(armies[attacker]->id);
+    const auto defense_post = deployment_center(armies[defender]->id);
+    if (!assault_post || !defense_post)
+        return;
+
+    if (!assigned[attacker]) {
+        CommandTask attack;
+        attack.recipient = armies[attacker]->id;
+        attack.action = TaskKind::Attack;
+        attack.intent.objective_position = *assault_post + (*defense_post - *assault_post) * .75f;
+        attack.authority.initiative = InitiativePolicy::WithinIntent;
+        attack.authority.may_change_target = true;
+        attack.authority.may_pursue = true;
+        missions.push_back(std::move(attack));
+    }
+    CommandTask hold = assigned[defender] ? missions[*assigned[defender]] : CommandTask{};
+    hold.recipient = armies[defender]->id;
+    hold.action = TaskKind::HoldArea;
+    hold.authority = {};
+    hold.intent = {};
+    hold.intent.objective_position = *defense_post;
+    if (assigned[defender])
+        missions[*assigned[defender]] = std::move(hold);
+    else
+        missions.push_back(std::move(hold));
+}
+
+const CommandNode *ScopedAttackCommander(const World &world, UnitId officer) {
+    const auto *unit = FindUnit(world, officer);
+    if (!world.command_state || !unit || !unit->alive || world.controlled != officer ||
+        unit->control != ControlMode::PlayerControlled || world.outcome != BattleOutcome::Running)
+        return nullptr;
+    const auto record = std::ranges::find(world.officers, officer, &OfficerSpec::unit);
+    if (record == world.officers.end() || (record->role != 1 && record->role != 2))
+        return nullptr;
+    const CommandNode *scope = nullptr;
+    for (const auto &node : world.command_state->hierarchy.nodes)
+        if (node.commander == record->id && node.level != Level::Regiment && node.team == UnitTeam(world, *unit) &&
+            (!scope || std::tie(node.level, node.id) < std::tie(scope->level, scope->id)))
+            scope = &node;
+    return scope;
+}
+
 } // namespace
+
+bool CanOrderScopedAttack(const World &world, UnitId officer) {
+    return ScopedAttackCommander(world, officer) != nullptr;
+}
+
+std::vector<Command> PlanScopedAttacks(const World &world, const NavigationService &navigation,
+                                       UnitId officer, std::span<const RegimentId> excluded) {
+    const auto *scope = ScopedAttackCommander(world, officer);
+    if (!scope)
+        return {};
+    const auto &state = *world.command_state;
+    auto perceived = BuildSituation(world, state.hierarchy, scope->id, world.tick);
+    if (perceived.status != StubStatus::Ready || !perceived.value)
+        return {};
+    auto &situation = *perceived.value;
+    if (const auto *runtime = FindRuntime(state, scope->id))
+        MergeReportedContacts(situation, runtime->reports, world.tick);
+    std::vector<const KnownContact *> known;
+    for (const auto &contact : situation.contacts) {
+        const auto *enemy = FindRegiment(world, contact.regiment);
+        if (contact.allegiance == Allegiance::Enemy && contact.confidence > 0.f &&
+            contact.observed_tick <= world.tick && world.tick - contact.observed_tick <= ContactTtl &&
+            enemy && enemy->team != scope->team && !enemy->panic && !enemy->units.empty())
+            known.push_back(&contact);
+    }
+    if (known.empty())
+        return {};
+
+    const auto eligible = [&](RegimentId id) {
+        const auto *regiment = FindRegiment(world, id);
+        return regiment && !regiment->units.empty() && !regiment->panic &&
+               std::ranges::find(excluded, id) == excluded.end() && CanCommandRegiment(world, officer, id);
+    };
+    const auto nearest = [&](const RegimentState &regiment) -> const KnownContact * {
+        std::ranges::sort(known, {}, [&](const auto *contact) {
+            return std::pair(Distance(regiment.pose.position, contact->estimated_pose.position),
+                             contact->regiment);
+        });
+        for (const auto *contact : known)
+            if (InMeleeWith(world, regiment, contact->regiment) ||
+                FindAttackRoute(navigation, world, regiment, contact->estimated_pose, contact->regiment).status == Status::Ok)
+                return contact;
+        return nullptr;
+    };
+    std::vector<Command> packets;
+    std::set<RegimentId> addressed_by_courier;
+    for (const auto child : scope->children) {
+        if (!UsesStaffCourier(world, scope->id, child))
+            continue;
+        const auto members = OwnedRegiments(state.hierarchy, child);
+        addressed_by_courier.insert(members.begin(), members.end());
+        // Guards in a restricted scenario branch must continue to wait for their scripted release.
+        if (std::ranges::any_of(members, [&](RegimentId id) {
+                return std::ranges::find(excluded, id) != excluded.end();
+            }))
+            continue;
+        const auto *lead = GroupLead(world, state.hierarchy, child);
+        if (!lead || !eligible(lead->regiment))
+            continue;
+        if (const auto *contact = nearest(*FindRegiment(world, lead->regiment))) {
+            Command packet;
+            packet.kind = CommandKind::IssueCommandTask;
+            packet.unit = officer;
+            auto &task = packet.command_task;
+            task.issuer = scope->id;
+            task.recipient = child;
+            task.author = scope->commander;
+            task.action = TaskKind::Attack;
+            task.priority = PlayerOrderPriority;
+            task.intent.target_regiment = contact->regiment;
+            task.intent.objective_position = contact->estimated_pose.position;
+            task.authority.initiative = InitiativePolicy::WithinIntent;
+            task.authority.may_pursue = true;
+            task.supersede_player_orders_through = 0;
+            packets.push_back(std::move(packet));
+        }
+    }
+    for (const auto id : OwnedRegiments(state.hierarchy, scope->id)) {
+        if (addressed_by_courier.contains(id) || !eligible(id))
+            continue;
+        const auto &regiment = *FindRegiment(world, id);
+        const auto *contact = nearest(regiment);
+        if (!contact)
+            continue;
+        if (regiment.following_officer == officer) {
+            Command release;
+            release.kind = CommandKind::SetRegimentFollowing;
+            release.unit = officer;
+            release.regiment = id;
+            packets.push_back(release);
+        }
+        Command packet;
+        packet.kind = CommandKind::IssueOrder;
+        packet.unit = officer;
+        packet.regiment = id;
+        auto &order = packet.order;
+        order.type = OrderType::Attack;
+        order.issuer = scope->commander;
+        order.recipient = id;
+        order.priority = PlayerOrderPriority;
+        order.target_regiment = contact->regiment;
+        order.point = contact->estimated_pose.position;
+        order.created_tick = world.tick;
+        order.delivery_tick = detail::Later(world.tick, 20);
+        packets.push_back(packet);
+    }
+    return packets;
+}
 
 bool ValidTaskRequest(const CommandTask &task) {
     auto candidate = task;
@@ -809,6 +1086,7 @@ StubResult<bool> InitializeCommand(World &world) {
     }
     std::set<uint64_t> task_ids;
     auto missions = world.scenario.command_setup->missions;
+    AssignMeetingInitiative(world, state.hierarchy, missions);
     if (const auto &objective = world.scenario.objective) {
         for (const auto &node : state.hierarchy.nodes) {
             if (!IsCommandRoot(node) || std::ranges::any_of(missions, [&](const auto &mission) {
@@ -873,6 +1151,12 @@ StubResult<TaskId> SubmitTask(World &world, CommandTask task) {
     if (!detail::ValidTaskTarget(world, *recipient, task))
         return {StubStatus::InvalidInput, std::nullopt, "Invalid task target."};
     const bool staff_dispatch = UsesStaffCourier(world, task.issuer, task.recipient);
+    if (task.supersede_player_orders_through) {
+        const auto *scope = ScopedAttackCommander(world, world.controlled);
+        if (!staff_dispatch || !scope || scope->id != task.issuer || scope->commander != task.author ||
+            task.action != TaskKind::Attack || task.priority != PlayerOrderPriority || !task.intent.target_regiment)
+            return {StubStatus::InvalidInput, std::nullopt, "Invalid scoped player attack."};
+    }
     if (staff_dispatch && (!state.next_message_id || state.next_message_id.value == UINT64_MAX))
         return {StubStatus::InvalidInput, std::nullopt, "Message ID counter is exhausted."};
     if (!task.created_tick)
@@ -907,6 +1191,12 @@ StubResult<TaskId> SubmitTask(World &world, CommandTask task) {
         const auto *sender = FindNode(state.hierarchy, task.issuer);
         task.author = sender->commander;
         task.received_tick.reset();
+        if (task.supersede_player_orders_through) {
+            if (!ReserveEarlierCourierHolds(world, state, task))
+                return {StubStatus::InvalidInput, std::nullopt, "Order ID counter is exhausted."};
+            // Commands submitted after this dispatch receive higher OrderIds, even on the same tick.
+            task.supersede_player_orders_through = world.next_order_id - 1;
+        }
         QueueMessage(state, task.issuer, task.recipient, world.tick, task, DeliveryChannel::Courier);
         return {StubStatus::Ready, task.id, "Command task assigned for courier delivery."};
     }
@@ -1088,9 +1378,17 @@ StubResult<bool> UpdateCommand(World &world, const NavigationService &navigation
             delivered.status = TaskStatus::Active;
             if (std::none_of(runtime->orders.begin(), runtime->orders.end(),
                              [&](const auto &old) { return old.id == delivered.id; })) {
-                if (message.channel == DeliveryChannel::Courier && task->action == TaskKind::HoldArea &&
-                    task->priority == PlayerOrderPriority && UsesStaffCourier(world, sender->id, recipient->id))
-                    HoldGroupAtItsPosts(world, state.hierarchy, *task);
+                if (message.channel == DeliveryChannel::Courier && task->priority == PlayerOrderPriority &&
+                    UsesStaffCourier(world, sender->id, recipient->id)) {
+                    if (task->action == TaskKind::HoldArea) {
+                        if (SupersededCourierHold(*runtime, *task, world.tick))
+                            delivered.status = TaskStatus::Cancelled;
+                        else
+                            HoldGroupAtItsPosts(world, state.hierarchy, *task);
+                    }
+                    else if (task->action == TaskKind::Attack && task->author)
+                        PrepareGroupForPlayerAttack(world, state.hierarchy, *task);
+                }
                 runtime->orders.push_back(std::move(delivered));
             }
             runtime->schedule.next_think_tick = world.tick;
@@ -1218,12 +1516,14 @@ StubResult<bool> UpdateCommand(World &world, const NavigationService &navigation
         StubResult<DecisionProposal> decision;
         switch (node.level) {
         case Level::Army:
+            context.meeting_engagement = world.scenario.rules.meeting_engagement &&
+                                         !world.scenario.objective;
             if (world.scenario.rules.local_melee) {
                 context.can_stage = [&](NodeId group, Vec3 goal) {
                     const auto *lead = GroupLead(world, state.hierarchy, group);
                     const auto *regiment = lead ? FindRegiment(world, lead->regiment) : nullptr;
-                    return regiment && Dot(goal - regiment->pose.position,
-                                            Forward(situation.own.pose.yaw)) > 1.f &&
+                    return regiment && (context.meeting_engagement || Dot(goal - regiment->pose.position,
+                                            Forward(situation.own.pose.yaw)) > 1.f) &&
                         FindSupportRoute(navigation, world, *regiment, goal).status == Status::Ok;
                 };
                 context.observe_order = [&](const CommandTask &task) -> std::optional<ChildOrderObservation> {
@@ -1235,6 +1535,24 @@ StubResult<bool> UpdateCommand(World &world, const NavigationService &navigation
                                                     Forward(situation.own.pose.yaw));
                     ChildOrderObservation observed;
                     observed.progress = distance_ahead <= 2.f ? 1.f : 0.f;
+                    if (context.meeting_engagement) {
+                        observed.progress = Distance(task.intent.objective_position, regiment->pose.position) <= 2.f
+                            ? 1.f : 0.f;
+                        if (const auto *group = FindRuntime(state, task.recipient);
+                            group && (!group->memory.active_task || group->memory.active_task == task.id)) {
+                            const auto delivered = std::ranges::find(group->orders, task.id, &CommandTask::id);
+                            if (delivered != group->orders.end())
+                                observed.delivered_tick = delivered->received_tick;
+                        }
+                        const auto *lead_runtime = FindRuntime(state, lead->id);
+                        const bool paused_by_player = lead_runtime &&
+                            ExternalOrder(world, *regiment, lead_runtime->last_order_id);
+                        const auto &lane = regiment->march_lane;
+                        const bool detours_exhausted = lane && lane->detour.empty() &&
+                            lane->recovery_attempts >= MarchLane::MaxAttempts;
+                        observed.executing = paused_by_player ||
+                            (!detours_exhausted && regiment->waypoint < regiment->route.size());
+                    }
                     return observed;
                 };
                 context.choose_group_flank = [&](NodeId wing, const KnownContact &target,

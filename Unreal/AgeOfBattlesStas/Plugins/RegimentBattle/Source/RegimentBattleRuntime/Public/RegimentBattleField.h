@@ -42,8 +42,14 @@ enum class ERegimentPlayerOrder : uint8
 {
     Line, Column, Hold, Attack, Withdraw, Skirmishers, Follow, NextRegiment, Release,
     Maneuver, GroupManeuver, Pace, HoldLine, Brace, Pursue, Cover, FireSector, CommandHold, WingHold,
-    Wedge, Square, Testudo, Circle
+    Wedge, Square, Testudo, Circle,
+    RankAuto, RankRanged, RankMelee, CommandAttackNearest, MeleeAssault
 };
+
+constexpr bool IsRegimentRankOrder(ERegimentPlayerOrder Order)
+{
+    return Order >= ERegimentPlayerOrder::RankAuto && Order <= ERegimentPlayerOrder::RankMelee;
+}
 
 constexpr uint8 RegimentSpecialFormationBit(ERegimentPlayerOrder Order)
 {
@@ -98,10 +104,18 @@ struct FRegimentOrderPresentation
     ERegimentOrderDelivery Delivery = ERegimentOrderDelivery::None;
     uint64 OrderId = 0;
     bool bCourier = false;
+    bool bCanSetRanks = false;
+    ERegimentPlayerOrder RankOrder = ERegimentPlayerOrder::RankAuto;
+    FText RankActivity;
     FText Recipient;
     FText Action;
     FText OrderDetail;
     FText Activity;
+};
+
+enum class ERegimentOfficerCombatCue : uint8
+{
+    None, Hit, Armour, Miss, Blocked, Parried, ArrowDodged, Wounded
 };
 
 struct FRegimentOfficerHudState
@@ -115,6 +129,11 @@ struct FRegimentOfficerHudState
     bool bAttackReady = true;
     bool bParryReady = true;
     bool bParryActive = false;
+    bool bIncomingArrow = false;
+    ERegimentOfficerCombatCue CombatCue = ERegimentOfficerCombatCue::None;
+    FText CombatText;
+    TOptional<FVector> AimPoint;
+    TOptional<FVector> ImpactPoint;
     TOptional<float> HealthFraction;
     FText Pace;
     FRegimentOrderPresentation Order;
@@ -199,6 +218,8 @@ public:
     TConstArrayView<FRegimentFieldCard> GetRegimentCards() const;
     uint64 GetSelectedRegimentCard() const { return SelectedOfficerRegiment; }
     void SelectRegimentCard(uint64 Id);
+    uint64 GetCameraRegiment() const;
+    void StopFollowingRegiment();
     void EnterRegimentCardOfficer(uint64 Id);
     bool IsCardOfficerQueued(uint64 Id) const;
     uint64 GetBattleNoticeTick() const;
@@ -212,6 +233,7 @@ public:
     bool HasMissionReserve() const;
     bool CanIntroduceReserve() const;
     void IntroduceReserve();
+    FText GetMissionName() const;
     FText GetMissionObjectiveText() const;
     FText GetMissionReport() const;
     bool GetMissionMarker(FVector& Center, TArray<FVector>& Outline, FLinearColor& Tint) const;
@@ -233,6 +255,7 @@ public:
     void CloseOfficerPicker();
     void ChooseOfficer(uint64 NodeId);
     void IssueOfficerOrder(ERegimentPlayerOrder Order, bool bAimAtCursor = true);
+    void SetStationaryThreatFacing(bool bEnabled);
 
     UPROPERTY(EditInstanceOnly, Category = "Battle")
     TObjectPtr<ACameraActor> OverviewCamera;
@@ -289,7 +312,8 @@ private:
     void ShowOfficerNotice(FText Notice);
     void QueueOfficerMotion();
     void UpdateOfficerCamera(float DeltaSeconds);
-    void UpdateOfficerViewBlade(ACameraActor& Camera, double Swing, bool bParrying);
+    void UpdateOfficerViewBlade(ACameraActor& Camera, double Swing);
+    void UpdateOfficerCombatEvents();
     void UpdateManeuverInput(APlayerController& Controller);
     void RefreshRegimentCards();
     void RestoreOfficerCamera();
@@ -312,6 +336,9 @@ private:
     uint64 PossessedOfficer = 0;
     uint64 SelectedOfficerRegiment = 0;
     float OfficerNoticeSeconds = 0.f;
+    float OfficerCueSeconds = 0.f;
+    float OfficerAimSeconds = 0.f;
+    double OfficerGuardAlpha = 0.0;
     TWeakObjectPtr<ACameraActor> OfficerCamera;
     TWeakObjectPtr<UStaticMeshComponent> OfficerViewBlade;
     TWeakObjectPtr<AActor> PreviousBattleView;

@@ -32,9 +32,9 @@
       "start_x": -79,
       "start_y": 0,
       "formation_files": 12,
-      "swords": 3,
-      "archers": 9,
-      "spearmen": 9,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 21,
       "mounted": 0
     },
     {
@@ -44,9 +44,9 @@
       "start_x": -86,
       "start_y": -86,
       "formation_files": 12,
-      "swords": 3,
-      "archers": 8,
-      "spearmen": 6,
+      "swords": 17,
+      "archers": 0,
+      "spearmen": 0,
       "mounted": 0
     },
     {
@@ -68,9 +68,9 @@
       "start_x": -127,
       "start_y": 4,
       "formation_files": 12,
-      "swords": 5,
-      "archers": 8,
-      "spearmen": 8,
+      "swords": 9,
+      "archers": 12,
+      "spearmen": 0,
       "mounted": 0
     },
     {
@@ -92,9 +92,9 @@
       "start_x": -131,
       "start_y": 117,
       "formation_files": 11,
-      "swords": 3,
-      "archers": 8,
-      "spearmen": 7,
+      "swords": 0,
+      "archers": 18,
+      "spearmen": 0,
       "mounted": 0
     },
     {
@@ -104,9 +104,9 @@
       "start_x": 60,
       "start_y": 0,
       "formation_files": 11,
-      "swords": 3,
-      "archers": 9,
-      "spearmen": 10,
+      "swords": 0,
+      "archers": 11,
+      "spearmen": 11,
       "mounted": 0
     },
     {
@@ -116,9 +116,9 @@
       "start_x": 81,
       "start_y": -73,
       "formation_files": 11,
-      "swords": 3,
-      "archers": 10,
-      "spearmen": 6,
+      "swords": 0,
+      "archers": 19,
+      "spearmen": 0,
       "mounted": 0
     },
     {
@@ -128,9 +128,9 @@
       "start_x": 86,
       "start_y": 64,
       "formation_files": 11,
-      "swords": 3,
-      "archers": 9,
-      "spearmen": 8,
+      "swords": 20,
+      "archers": 0,
+      "spearmen": 0,
       "mounted": 0
     },
     {
@@ -140,9 +140,9 @@
       "start_x": 106,
       "start_y": 2,
       "formation_files": 13,
-      "swords": 5,
-      "archers": 7,
-      "spearmen": 10,
+      "swords": 7,
+      "archers": 0,
+      "spearmen": 15,
       "mounted": 0
     },
     {
@@ -176,9 +176,9 @@
       "start_x": -111,
       "start_y": 23,
       "formation_files": 12,
-      "swords": 3,
-      "archers": 8,
-      "spearmen": 8,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 19,
       "mounted": 0
     },
     {
@@ -188,9 +188,9 @@
       "start_x": -121,
       "start_y": -94,
       "formation_files": 12,
-      "swords": 2,
-      "archers": 8,
-      "spearmen": 6,
+      "swords": 0,
+      "archers": 16,
+      "spearmen": 0,
       "mounted": 0
     },
     {
@@ -212,9 +212,9 @@
       "start_x": -159,
       "start_y": 30,
       "formation_files": 12,
-      "swords": 4,
-      "archers": 7,
-      "spearmen": 8,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 19,
       "mounted": 0
     },
     {
@@ -236,9 +236,9 @@
       "start_x": -169,
       "start_y": 143,
       "formation_files": 11,
-      "swords": 3,
-      "archers": 8,
-      "spearmen": 7,
+      "swords": 0,
+      "archers": 18,
+      "spearmen": 0,
       "mounted": 0
     },
     {
@@ -248,9 +248,9 @@
       "start_x": 92,
       "start_y": 23,
       "formation_files": 11,
-      "swords": 3,
-      "archers": 8,
-      "spearmen": 9,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 20,
       "mounted": 0
     },
     {
@@ -260,9 +260,9 @@
       "start_x": 116,
       "start_y": -99,
       "formation_files": 11,
-      "swords": 3,
-      "archers": 10,
-      "spearmen": 6,
+      "swords": 0,
+      "archers": 19,
+      "spearmen": 0,
       "mounted": 0
     },
     {
@@ -272,9 +272,9 @@
       "start_x": 124,
       "start_y": 87,
       "formation_files": 11,
-      "swords": 3,
-      "archers": 9,
-      "spearmen": 7,
+      "swords": 0,
+      "archers": 19,
+      "spearmen": 0,
       "mounted": 0
     },
     {
@@ -284,9 +284,9 @@
       "start_x": 138,
       "start_y": 28,
       "formation_files": 13,
-      "swords": 4,
-      "archers": 6,
-      "spearmen": 9,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 19,
       "mounted": 0
     },
     {

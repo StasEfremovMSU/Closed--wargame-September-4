@@ -1,6 +1,7 @@
 #include "RegimentAncientFigures.h"
 #include "RegimentEraCatalog.h"
 #include "RegimentFigureAppearance.h"
+#include "RegimentFieldGunFigure.h"
 
 #include "Algo/Count.h"
 #include "Engine/StaticMesh.h"
@@ -33,6 +34,32 @@ void Bar(FRegimentAncientFigure& Model, M Surface, FVector From, FVector To, dou
         FRotationMatrix::MakeFromZ(To - From).Rotator(), Feature);
 }
 
+// The neutral face is 150 cm above the feet in the 165 cm, X-forward outfit frame.
+// Lift a crown as a unit so its badge, brim and crest stay joined. Rear guards
+// and narrow nasal guards may extend below the eye line outside the eye openings.
+void FitOpenHeadgear(FRegimentAncientFigure& Model, int32 FirstPart, double EyeHeight = 150.0)
+{
+    const FBox PrimitiveBounds(FVector(-.5), FVector(.5));
+    double Lift = 0.0;
+    for (int32 Index = FirstPart; Index < Model.Parts.Num(); ++Index)
+    {
+        const FBox Bounds = PrimitiveBounds.TransformBy(Model.Parts[Index].Transform);
+        const bool bInFront = Bounds.Max.X >= 15.0 && Bounds.Min.X <= 46.0;
+        const bool bInEyeCorridor = (Bounds.Min.Y <= 17.0 && Bounds.Max.Y >= 6.0) ||
+            (Bounds.Min.Y <= -6.0 && Bounds.Max.Y >= -17.0);
+        if (bInFront && bInEyeCorridor && Bounds.Max.Z >= EyeHeight - 3.0)
+            Lift = FMath::Max(Lift, EyeHeight + 7.5 - Bounds.Min.Z);
+    }
+    if (Lift <= UE_DOUBLE_SMALL_NUMBER)
+        return;
+
+    for (int32 Index = FirstPart; Index < Model.Parts.Num(); ++Index)
+        Model.Parts[Index].Transform.AddToTranslation(FVector(0, 0, Lift));
+    Model.Bounds = FBox(ForceInit);
+    for (const auto& Piece : Model.Parts)
+        Model.Bounds += PrimitiveBounds.TransformBy(Piece.Transform);
+}
+
 void Soldier(FRegimentAncientFigure& Model, FVector Feet, double Yaw, F Role, bool bSeated = false)
 {
     const FTransform Pose(FRotator(0, Yaw, 0), Feet);
@@ -53,9 +80,9 @@ void Soldier(FRegimentAncientFigure& Model, FVector Feet, double Yaw, F Role, bo
     Body(P::BeveledBlock, M::Paint, {0, 0, Seat + 33}, {31, 45, 62}, -5);
     Body(P::Block, M::Leather, {0, 0, Seat + 10}, {33, 45, 8});
     Body(P::Ellipsoid, M::Skin, {4, 0, Seat + 78}, {27, 24, 29}, 0, Role);
-    Body(P::Ellipsoid, M::Bronze, {1, 0, Seat + 88}, {31, 28, 25});
+    Body(P::Ellipsoid, M::Bronze, {-2, 0, Seat + 94}, {30, 28, 19});
     if (!bSeated)
-        Body(P::BeveledBlock, M::Paint, {-4, 0, Seat + 102}, {25, 12, 13});
+        Body(P::BeveledBlock, M::Paint, {-4, 0, Seat + 105}, {25, 12, 13});
 }
 
 FRegimentAncientFigure Elephant(bool bAfrican)
@@ -254,33 +281,103 @@ FRegimentAncientFigure Engine(bool bBallista)
     return Model;
 }
 
+void FieldGunCrew(FRegimentAncientFigure& Model, FVector Feet, double Yaw, bool bLoader)
+{
+    const FTransform Pose(FRotator(0, Yaw, 0), Feet);
+    const auto Piece = [&](P Shape, M Surface, FVector Position, FVector Size, double Pitch = 0.0,
+        F Feature = F::None)
+    {
+        Part(Model, Shape, Surface, Pose.TransformPositionNoScale(Position), Size,
+            FRotator(Pitch, Yaw, 0.0), Feature);
+    };
+    const auto Limb = [&](M Surface, FVector From, FVector To, double Thickness, P Shape = P::BeveledBlock)
+    {
+        Bar(Model, Surface, Pose.TransformPositionNoScale(From), Pose.TransformPositionNoScale(To),
+            Thickness, Shape);
+    };
+
+    // The loader leans into the swab while the gunner watches over the breech.
+    const double Stance = bLoader ? 22.0 : 14.0;
+    const double Shoulders = bLoader ? 119.0 : 128.0;
+    for (const double Side : {-1.0, 1.0})
+    {
+        Piece(P::Block, M::Dark, {Side * Stance + 5.0, Side * 11.0, 6.0}, {28, 17, 12});
+        Limb(M::Linen, {Side * Stance, Side * 11.0, 12}, {0, Side * 10.0, 80}, 18);
+        const FVector Grip(bLoader ? 36.0 : 31.0, Side * 23.0, bLoader ? 103.0 + Side * 13.0 : 98.0);
+        Limb(M::Paint, {4, Side * 18.0, Shoulders}, Grip, 16);
+        Piece(P::Ellipsoid, M::Skin, Grip, {14, 12, 13});
+    }
+    Piece(P::BeveledBlock, M::Paint, {2, 0, Shoulders - 23.0}, {33, 44, 60}, bLoader ? -14.0 : -7.0);
+    Piece(P::BeveledBlock, M::Paint, {-11, 0, 75}, {23, 37, 28});
+    Limb(M::Linen, {20, -16, Shoulders}, {17, 15, Shoulders - 37.0}, 5, P::Block);
+    Piece(P::Block, M::Dark, {16, 0, Shoulders - 39.0}, {15, 41, 6});
+    Piece(P::Ellipsoid, M::Skin, {bLoader ? 11.0 : 5.0, 0, Shoulders + 15.0}, {25, 24, 28},
+        bLoader ? -10.0 : 0.0, F::EngineCrew);
+    Piece(P::Frustum, M::Dark, {bLoader ? 9.0 : 3.0, 0, Shoulders + 35.0}, {31, 29, 26});
+    Piece(P::BeveledBlock, M::Dark, {19, 0, Shoulders + 22.0}, {22, 29, 5});
+    Piece(P::Block, M::Bronze, {24, 0, Shoulders + 35.0}, {4, 9, 10});
+
+    if (bLoader)
+    {
+        Limb(M::Wood, {19, -37, 79}, {53, 47, 134}, 6, P::Disc);
+        Limb(M::Linen, {53, 47, 134}, {58, 61, 144}, 14, P::Disc);
+    }
+    else
+    {
+        Limb(M::Wood, {8, -29, 70}, {52, 7, 123}, 5, P::Disc);
+    }
+}
+
 FRegimentAncientFigure FieldGun()
 {
     FRegimentAncientFigure Model;
-    for (double Side : {-1.0, 1.0})
+    constexpr double WheelX = 12.0;
+    constexpr double AxleHeight = 65.0;
+    for (const double Side : {-1.0, 1.0})
     {
-        const FVector WheelCenter(22, Side * 59, 54);
-        Bar(Model, M::Iron, WheelCenter - FVector(0, 5, 0), WheelCenter + FVector(0, 5, 0), 105, P::Disc);
-        Bar(Model, M::Wood, WheelCenter - FVector(0, 8, 0), WheelCenter + FVector(0, 8, 0), 94, P::Disc);
-        Bar(Model, M::Bronze, WheelCenter - FVector(0, 12, 0), WheelCenter + FVector(0, 12, 0), 26, P::Disc);
-        for (int32 Spoke = 0; Spoke < 8; ++Spoke)
+        const FVector Wheel(WheelX, Side * 64, AxleHeight);
+        Bar(Model, M::Iron, Wheel - FVector(0, 5, 0), Wheel + FVector(0, 5, 0), 130, P::Ring, F::WheelRim);
+        Bar(Model, M::Wood, Wheel - FVector(0, 7, 0), Wheel + FVector(0, 7, 0), 122, P::Ring);
+        Bar(Model, M::Wood, Wheel - FVector(0, 12, 0), Wheel + FVector(0, 12, 0), 30, P::Disc);
+        Bar(Model, M::Bronze, Wheel + FVector(0, Side * 12, 0), Wheel + FVector(0, Side * 19, 0), 17, P::Disc);
+        for (int32 Spoke = 0; Spoke < 12; ++Spoke)
         {
-            const double Angle = Spoke * UE_DOUBLE_PI / 8.0;
-            const FVector Tip(44.0 * FMath::Cos(Angle), Side * 10, 44.0 * FMath::Sin(Angle));
-            Bar(Model, M::Leather, WheelCenter + FVector(0, Side * 10, 0), WheelCenter + Tip, 6);
+            const double Angle = (Spoke + .5) * (2.0 * UE_DOUBLE_PI / 12.0);
+            const FVector Radial(FMath::Cos(Angle), 0.0, FMath::Sin(Angle));
+            Bar(Model, M::Wood, Wheel + Radial * 11, Wheel + Radial * 57, 6, P::Block, F::WheelSpoke);
         }
-        Bar(Model, M::Paint, {-126, Side * 21, 14}, {44, Side * 34, 68}, 20, P::BeveledBlock);
+        Bar(Model, M::Wood, {-165, Side * 10, 13}, {53, Side * 34, 77}, 19, P::BeveledBlock);
+        Part(Model, P::BeveledBlock, M::Wood, {18, Side * 32, 71}, {93, 22, 39}, FRotator(6, 0, 0));
+        Part(Model, P::Block, M::Iron, {23, Side * 39, 75}, {34, 6, 21});
     }
-    Bar(Model, M::Iron, {22, -61, 54}, {22, 61, 54}, 18, P::Disc);
-    Bar(Model, M::Bronze, {-43, 0, 73}, {117, 0, 81}, 30, P::Disc);
-    Bar(Model, M::Iron, {102, 0, 80}, {119, 0, 81}, 36, P::Disc);
-    Bar(Model, M::Dark, {118, 0, 81}, {120, 0, 81}, 20, P::Disc);
-    Soldier(Model, {-59, -94, 0}, 52, F::EngineCrew);
-    Soldier(Model, {-74, 93, 0}, -52, F::EngineCrew);
+    Bar(Model, M::Iron, {WheelX, -71, AxleHeight}, {WheelX, 71, AxleHeight}, 17, P::Disc);
+    Part(Model, P::BeveledBlock, M::Iron, {-164, 0, 8}, {30, 42, 15});
+    Part(Model, P::BeveledBlock, M::Wood, {-55, 0, 45}, {48, 57, 25}, FRotator(12, 0, 0));
+
+    const FVector Breech(-67, 0, 89);
+    const FVector Muzzle = RegimentFieldGun::MuzzleOffset();
+    const FVector Axis = (Muzzle - Breech).GetSafeNormal();
+    const auto AlongBarrel = [&](double FromMuzzle) { return Muzzle - Axis * FromMuzzle; };
+    Bar(Model, M::Bronze, AlongBarrel(18), Breech, 37, P::Frustum);
+    Bar(Model, M::Bronze, Breech - Axis * 13, Breech + Axis * 20, 43, P::Disc);
+    Part(Model, P::Ellipsoid, M::Bronze, Breech - Axis * 19, {19, 21, 21});
+    Bar(Model, M::Iron, AlongBarrel(127), AlongBarrel(117), 40, P::Disc);
+    Bar(Model, M::Bronze, AlongBarrel(62), AlongBarrel(54), 34, P::Disc);
+    Bar(Model, M::Iron, AlongBarrel(20), AlongBarrel(7), 37, P::Ring);
+    Bar(Model, M::Bronze, AlongBarrel(8), Muzzle, 42, P::Ring, F::MuzzleLip);
+    Bar(Model, M::Dark, AlongBarrel(18), AlongBarrel(16), 31, P::Disc);
+
+    FieldGunCrew(Model, {44, -100, 0}, 78, true);
+    FieldGunCrew(Model, {-62, 102, 0}, -75, false);
+    Part(Model, P::BeveledBlock, M::Wood, {-123, -96, 14}, {40, 44, 28});
+    Part(Model, P::Block, M::Iron, {-123, -96, 28.5}, {41, 45, 4});
+    Part(Model, P::Block, M::Bronze, {-102, -96, 19}, {3, 10, 9});
+    for (const FVector Shot : {FVector(-110, 80, 6), FVector(-123, 83, 6), FVector(-117, 94, 6)})
+        Part(Model, P::Ellipsoid, M::Dark, Shot, {12, 12, 12});
     return Model;
 }
 
-// Convex primitives share normalized geometry. A face carries a flat normal and no seams depend on UVs.
+// Primitives share normalized geometry. A face carries a flat normal and no seams depend on UVs.
 struct FAncientPrimitiveMesh
 {
     TArray<FVector> Points;
@@ -329,7 +426,7 @@ FAncientPrimitiveMesh Primitive(P Shape, bool bSimplified)
         Result.Fan(Sides, Sides);
         return Result;
     }
-    const int32 RoundSides = bSimplified ? 6 : 10;
+    const int32 RoundSides = Shape == P::Ring ? (bSimplified ? 10 : 16) : (bSimplified ? 6 : 10);
     const auto AddRing = [&](double Z, double Radius)
     {
         for (int32 Index = 0; Index < RoundSides; ++Index)
@@ -338,6 +435,18 @@ FAncientPrimitiveMesh Primitive(P Shape, bool bSimplified)
             Result.Points.Emplace(Radius * FMath::Cos(Angle), Radius * FMath::Sin(Angle), Z);
         }
     };
+    if (Shape == P::Ring)
+    {
+        AddRing(-.5, .5);
+        AddRing(.5, .5);
+        AddRing(.5, .40);
+        AddRing(-.5, .40);
+        Result.JoinRings(0, RoundSides, RoundSides);
+        Result.JoinRings(RoundSides, 2 * RoundSides, RoundSides);
+        Result.JoinRings(2 * RoundSides, 3 * RoundSides, RoundSides);
+        Result.JoinRings(3 * RoundSides, 0, RoundSides);
+        return Result;
+    }
     if (Shape == P::Ellipsoid)
     {
         AddRing(-.5, .23);
@@ -771,10 +880,12 @@ bool IsHistoricalRider(HistoricalFigure Style)
     }
 }
 
+// The simplified rider's hips sit at this height in the unmounted recipe.
+constexpr double SengokuProxyPelvisHeight = 65.0;
+
 struct FHistoricalMountProportions
 {
     FVector Scale;
-    double SeatOffset;
 };
 
 TOptional<FHistoricalMountProportions> HistoricalMountProportions(HistoricalFigure Style)
@@ -782,12 +893,27 @@ TOptional<FHistoricalMountProportions> HistoricalMountProportions(HistoricalFigu
     using S = HistoricalFigure;
     switch (Style)
     {
-    case S::LivonianKnight: return FHistoricalMountProportions{{.88, 1.22, 1.14}, 74.0};
+    case S::LivonianKnight: return FHistoricalMountProportions{{.88, 1.22, 1.14}};
     case S::RenaissanceCuirassier: case S::NorthernCuirassier: case S::NapoleonicCuirassier:
-        return FHistoricalMountProportions{{.82, 1.10, 1.09}, 62.0};
-    case S::CossackRider: return FHistoricalMountProportions{{.71, .90, .93}, 46.0};
-    case S::Numidian: return FHistoricalMountProportions{{.67, .82, .87}, 40.0};
+        return FHistoricalMountProportions{{.82, 1.10, 1.09}};
+    case S::CossackRider: return FHistoricalMountProportions{{.71, .90, .93}};
+    case S::Numidian: return FHistoricalMountProportions{{.67, .82, .87}};
+    case S::SengokuCavalry:
+        return FHistoricalMountProportions{{.72, 1.0, 1.0}};
     default: return {};
+    }
+}
+
+bool UsesClassicalHorseBarrel(HistoricalFigure Style)
+{
+    using S = HistoricalFigure;
+    switch (Style)
+    {
+    case S::RomanCavalry: case S::Companion: case S::AncientLightHorse: case S::AncientHeavyHorse:
+    case S::SteppeRider: case S::Cataphract:
+        return true;
+    default:
+        return false;
     }
 }
 
@@ -899,8 +1025,10 @@ FRegimentAncientFigure RefreshedDress(HistoricalFigure Style, bool bSimplified)
             Add(P::Taper, M::Iron, {-1, 0, 172}, {39, 38, 32});
         else
             Add(P::Ellipsoid, M::Iron, {-2, 0, 159}, {45, 37, 32}, FRotator(-9, 0, 0));
-        if (Helmet == H::GreatHelm || Helmet == H::Sallet)
+        if (Helmet == H::GreatHelm || (Helmet == H::Sallet && Style != S::SwissPike))
             Add(P::BeveledBlock, M::Dark, {23, 0, 157}, {5, 27, 4}, FRotator(3, 0, 0));
+        else if (Helmet == H::Sallet)
+            Add(P::Disc, M::Iron, {1, 0, 159}, {45, 39, 5});
         else
             Add(P::BeveledBlock, M::Iron, {16, 0, 153}, {7, 5, 22});
         if (Helmet != H::GreatHelm)
@@ -931,6 +1059,9 @@ FRegimentAncientFigure RefreshedDress(HistoricalFigure Style, bool bSimplified)
             Add(P::Disc, Outfit.Trim, {0, 0, 185}, {36, 37, 5});
         Add(P::BeveledBlock, Outfit.Trim, {17, 0, 170}, {5, 12, 12});
     }
+    const bool bClosed = Helmet == H::GreatHelm || (Helmet == H::Sallet && Style != S::SwissPike);
+    if (!bClosed)
+        FitOpenHeadgear(Model, 0);
 
     const auto Coat = Outfit.Coat;
     const bool bCuirass = Coat == C::Cuirass;
@@ -965,14 +1096,21 @@ FRegimentAncientFigure RefreshedDress(HistoricalFigure Style, bool bSimplified)
             Add(P::BeveledBlock, M::GreyWool, {-9, Y, 142}, {28, 16, 28});
     if (bLong || bMail || bPlate)
         for (double Y : {-13., 13.})
+        {
             Add(P::BeveledBlock, bLong || bMail ? M::Paint : M::Leather,
                 {-3, Y, bMounted ? 76. : 71.}, {35, 23, bMounted ? 21. : 29.}, FRotator(11, 0, Y * .3));
+            if (bMounted || bPlate)
+                Model.Parts.Last().Anchor = Y < 0 ? ERegimentFigureAnchor::LeftThigh : ERegimentFigureAnchor::RightThigh;
+        }
     Add(P::BeveledBlock, M::Leather, {0, 0, 84}, {40, 51, 7});
     Add(P::BeveledBlock, Outfit.Trim, {7, 0, 128}, {33, 32, 7});
     if (bPlate || bMail)
         for (double Y : {-23., 23.})
+        {
             Add(P::BeveledBlock, bPlate ? M::Iron : M::GreyWool, {0, Y, 120}, {31, 12, 12},
                 FRotator(0, 0, Y * .7));
+            Model.Parts.Last().Anchor = Y < 0 ? ERegimentFigureAnchor::LeftShoulder : ERegimentFigureAnchor::RightShoulder;
+        }
 
     if (Coat == C::Braided)
         for (double Z : {93., 104., 115., 124.})
@@ -1020,27 +1158,40 @@ FRegimentAncientFigure SengokuDress(HistoricalFigure Style, bool bSimplified)
         if (bArmoured && !bSimplified)
             Part(Model, P::Block, M::Linen, {21, 0, Z - 2}, {2.5, 34, 1.5});
     }
+    const int32 FirstHeadgear = Model.Parts.Num();
     if (bArmoured)
     {
         Part(Model, P::Ellipsoid, M::Dark, {-2, 0, 163}, {38, 36, 28}, FRotator::ZeroRotator, F::Kabuto);
         Part(Model, P::Disc, M::Iron, {0, 0, 153}, {45, 49, 5});
         for (double Z : {143., 149.})
             Part(Model, P::BeveledBlock, M::Paint, {-12, 0, Z}, {24, 43 + (149. - Z) * .8, 6}, FRotator(-10, 0, 0));
-        Part(Model, P::BeveledBlock, M::Dark, {15, 0, 140}, {12, 26, 13}, FRotator(-8, 0, 0));
         // A compact frontal crest leaves the head silhouette distinct from the broad ashigaru brim.
         Part(Model, P::Disc, M::Bronze, {17, 0, 168}, {13, 13, 3}, FRotator(90, 0, 0));
+        if (bMounted)
+            for (double Side : {-1.0, 1.0})
+                Bar(Model, M::Bronze, {17, Side * 3, 168}, {16, Side * 14, 181}, 5, P::Taper);
+        FitOpenHeadgear(Model, FirstHeadgear);
+        // The menpo remains a lower-face guard with open eyes above it.
+        Part(Model, P::BeveledBlock, M::Dark, {14, 0, 137}, {12, 25, 10}, FRotator(-8, 0, 0));
         for (double Side : {-1.0, 1.0})
         {
-            if (bMounted)
-                Bar(Model, M::Bronze, {17, Side * 3, 168}, {16, Side * 14, 181}, 5, P::Taper);
+            const auto Shoulder = Side < 0 ? ERegimentFigureAnchor::LeftShoulder : ERegimentFigureAnchor::RightShoulder;
+            const auto Thigh = Side < 0 ? ERegimentFigureAnchor::LeftThigh : ERegimentFigureAnchor::RightThigh;
             Part(Model, P::BeveledBlock, M::Paint, {-1, Side * 27, 115}, {29, 9, 32},
                 FRotator(0, 0, Side * 19), F::Sode);
+            Model.Parts.Last().Anchor = Shoulder;
             if (!bSimplified)
                 for (double Z : {108., 116., 124.})
+                {
                     Part(Model, P::Block, M::Dark, {-1, Side * 31, Z}, {28, 3, 2}, FRotator(0, 0, Side * 19));
+                    Model.Parts.Last().Anchor = Shoulder;
+                }
             for (double X : {-14., 16.})
+            {
                 Part(Model, P::BeveledBlock, M::Paint, {X, Side * 14, 70}, {11, 22, 25},
                     FRotator(X > 0 ? 21 : -21, 0, Side * 12));
+                Model.Parts.Last().Anchor = Thigh;
+            }
         }
         Bar(Model, M::Dark, {22, -24, 83}, {-37, -24, 73}, 7, P::Disc);
     }
@@ -1048,6 +1199,7 @@ FRegimentAncientFigure SengokuDress(HistoricalFigure Style, bool bSimplified)
     {
         Part(Model, P::Taper, M::Dark, {1, 0, 161}, {59, 59, 21}, FRotator(-5, 0, 0), F::Jingasa);
         Part(Model, P::Disc, M::Leather, {0, 0, 151}, {58, 57, 4}, FRotator(-5, 0, 0));
+        FitOpenHeadgear(Model, FirstHeadgear);
         Part(Model, P::BeveledBlock, M::Linen, {16, 0, 124}, {9, 35, 11});
         for (double Side : {-1.0, 1.0})
             Part(Model, P::BeveledBlock, M::Paint, {16, Side * 13, 70}, {8, 20, 23}, FRotator(17, 0, Side * 7));
@@ -1088,12 +1240,14 @@ FRegimentAncientFigure BuildRegimentHistoricalDress(ERegimentHistoricalFigure St
             Add(P::BeveledBlock, Metal, {1, Side * 13, 144}, {18, 8, 21}, FRotator(-15, 0, Side * 13));
         if (bCrest)
             Add(P::Ellipsoid, M::Paint, {-4, 0, 174}, {38, 9, 17}, FRotator(-12, 0, 0));
+        FitOpenHeadgear(Model, 0);
     };
     const auto SoftCap = [&](M Cloth)
     {
         Add(P::Ellipsoid, Cloth, {-3, 0, 155}, {36, 35, 23});
         Add(P::Taper, Cloth, {-6, 0, 167}, {32, 30, 26}, FRotator(-29, 0, 0));
         Add(P::BeveledBlock, Cloth, {-12, 0, 145}, {15, 33, 25});
+        FitOpenHeadgear(Model, 0);
     };
 
     switch (Style)
@@ -1106,7 +1260,10 @@ FRegimentAncientFigure BuildRegimentHistoricalDress(ERegimentHistoricalFigure St
         for (double Z : {89., 98., 107., 116.})
             Add(P::BeveledBlock, M::Iron, {0, 0, Z}, {41, 53, 7});
         for (double Y : {-20., 20.})
+        {
             Add(P::BeveledBlock, M::Iron, {0, Y, 125}, {39, 18, 8});
+            Model.Parts.Last().Anchor = Y < 0 ? ERegimentFigureAnchor::LeftShoulder : ERegimentFigureAnchor::RightShoulder;
+        }
         Add(P::BeveledBlock, M::Leather, {0, 0, 84}, {40, 49, 7});
         for (double Y : {-15., -5., 5., 15.})
             Add(P::Block, M::Leather, {21, Y, 72}, {5, 6, 24}, FRotator(8, 0, 0));
@@ -1141,6 +1298,7 @@ FRegimentAncientFigure BuildRegimentHistoricalDress(ERegimentHistoricalFigure St
         // Boeotian helmet with a projecting brim and an unshielded lance arm.
         Add(P::Disc, M::Bronze, {0, 0, 153}, {51, 47, 7}, FRotator(-8, 0, 0));
         Add(P::Ellipsoid, M::Bronze, {-2, 0, 162}, {33, 34, 25});
+        FitOpenHeadgear(Model, 0);
         Add(P::BeveledBlock, M::Linen, {0, 0, 108}, {45, 54, 50});
         Add(P::BeveledBlock, M::Paint, {-17, 0, 110}, {20, 45, 56}, FRotator(-15, 0, 0));
         Add(P::Disc, M::Bronze, {22, -14, 120}, {11, 11, 4}, FRotator(90, 0, 0));
@@ -1161,6 +1319,7 @@ FRegimentAncientFigure BuildRegimentHistoricalDress(ERegimentHistoricalFigure St
     case S::Numidian:
         Add(P::Ellipsoid, M::Dark, {-5, 0, 154}, {32, 31, 19});
         Add(P::Disc, M::Linen, {-2, 0, 157}, {34, 34, 7});
+        FitOpenHeadgear(Model, 0);
         Add(P::BeveledBlock, M::Linen, {0, 0, 106}, {38, 50, 51});
         Bar(Model, M::Leather, {20, -19, 124}, {19, 20, 89}, 5);
         return Model;
@@ -1168,7 +1327,10 @@ FRegimentAncientFigure BuildRegimentHistoricalDress(ERegimentHistoricalFigure St
     case S::LooseSling:
     case S::LooseJavelin:
         if (Style == S::LooseSling)
+        {
             Add(P::Disc, M::Linen, {0, 0, 156}, {34, 35, 8});
+            FitOpenHeadgear(Model, 0);
+        }
         else
             SoftCap(Style == S::LooseJavelin ? M::Linen : M::Paint);
         Add(P::BeveledBlock, M::Linen, {0, 0, 103}, {37, 47, 43});
@@ -1215,6 +1377,7 @@ FRegimentAncientFigure BuildRegimentHistoricalDress(ERegimentHistoricalFigure St
         if (Style == S::BritishLine)
             Add(P::Ellipsoid, M::Scarlet, {6, -10, 177}, {11, 11, 7});
     }
+    FitOpenHeadgear(Model, 0);
     Add(P::BeveledBlock, Coat, {0, 0, 107}, {42, 54, 48});
     Add(P::BeveledBlock, bBritish ? M::Dark : M::Scarlet, {5, 0, 130}, {31, 40, 9});
     if (!bBritish && !bRussian)
@@ -1225,7 +1388,10 @@ FRegimentAncientFigure BuildRegimentHistoricalDress(ERegimentHistoricalFigure St
         Bar(Model, Straps, {25, 18, 127}, {25, -19, 90}, 6);
     if (bGrenadier || bOldGuard || bLight)
         for (double Y : {-25., 25.})
+        {
             Add(P::BeveledBlock, bLight ? M::Green : M::Scarlet, {1, Y, 126}, {30, 13, 7});
+            Model.Parts.Last().Anchor = Y < 0 ? ERegimentFigureAnchor::LeftShoulder : ERegimentFigureAnchor::RightShoulder;
+        }
     if (bRussian)
     {
         Bar(Model, M::GreyWool, {28, -25, 134}, {26, 24, 88}, 17, P::Disc, F::Greatcoat);
@@ -1247,15 +1413,83 @@ FRegimentAncientFigure BuildRegimentHistoricalDress(ERegimentHistoricalFigure St
 
 double RegimentHistoricalSeatOffset(ERegimentHistoricalFigure Style)
 {
-    const auto Proportions = HistoricalMountProportions(Style);
-    return Proportions ? Proportions->SeatOffset : RegimentHistoricalRiderHeight;
+    return RegimentHistoricalRiderTack(Style).Seat.Z - SengokuProxyPelvisHeight;
+}
+
+FRegimentRiderTack RegimentHistoricalRiderTack(ERegimentHistoricalFigure Style)
+{
+    using S = ERegimentHistoricalFigure;
+    if (Style == S::SengokuCavalry)
+        return {{-5, 0, RegimentSengokuSaddleHeight}, {11, 29, 110}};
+    if (Style == S::Numidian)
+        return {{-5, 0, 119}, {11, 28, 59}};
+    if (const auto Proportions = HistoricalMountProportions(Style))
+        return {FVector(-8, 0, 141) * Proportions->Scale, FVector(13, 31, 96) * Proportions->Scale};
+    if (UsesClassicalHorseBarrel(Style))
+        return {{-5, 0, 136}, {11, 29, 98}};
+    if (Style >= S::WesternMail && IsHistoricalRider(Style))
+        return {{-4, 0, 124}, {11, 28, 86}};
+    return {};
+}
+
+FRegimentAncientFigure RegimentHistoricalDressSegment(const FRegimentAncientFigure& Dress, ERegimentFigureAnchor Anchor)
+{
+    FRegimentAncientFigure Segment;
+    for (const auto& Piece : Dress.Parts)
+        if (Piece.Anchor == Anchor)
+        {
+            Segment.Parts.Add(Piece);
+            Segment.Bounds += FBox(FVector(-.5), FVector(.5)).TransformBy(Piece.Transform);
+        }
+    return Segment;
+}
+
+FRegimentAncientFigure BuildRegimentAdjutantKit()
+{
+    FRegimentAncientFigure Model;
+    Bar(Model, M::Leather, {22, -19, 129}, {23, 18, 87}, 6.0);
+    Part(Model, P::BeveledBlock, M::Leather, {4, 24, 84}, {27, 14, 31}, FRotator(5, -11, 0), F::DispatchSatchel);
+    Part(Model, P::BeveledBlock, M::Ochre, {5, 31, 90}, {26, 5, 14}, FRotator(5, -11, 0));
+    Part(Model, P::Disc, M::Bronze, {13, 34, 88}, {8, 8, 2.5}, FRotator(0, 0, 90));
+    Bar(Model, M::Linen, {-5, 24, 99}, {16, 24, 102}, 9.0, P::Disc);
+    Bar(Model, M::Scarlet, {3, 24, 100}, {8, 24, 101}, 10.0, P::Disc);
+    return Model;
+}
+
+bool RegimentHeadgearCoversFace(ERegimentHistoricalFigure Dress, ERegimentEraVisual Visual)
+{
+    using S = ERegimentHistoricalFigure;
+    return Dress == S::MedievalKnight || Dress == S::LivonianKnight || Dress == S::GothicPlate ||
+        Dress == S::LateKnight || (Dress == S::None && Visual == ERegimentEraVisual::Undead);
+}
+
+FRegimentAncientFigure BuildRegimentCostumeFace(bool bCovered)
+{
+    FRegimentAncientFigure Model;
+    // The Hide slot is recolored per soldier. Keep eyes and hair in separate, opaque sections.
+    Part(Model, P::BeveledBlock, M::Hide, {0, 0, 127}, {19, 19, 22});
+    if (bCovered)
+        return Model;
+    Part(Model, P::BeveledBlock, M::Hide, {2, 0, 145}, {30, 27, 30});
+    Part(Model, P::BeveledBlock, M::Hide, {17, 0, 145}, {8, 6, 9}, FRotator(-11, 0, 0));
+    Part(Model, P::BeveledBlock, M::Dark, {-10, 0, 150}, {11, 28, 23});
+    Part(Model, P::Block, M::Leather, {17, 0, 137}, {2, 8, 1.6});
+    for (double Side : {-1.0, 1.0})
+    {
+        Part(Model, P::Ellipsoid, M::Hide, {0, Side * 13, 144}, {11, 6, 15});
+        Part(Model, P::BeveledBlock, M::Dark, {-1, Side * 13, 150}, {7, 3, 12});
+        Part(Model, P::Block, M::Ivory, {17, Side * 6.2, 149.5}, {2, 6.8, 2.8});
+        Part(Model, P::Block, M::Dark, {18.15, Side * 5.6, 149.45}, {1.1, 2.6, 2.75});
+        Part(Model, P::Block, M::Leather, {17.25, Side * 6.2, 152}, {1.8, 7.3, 1.4}, FRotator(0, 0, Side * 5));
+    }
+    return Model;
 }
 
 FRegimentAncientFigure BuildRegimentHistoricalTack(ERegimentHistoricalFigure Style)
 {
     using S = ERegimentHistoricalFigure;
     FRegimentAncientFigure Model;
-    if (const auto Proportions = HistoricalMountProportions(Style))
+    if (const auto Proportions = HistoricalMountProportions(Style); Proportions && Style != S::SengokuCavalry)
     {
         FRegimentAncientFigure Tack;
         if (Style == S::Numidian)
@@ -1300,26 +1534,29 @@ FRegimentAncientFigure BuildRegimentHistoricalTack(ERegimentHistoricalFigure Sty
         Part(Model, P::Disc, M::Leather, {41, 0, 132}, {28, 37, 6}, FRotator(-25, 0, 0));
     if (Style == S::RomanCavalry || Style == S::Companion)
     {
-        Part(Model, P::BeveledBlock, M::Paint, {-5, 0, 113}, {55, 56, 17});
+        Part(Model, P::BeveledBlock, M::Paint, {-5, 0, 127}, {55, 56, 17});
         for (double Y : {-23., 23.})
-            Part(Model, P::BeveledBlock, M::Leather, {-3, Y, 111}, {43, 12, 19});
+            Part(Model, P::BeveledBlock, M::Leather, {-3, Y, 125}, {43, 12, 19});
     }
     if (Style == S::SengokuCavalry)
     {
-        Part(Model, P::BeveledBlock, M::Paint, {-5, 0, 112}, {71, 58, 17});
+        Part(Model, P::BeveledBlock, M::Paint, {-5, 0, 127}, {71, 58, 14});
+        Part(Model, P::BeveledBlock, M::Leather, {-5, 0, RegimentSengokuSaddleHeight - 4}, {48, 38, 8});
         for (double X : {-24., 21.})
-            Part(Model, P::BeveledBlock, M::Dark, {X, 0, 120}, {10, 47, 19}, FRotator(X > 0 ? -13 : 13, 0, 0));
+            Part(Model, P::BeveledBlock, M::Dark, {X, 0, RegimentSengokuSaddleHeight}, {10, 47, 14},
+                FRotator(X > 0 ? -13 : 13, 0, 0));
         for (double Side : {-1., 1.})
         {
-            Bar(Model, M::Leather, {1, Side * 24, 111}, {5, Side * 29, 74}, 4);
-            Part(Model, P::BeveledBlock, M::Iron, {11, Side * 29, 72}, {24, 10, 5}, FRotator(7, 0, 0));
+            Bar(Model, M::Leather, {1, Side * 20, 135}, {7, Side * 29, 102}, 4);
+            Part(Model, P::BeveledBlock, M::Iron, {11, Side * 29, 100}, {24, 10, 5}, FRotator(7, 0, 0));
         }
     }
     if (IsRefreshedFigure(Style) && IsHistoricalRider(Style))
     {
         const bool bPeriodStirrups = Style >= S::WesternMail;
-        Part(Model, P::BeveledBlock, M::Paint, {-12, 0, 106}, {80, 55, 16});
-        Part(Model, P::BeveledBlock, M::Leather, {-4, 0, 115}, {53, 39, 12});
+        const double PadLift = UsesClassicalHorseBarrel(Style) ? 14.0 : 0.0;
+        Part(Model, P::BeveledBlock, M::Paint, {-12, 0, 106 + PadLift}, {80, 55, 16});
+        Part(Model, P::BeveledBlock, M::Leather, {-4, 0, 115 + PadLift}, {53, 39, 12});
         for (double Side : {-1., 1.})
         {
             Bar(Model, M::Leather, {56, Side * 12, 127}, {4, Side * 21, 123}, 3.5);
@@ -1342,11 +1579,11 @@ FRegimentAncientFigure BuildRegimentHistoricalTack(ERegimentHistoricalFigure Sty
 FRegimentAncientFigure BuildRegimentHistoricalMount(ERegimentHistoricalFigure Style)
 {
     FRegimentAncientFigure Model;
-    if (const auto Proportions = HistoricalMountProportions(Style))
+    if (const auto Proportions = HistoricalMountProportions(Style); Proportions || UsesClassicalHorseBarrel(Style))
     {
         FRegimentAncientFigure HorseBody;
         Horse(HorseBody, FVector::ZeroVector, M::Hide, 6, false);
-        AppendScaledParts(Model, HorseBody, Proportions->Scale);
+        AppendScaledParts(Model, HorseBody, Proportions ? Proportions->Scale : FVector(.72, 1, 1));
         const auto Tack = BuildRegimentHistoricalTack(Style);
         Model.Bounds += Tack.Bounds;
         Model.Parts.Append(Tack.Parts);
@@ -1365,10 +1602,12 @@ FRegimentAncientFigure BuildRegimentHistoricalProxy(ERegimentHistoricalFigure St
         return Model;
     Model.bSimplified = true;
     const bool bMounted = IsHistoricalRider(Style);
+    const auto Tack = RegimentHistoricalRiderTack(Style);
     const double RideHeight = bMounted ? RegimentHistoricalSeatOffset(Style) : 0.0;
+    const double RiderX = bMounted ? Tack.Seat.X : 0.0;
     if (bMounted)
     {
-        const FVector RiderOffset(0, 0, RideHeight);
+        const FVector RiderOffset(RiderX, 0, RideHeight);
         for (auto& Piece : Model.Parts)
             Piece.Transform.AddToTranslation(RiderOffset);
         Model.Bounds = Model.Bounds.ShiftBy(RiderOffset);
@@ -1378,7 +1617,7 @@ FRegimentAncientFigure BuildRegimentHistoricalProxy(ERegimentHistoricalFigure St
             Mount = BuildRegimentHistoricalTack(Style);
             FRegimentAncientFigure HorseBody;
             Horse(HorseBody, FVector::ZeroVector, M::Hide, 6, false);
-            AppendScaledParts(Mount, HorseBody, FVector(.72, 1, 1));
+            AppendScaledParts(Mount, HorseBody, FVector(.72, 1, .89));
         }
         Model.Bounds += Mount.Bounds;
         Model.Parts.Append(MoveTemp(Mount.Parts));
@@ -1389,17 +1628,31 @@ FRegimentAncientFigure BuildRegimentHistoricalProxy(ERegimentHistoricalFigure St
     const bool bBareLegs = bKilt || Style == S::Numidian;
     const M Trousers = bSengoku || bRefreshed ? M::Dark : bBareLegs ? M::Skin
         : Style >= S::Fusilier ? M::Linen : M::Paint;
-    Part(Model, P::BeveledBlock, Coat, {0, 0, 89 + RideHeight}, {32, 43, 64});
-    Part(Model, P::BeveledBlock, M::Skin, {2, 0, 144 + RideHeight}, {27, 26, 27});
+    Part(Model, P::BeveledBlock, Coat, {RiderX, 0, 89 + RideHeight}, {32, 43, 64});
+    Part(Model, P::BeveledBlock, M::Skin, {2 + RiderX, 0, 144 + RideHeight}, {27, 26, 27});
     for (double Side : {-1., 1.})
     {
-        Part(Model, P::BeveledBlock, Coat, {9, Side * 26, 110 + RideHeight}, {22, 14, 35}, FRotator(-22, 0, 0));
-        Part(Model, P::BeveledBlock, M::Skin, {19, Side * 29, 93 + RideHeight}, {13, 13, 17});
-        Part(Model, P::BeveledBlock, Trousers, {bMounted ? 12.0 : 0.0, Side * (bMounted ? 23.0 : 12.0), 38 + RideHeight},
-            {18, 17, bMounted ? 48.0 : 55.0}, FRotator(bMounted ? -22.0 : 0.0, 0, 0));
-        Part(Model, P::BeveledBlock, Style == S::Numidian ? M::Skin : M::Dark,
-            {bMounted ? 13.0 : 3.0, Side * (bMounted ? 25.0 : 12.0), (bMounted ? 25.0 : 15.0) + RideHeight},
-            {22, 17, bKilt ? 30.0 : 27.0});
+        Part(Model, P::BeveledBlock, Coat, {9 + RiderX, Side * 26, 110 + RideHeight}, {22, 14, 35}, FRotator(-22, 0, 0));
+        Part(Model, P::BeveledBlock, M::Skin, {19 + RiderX, Side * 29, 93 + RideHeight}, {13, 13, 17});
+        if (bMounted)
+        {
+            const FVector Hip = Tack.Seat + FVector(0, Side * 13, 0);
+            FVector Ankle = Tack.RightAnkle;
+            Ankle.Y *= Side;
+            const auto Leg = SolveRegimentRiderLeg(Hip, Ankle, 39, 38, FVector::ForwardVector);
+            Bar(Model, Trousers, Hip, Leg.Knee, 17, P::BeveledBlock);
+            const M Foot = Style == S::Numidian ? M::Skin : M::Dark;
+            Bar(Model, Foot, Leg.Knee, Leg.Ankle, 14, P::BeveledBlock);
+            Part(Model, P::BeveledBlock, Foot, Leg.Ankle + FVector(4, 0, -4), {23, 16, 12});
+        }
+        else
+        {
+            Part(Model, P::BeveledBlock, Trousers, {bMounted ? 12.0 : 0.0, Side * (bMounted ? 23.0 : 12.0), 38 + RideHeight},
+                {18, 17, bMounted ? 48.0 : 55.0}, FRotator(bMounted ? -22.0 : 0.0, 0, 0));
+            Part(Model, P::BeveledBlock, Style == S::Numidian ? M::Skin : M::Dark,
+                {bMounted ? 13.0 : 3.0, Side * (bMounted ? 25.0 : 12.0), (bMounted ? 25.0 : 15.0) + RideHeight},
+                {22, 17, bKilt ? 30.0 : 27.0});
+        }
     }
     return Model;
 }
@@ -1437,15 +1690,31 @@ FRegimentAncientFigure BuildRegimentSengokuWeapon(ERegimentHistoricalFigure Styl
     return Model;
 }
 
-FRegimentAncientFigure BuildRegimentSengokuBanner()
+int32 RegimentSengokuBannerVariant(uint64 UnitId)
 {
+    return int32(RegimentFigureHash(UnitId ^ 0x7b148ba19d48b79full) % RegimentSengokuBannerVariantCount);
+}
+
+FRegimentAncientFigure BuildRegimentSengokuBanner(int32 Variant)
+{
+    // Rectangular cloth on a common back mount, with different lengths of pole and crossarm.
+    struct FDimensions { double Width, Height, PoleTop; };
+    static constexpr FDimensions Sizes[RegimentSengokuBannerVariantCount] = {
+        {26, 54, 222}, {31, 64, 238}, {27, 78, 254}, {39, 62, 242}
+    };
+    const auto [Width, Height, PoleTop] = Sizes[Variant];
+    constexpr double Hoist = 10.0;
+    constexpr double PoleX = -34.0;
+    const double CenterY = Hoist + Width * .5;
     FRegimentAncientFigure Model;
     Model.bSimplified = true;
-    Bar(Model, M::Wood, {-24, 10, 92}, {-34, 10, 231}, 3.5);
-    Bar(Model, M::Wood, {-34, 9, 231}, {-34, 44, 231}, 3.0);
-    Part(Model, P::BeveledBlock, M::Paint, {-35, 28, 207}, {4, 31, 45}, FRotator(-4, 0, 0), F::Sashimono);
-    for (double X : {-38., -32.})
-        Part(Model, P::Disc, M::Linen, {X, 28, 212}, {15, 15, 2.6}, FRotator(90, 0, 0));
+    Bar(Model, M::Wood, {-17, Hoist, 93}, {PoleX, Hoist, PoleTop}, 3.5);
+    Bar(Model, M::Wood, {PoleX, Hoist - 1, PoleTop}, {PoleX, Hoist + Width + 3, PoleTop}, 3.0);
+    Part(Model, P::BeveledBlock, M::Paint, {PoleX, CenterY, PoleTop - 1 - Height * .5},
+        {4, Width, Height}, FRotator::ZeroRotator, F::Sashimono);
+    const double MonSize = FMath::Min(Width * .47, 17.0);
+    for (double X : {PoleX - 2.5, PoleX + 2.5})
+        Part(Model, P::Disc, M::Linen, {X, CenterY, PoleTop - Height * .35}, {MonSize, MonSize, 2.6}, FRotator(90, 0, 0));
     return Model;
 }
 
@@ -1555,7 +1824,7 @@ FRegimentAncientFigure BuildRegimentEraHeadgear(ERegimentEraVisual Style)
         break;
     case ERegimentEraVisual::Dwarven:
         Piece(P::BeveledBlock, M::Bronze, {0, 0, 8}, {43, 43, 27});
-        Piece(P::BeveledBlock, M::Paint, {16, 0, -16}, {15, 31, 26});
+        Piece(P::BeveledBlock, M::Paint, {12, 0, -21}, {12, 30, 12});
         Piece(P::BeveledBlock, M::Iron, {0, 0, 25}, {39, 12, 10});
         break;
     case ERegimentEraVisual::Giant:
@@ -1571,6 +1840,8 @@ FRegimentAncientFigure BuildRegimentEraHeadgear(ERegimentEraVisual Style)
     default:
         break;
     }
+    if (Style != ERegimentEraVisual::Undead)
+        FitOpenHeadgear(Figure, 0, 150.0 - RegimentEraHeadgearAnchorHeight);
     return Figure;
 }
 
@@ -1637,7 +1908,11 @@ UStaticMesh* MakeRegimentAncientMesh(UObject& Owner, const FRegimentAncientFigur
             const FVector B(Positions[Vertices[Face.Y]]);
             const FVector C(Positions[Vertices[Face.Z]]);
             FVector Normal = FVector::CrossProduct(B - A, C - A).GetSafeNormal();
-            const bool bOutward = FVector::DotProduct(Normal, (A + B + C) / 3 - Part.Transform.GetLocation()) > 0;
+            // The inner wall of a rim faces its opening. All other primitives face away from their centers.
+            const bool bInnerWall = Part.Primitive == P::Ring &&
+                FMath::Min3(Face.X, Face.Y, Face.Z) >= PrimitiveGeometry.Points.Num() / 2;
+            const bool bOutward = (FVector::DotProduct(Normal,
+                (A + B + C) / 3 - Part.Transform.GetLocation()) > 0) != bInnerWall;
             if (!bOutward)
                 Normal = -Normal;
             const FVector3f Tangent((B - A).GetSafeNormal());

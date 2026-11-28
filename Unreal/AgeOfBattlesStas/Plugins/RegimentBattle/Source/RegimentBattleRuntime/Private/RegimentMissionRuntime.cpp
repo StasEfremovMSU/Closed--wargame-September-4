@@ -162,6 +162,7 @@ void FRegimentMissionRuntime::AttachHud(APlayerController* Controller)
             Preset.Roster[int32(Id - 1)].bEnabled)
         {
             Selected = Id;
+            LastMarchHoverPoint.Reset();
             Board.SetRoutePreview({});
             NextRoutePreview = 0.0;
         }
@@ -427,6 +428,8 @@ void FRegimentMissionRuntime::StartMission(FMissionPreset Setup)
     auto Opening = MakeMissionOpening(Preset);
     Accumulator = 0.0;
     Selected = Opening.front().id.value;
+    LastMarchHoverPoint.Reset();
+    NextRoutePreview = 0.0;
     PlayerOrders.Reset();
     bMarchResumed = false;
     if (Preset.StartsInBattle())
@@ -498,31 +501,37 @@ void FRegimentMissionRuntime::HandleMapInput(APlayerController& Controller)
     const bool bCrossingOrder = Preset.bRegimentTactics &&
         battle::MarchHasWaterCrossings(Preset.Terrain) &&
         (Controller.IsInputKeyDown(EKeys::LeftControl) || Controller.IsInputKeyDown(EKeys::RightControl));
-    if (!March->EnemyFound() && !bCrossingOrder &&
-        (Controller.WasInputKeyJustReleased(EKeys::LeftControl) || Controller.WasInputKeyJustReleased(EKeys::RightControl)))
-        Board.SetRoutePreview({});
-    const bool bShiftChanged = Controller.WasInputKeyJustPressed(EKeys::LeftShift) ||
-        Controller.WasInputKeyJustReleased(EKeys::LeftShift) ||
-        Controller.WasInputKeyJustPressed(EKeys::RightShift) ||
-        Controller.WasInputKeyJustReleased(EKeys::RightShift);
+    const auto KeyChanged = [&](const FKey& Key)
+    {
+        return Controller.WasInputKeyJustPressed(Key) || Controller.WasInputKeyJustReleased(Key);
+    };
+    const bool bModifiersChanged = KeyChanged(EKeys::LeftShift) || KeyChanged(EKeys::RightShift) ||
+        KeyChanged(EKeys::LeftControl) || KeyChanged(EKeys::RightControl);
     const double Now = FPlatformTime::Seconds();
-    if (!bClick && ((!March->EnemyFound() && !bCrossingOrder) || (!bShiftChanged && Now < NextRoutePreview)))
+    if (!bClick && !bModifiersChanged && Now < NextRoutePreview)
         return;
     NextRoutePreview = Now + .14;
     FVector RayOrigin;
     FVector RayDirection;
     if (!Controller.DeprojectMousePositionToWorld(RayOrigin, RayDirection))
     {
+        LastMarchHoverPoint.Reset();
         Board.SetRoutePreview({});
         return;
     }
     const auto Surface = RegimentGroundPoint(RayOrigin, RayDirection, Origin, battle::MarchHill(Preset.Terrain, Preset.Field));
     if (!Surface)
     {
+        LastMarchHoverPoint.Reset();
         Board.SetRoutePreview({});
         return;
     }
     const FVector Point = *Surface;
+    // Revalidate clicks and modifier changes, without repeating terrain searches under a parked cursor.
+    if (!March->EnemyFound() && !bClick && !bModifiersChanged && LastMarchHoverPoint &&
+        FVector::DistSquared2D(Point, *LastMarchHoverPoint) < FMath::Square(100.0))
+        return;
+    LastMarchHoverPoint = Point;
     for (const auto& Regiment : March->Regiments())
     {
         if (Regiment.team != PlayerTeam || !bClick)
@@ -534,13 +543,12 @@ void FRegimentMissionRuntime::HandleMapInput(APlayerController& Controller)
             FMath::Abs(Offset.Y) <= FRegimentMarchBoard::TokenWidthCm * Size.Y * .5 + 30.0)
         {
             Selected = Regiment.id.value;
+            LastMarchHoverPoint.Reset();
             Board.SetRoutePreview({});
             NextRoutePreview = 0.0;
             return;
         }
     }
-    if (!March->EnemyFound() && !bCrossingOrder)
-        return;
     const auto& Regiments = March->Regiments();
     const auto Anchor = std::ranges::find(Regiments, battle::RegimentId{Selected}, &battle::MarchRegiment::id);
     if (Anchor == Regiments.end())
@@ -734,18 +742,37 @@ void FRegimentMissionRuntime::BeginTactical()
         CameraScale = FMath::Max3(1.4, (Size.X + 1400.0) / 2600.0, (Size.Y + 1100.0) / 1300.0);
         Pitch = -38.7;
     }
+    const bool bCoastalOverview = Preset.Terrain == battle::MarchTerrain::Thermopylae && Preset.StartsInBattle();
+    FVector CameraOffset(0, -2000, 1600);
+    if (bCoastalOverview)
+    {
+        // Open on the passage between the coastline and the mountain face.
+        Focus.Y += 20.0 * Preset.Field.HalfHeight();
+        CameraOffset = FVector(0, -2700, 1570);
+        Pitch = -29.5;
+    }
     auto* Camera = Owner.GetWorld()->SpawnActor<ACameraActor>(
-        Focus + FVector(0, -2000, 1600) * CameraScale, FRotator(Pitch, 90, 0));
+        Focus + CameraOffset * CameraScale, FRotator(Pitch, 90, 0));
     if (!Camera)
         return;
     TacticalCamera = Camera;
     auto* View = Camera->GetCameraComponent();
-    View->SetFieldOfView(58.f);
+    View->SetFieldOfView(bCoastalOverview ? 70.f : 58.f);
     ApplyRegimentBattleCameraExposure(*View);
     View->PostProcessSettings.bOverride_MotionBlurAmount = true;
     View->PostProcessSettings.MotionBlurAmount = 0.f;
     if (auto* Controller = Owner.GetWorld()->GetFirstPlayerController())
         Controller->SetViewTarget(Camera);
+}
+
+void FRegimentMissionRuntime::FollowRegiment(uint64 Regiment, int32 StartingStrength)
+{
+    const auto* Camera = TacticalCamera.Get();
+    if (!Camera || !Regiment || Regiment == FollowedRegiment)
+        return;
+    StopMapFlyover();
+    FollowedRegiment = Regiment;
+    FollowCamera.Frame(Camera->GetActorRotation().Yaw, StartingStrength);
 }
 
 bool FRegimentMissionRuntime::TickCamera(float DeltaSeconds)
@@ -795,9 +822,29 @@ bool FRegimentMissionRuntime::TickCamera(float DeltaSeconds)
     if (bManual)
     {
         MapFlight.Stop();
+        StopFollowingRegiment();
         CameraZoomTarget.Reset();
     }
-    else if (!FMath::IsNearlyZero(WheelSteps))
+    if (FollowedRegiment)
+    {
+        const auto* Battle = Cast<ARegimentBattleField>(&Owner);
+        const auto Cards = Battle ? Battle->GetRegimentCards() : TConstArrayView<FRegimentFieldCard>();
+        const auto* Card = Cards.FindByPredicate([this](const auto& Row)
+        {
+            return Row.Id == FollowedRegiment && Row.Living > 0;
+        });
+        if (Card)
+        {
+            if (!FMath::IsNearlyZero(WheelSteps))
+                FollowCamera.Zoom(WheelSteps);
+            const auto Pose = FollowCamera.Advance({Current, Rotation}, Card->Location - FVector(0, 0, 230),
+                DeltaSeconds, Origin, Preset.Field, Hill);
+            Camera->SetActorLocationAndRotation(Pose.Location, Pose.Rotation);
+            return false;
+        }
+        StopFollowingRegiment();
+    }
+    if (!bManual && !FMath::IsNearlyZero(WheelSteps))
     {
         MapFlight.Stop();
         CameraVelocity = FVector::ZeroVector;

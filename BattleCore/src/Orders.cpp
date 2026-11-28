@@ -2,7 +2,7 @@
 #include "battle/World.h"
 namespace battle {
 bool ValidOrderShape(const Order &order) {
-    return Finite(order.point) && uint8_t(order.type) <= uint8_t(OrderType::Pursue) &&
+    return Finite(order.point) && uint8_t(order.type) <= uint8_t(OrderType::MeleeAssault) &&
            uint8_t(order.pace) <= uint8_t(MovementPace::Run) &&
            (!order.facing || std::isfinite(*order.facing)) &&
            (!order.maneuver_group || order.type == OrderType::MoveTo) &&

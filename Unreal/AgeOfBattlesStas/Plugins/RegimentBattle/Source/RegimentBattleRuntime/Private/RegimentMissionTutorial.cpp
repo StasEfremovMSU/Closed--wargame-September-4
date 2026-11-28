@@ -344,7 +344,7 @@ void FRegimentTutorialProgress::Update(battle::World& World, bool bOfficerComman
 void FRegimentTutorialProgress::UpdateInfantry(battle::World& World)
 {
     const auto* Officer = ControlledOfficer(World, Lead);
-    const auto* Infantry = battle::FindRegiment(World, Lead);
+    auto* Infantry = battle::FindRegiment(World, Lead);
     auto* Targets = battle::FindRegiment(World, FirstEnemy);
     const auto* Opponent = battle::FindRegiment(World, SecondEnemy);
     if (!Officer || !Infantry || !Targets || !Opponent)
@@ -440,14 +440,18 @@ void FRegimentTutorialProgress::UpdateInfantry(battle::World& World)
         if (Opponent->units.empty())
             return;
         TargetZone = Zone(Opponent->pose.position, 4.f);
-        if (HasPlayerOrder(*Infantry, StepStarted, battle::OrderType::Attack) &&
-            Infantry->order->target_regiment == SecondEnemy)
+        if (HasPlayerOrder(*Infantry, StepStarted, battle::OrderType::MeleeAssault) &&
+            Infantry->order->target_regiment == SecondEnemy &&
+            std::ranges::any_of(World.events, [&](const auto& Event)
+            { return Event.kind == battle::EventKind::Hit && FiredOn(World, Event, Lead, SecondEnemy, false); }))
         {
             SetGunSafety(World, Lead, false);
             Advance(EStep::InfantryWithdraw, World);
             StartLocation = Infantry->pose.position;
             auto Fallback = *StartLocation - battle::Forward(Infantry->pose.yaw) * 9.f;
             Fallback.x = FMath::Max(10.f, Fallback.x);
+            // An engaged regiment falls back to its rally point when the player presses 5.
+            Infantry->rally_point = Fallback;
             TargetZone = Zone(Fallback, 3.f);
         }
         break;
@@ -495,7 +499,7 @@ void FRegimentTutorialProgress::UpdateCavalry(battle::World& World)
         break;
     case EStep::CavalryFlankAttack:
     {
-        const bool bAttack = HasPlayerOrder(*Horse, StepStarted, battle::OrderType::Attack) &&
+        const bool bAttack = HasPlayerOrder(*Horse, StepStarted, battle::OrderType::MeleeAssault) &&
             Horse->order->target_regiment == FirstEnemy;
         const auto Bearing = Horse->pose.position - Opponent->pose.position;
         if (!bAttack)
@@ -521,7 +525,7 @@ void FRegimentTutorialProgress::UpdateCavalry(battle::World& World)
         break;
     case EStep::CavalryAttack:
     {
-        const bool bAttack = HasPlayerOrder(*Horse, StepStarted, battle::OrderType::Attack) &&
+        const bool bAttack = HasPlayerOrder(*Horse, StepStarted, battle::OrderType::MeleeAssault) &&
             Horse->order->target_regiment == FirstEnemy;
         const auto Bearing = Horse->pose.position - Opponent->pose.position;
         bRearAttackOrdered |= bAttack &&
@@ -692,19 +696,19 @@ FText FRegimentTutorialProgress::Instruction() const
     case EStep::InfantryEnemyApproaches:
         return LOCTEXT("WaitEnemy", "Мишени отходят. К переправе движется полк противника.");
     case EStep::InfantryAttack:
-        return LOCTEXT("AttackEnemy", "Наведите прицел на отмеченный полк противника и нажмите 4. Дождитесь доставки приказа.");
+        return LOCTEXT("MeleeAssaultEnemy", "Наведите прицел на отмеченный полк и нажмите 4 «В рукопашную». Дождитесь удара по противнику в ближнем бою.");
     case EStep::InfantryWithdraw:
-        return LOCTEXT("WithdrawInfantry", "Нажмите 5 и укажите точку отхода позади строя. Дождитесь, пока полк сдвинется с позиции.");
+        return LOCTEXT("WithdrawAfterMelee", "Нажмите 5 для отхода. Если появится указатель цели, щёлкните позади строя. Дождитесь, пока полк отойдёт.");
     case EStep::CavalryPossess:
         return LOCTEXT("ChooseCavalry", "На тактической карте нажмите G, выберите офицера учебного кавалерийского полка и нажмите «Вселиться». Резервная пехота ждёт.");
     case EStep::CavalryFlank:
         return LOCTEXT("CavalryFlank", "Нажмите M и щёлкните по золотой метке сбоку от противника. Доведите до неё конный полк.");
     case EStep::CavalryFlankAttack:
-        return LOCTEXT("CavalryFlankAttack", "С фланговой позиции наведите прицел на пехоту и нажмите 4. Дождитесь, пока кавалерия начнёт сближение.");
+        return LOCTEXT("CavalryFlankMelee", "С фланговой позиции наведите прицел на пехоту и нажмите 4 «В рукопашную». Дождитесь, пока кавалерия начнёт сближение.");
     case EStep::CavalryRear:
         return LOCTEXT("CavalryRear", "Первый заход остановлен перед строем. Нажмите M и обойдите противника до золотой метки в тылу.");
     case EStep::CavalryAttack:
-        return LOCTEXT("CavalryCharge", "Наведите прицел на отмеченную пехоту и нажмите 4. Дождитесь, пока кавалерия вступит в бой.");
+        return LOCTEXT("CavalryMeleeCharge", "Наведите прицел на отмеченную пехоту и нажмите 4 «В рукопашную». Дождитесь, пока кавалерия вступит в бой.");
     case EStep::CavalryWithdraw:
         return LOCTEXT("CavalryWithdraw", "Нажмите 5 для отхода. Если появится указатель цели, щёлкните позади конного полка. Дождитесь выхода из боя.");
     case EStep::CavalryLoss:

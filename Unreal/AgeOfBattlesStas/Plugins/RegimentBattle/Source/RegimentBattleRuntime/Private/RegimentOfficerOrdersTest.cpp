@@ -499,4 +499,65 @@ bool FRegimentOfficerFollowSelectionTest::RunTest(const FString& Parameters)
     TestFalse(TEXT("The other subgroup hands back to AI"), bool(battle::FindRegiment(World, {3})->following_officer));
     return true;
 }
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentRankOrdersTest, "RegimentBattle.Officers.RankOrders",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+
+bool FRegimentRankOrdersTest::RunTest(const FString&)
+{
+    using namespace RegimentOfficerOrders;
+    using Order = ERegimentPlayerOrder;
+    using battle::RankPriority;
+    const battle::FlatNavigationService Navigation;
+    const battle::RegimentId Friendly{1};
+    auto Setup = MakeOfficerOrderWorld().scenario;
+    auto Foot = Setup.units[0];
+    Foot.id = {12};
+    Setup.units.push_back(Foot);
+    Setup.units[1].ranged_weapon = battle::RangedWeapon::Bow;
+    Setup.rules.mixed_rank_tactics = true;
+    Setup.regiments[0].skirmisher_count = 0;
+    Setup.regiments[0].formation.columns = 1;
+    Setup.regiments[1].pose.position.x = 70.f;
+    auto Created = battle::CreateWorld(Setup, 42);
+    if (!TestTrue(TEXT("Mixed company deploys"), bool(Created)))
+        return false;
+    auto& World = Created.value;
+    if (!TestTrue(TEXT("Possesses the company commander"), battle::AcquireControl(World, {10}) == battle::Status::Ok))
+        return false;
+
+    const auto State = [&](std::span<const battle::CommandEnvelope> Pending = {})
+    {
+        return DescribeOrder(World, *battle::FindRegiment(World, Friendly), Pending, false);
+    };
+    TestTrue(TEXT("The command panel offers rank choices for mixed infantry"), State().bCanSetRanks);
+    std::vector<battle::CommandEnvelope> Pending;
+    uint64 Sequence = 1;
+    TestFalse(TEXT("Foreign regiments cannot be given a rank order"),
+        QueueOrder(World, Navigation, {2}, Order::RankRanged, {}, Pending, Sequence).IsEmpty());
+    TestTrue(TEXT("The officer can put shooters in front"),
+        QueueOrder(World, Navigation, Friendly, Order::RankRanged, {}, Pending, Sequence).IsEmpty());
+    if (!TestEqual(TEXT("A single authorized order is queued"), Pending.size(), size_t(1)))
+        return false;
+    TestTrue(TEXT("The queued command specifies ranged front"),
+        Pending.front().command.kind == battle::CommandKind::SetRankPriority &&
+        Pending.front().command.rank_priority == RankPriority::RangedFront);
+    TestTrue(TEXT("The sheet highlights the requested order while it is pending"),
+        State(Pending).RankOrder == Order::RankRanged &&
+        State(Pending).Delivery == ERegimentOrderDelivery::Queued);
+    if (TestTrue(TEXT("The simulation receives the change"), bool(battle::Step(World, Pending, {}, Navigation))))
+    {
+        TestTrue(TEXT("The order is retained after the simulation step"),
+            battle::FindRegiment(World, Friendly)->rank_priority == RankPriority::RangedFront);
+        TestTrue(TEXT("The officer can hand rank decisions back to the AI"),
+            State().RankOrder == Order::RankRanged);
+        Pending.clear();
+        QueueOrder(World, Navigation, Friendly, Order::RankAuto, {}, Pending, Sequence);
+        TestTrue(TEXT("Automatic mode is queued for the same regiment"),
+            Pending.size() == 1 && Pending.front().command.regiment == Friendly &&
+            Pending.front().command.rank_priority == RankPriority::Automatic);
+    }
+    return !HasAnyErrors();
+}
+
 #endif

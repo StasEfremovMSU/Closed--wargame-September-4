@@ -78,6 +78,36 @@ inline FVector RegimentFlightCameraLocation(FVector Position, const FVector& Ori
     return Position;
 }
 
+class FRegimentFollowCamera
+{
+public:
+    void Frame(double ViewYaw, int32 Strength)
+    {
+        Orbit = FRotator(-43.0, ViewYaw, 0.0);
+        Distance = FMath::Clamp(1800.0 + 210.0 * FMath::Sqrt(double(FMath::Max(1, Strength))), 2600.0, 9400.0);
+    }
+
+    void Zoom(double Steps)
+    {
+        Distance = FMath::Clamp(Distance * FMath::Pow(.80, FMath::Clamp(Steps, -5., 5.)), 1300.0, 12000.0);
+    }
+
+    FRegimentView Advance(const FRegimentView& Current, FVector Target, float DeltaSeconds,
+        FVector Origin, battle::MarchField Field, const std::optional<battle::TerrainHill>& Hill) const
+    {
+        const float Step = FMath::Clamp(DeltaSeconds, 0.f, .1f);
+        const FVector Desired = RegimentFlightCameraLocation(Target - Orbit.Vector() * Distance, Origin, Field, Hill);
+        const FVector Location = RegimentFlightCameraLocation(
+            FMath::VInterpTo(Current.Location, Desired, Step, 5.5f), Origin, Field, Hill);
+        const auto Aim = (Target - Location).Rotation();
+        return {Location, FMath::RInterpTo(Current.Rotation, Aim, Step, 7.5f)};
+    }
+
+private:
+    FRotator Orbit = FRotator(-43.0, 0.0, 0.0);
+    double Distance = 3400.0;
+};
+
 inline FVector RegimentCameraZoomTarget(const FVector& Camera, const FVector& Anchor, double Steps,
     const FVector& Origin, battle::MarchField Field, const std::optional<battle::TerrainHill>& Hill)
 {

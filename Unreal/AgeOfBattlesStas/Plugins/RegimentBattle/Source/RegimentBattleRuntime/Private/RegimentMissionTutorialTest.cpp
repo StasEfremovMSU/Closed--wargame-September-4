@@ -173,23 +173,48 @@ bool FRegimentTutorialDeploymentTest::RunTest(const FString&)
                     AddInfo(Line);
                 return false;
             }
-            const float EnemyMark = Enemy->center.x;
-            if (!Queue(ERegimentPlayerOrder::Attack, Enemy->center))
+            const auto BeforeAssault = Progress.Status(World).ToString();
+            if (!Queue(ERegimentPlayerOrder::MeleeAssault, Enemy->center))
                 return false;
-            for (int32 Index = 0; Index < 90 && Progress.TutorialMarker() &&
-                Progress.TutorialMarker()->center.x > EnemyMark - 10.f; ++Index)
+            bool bMeleeHit = false;
+            unsigned AssaultShots = 0;
+            for (int32 Index = 0; Index < 450 && Progress.Status(World).ToString() == BeforeAssault; ++Index)
+            {
                 if (!DoStep())
                     return false;
+                for (const auto& Event : World.events)
+                {
+                    const auto* Source = battle::FindUnit(World, Event.source);
+                    const auto* TargetUnit = battle::FindUnit(World, Event.target);
+                    if (!Source || Source->regiment != Formation->id)
+                        continue;
+                    AssaultShots += Event.kind == battle::EventKind::AttackLaunched && Event.projectile;
+                    bMeleeHit |= Event.kind == battle::EventKind::Hit && !Event.projectile &&
+                        TargetUnit && TargetUnit->regiment == LiveEnemy;
+                }
+            }
+            TestEqual(TEXT("The assaulting line does not fire another volley"), AssaultShots, 0u);
+            if (!TestTrue(TEXT("The chosen enemy actually takes a melee hit before the exercise can advance"), bMeleeHit))
+                return false;
             const auto Fallback = Progress.TutorialMarker();
-            if (!TestTrue(TEXT("A delivered attack order opens the retreat phase"), Fallback &&
-                Fallback->center.x < Formation->pose.position.x - 2.f))
+            if (!TestTrue(TEXT("Melee contact opens the retreat phase"), Fallback &&
+                Fallback->center.x < Formation->pose.position.x - 2.f &&
+                Formation->rally_point == Fallback->center))
                 return false;
-            const auto Routes = RegimentOfficerOrders::PreviewManeuver(
-                World, Nav, {1}, Fallback->center, {}, false, true);
-            const auto Notice = RegimentOfficerOrders::QueueManeuver(
-                World, Routes, battle::OrderType::FallBack, battle::MovementPace::March, Pending, Sequence, Nav);
-            if (!TestTrue(Notice.ToString(), !Pending.empty()) || !DoStep())
-                return false;
+            if (Formation->melee_engaged || Formation->panic)
+            {
+                if (!Queue(ERegimentPlayerOrder::Withdraw))
+                    return false;
+            }
+            else
+            {
+                const auto Routes = RegimentOfficerOrders::PreviewManeuver(
+                    World, Nav, {1}, Fallback->center, {}, false, true);
+                const auto Notice = RegimentOfficerOrders::QueueManeuver(
+                    World, Routes, battle::OrderType::FallBack, battle::MovementPace::March, Pending, Sequence, Nav);
+                if (!TestTrue(Notice.ToString(), !Pending.empty()) || !DoStep())
+                    return false;
+            }
             for (int32 Index = 0; Index < 200 && World.outcome == battle::BattleOutcome::Running; ++Index)
                 if (!DoStep())
                     return false;
@@ -359,7 +384,7 @@ bool FRegimentTutorialCavalryTest::RunTest(const FString&)
             if (!TestTrue(TEXT("Reaching the flank opens an attack, not a rear maneuver"),
                 FlankOpponent && FlankTarget && FlankTarget->center == FlankOpponent->pose.position))
                 return false;
-            if (!Order(Horse->id, ERegimentPlayerOrder::Attack, FlankTarget->center))
+            if (!Order(Horse->id, ERegimentPlayerOrder::MeleeAssault, FlankTarget->center))
                 return false;
             const auto BeforeAttack = Horse->pose.position;
             for (int32 Tick = 0; Tick < 105 && Progress.TutorialMarker() &&
@@ -368,7 +393,7 @@ bool FRegimentTutorialCavalryTest::RunTest(const FString&)
                     return false;
             if (!TestTrue(TEXT("The player attack is delivered on the flank before the route opens to the rear"),
                 Progress.TutorialMarker() && Progress.TutorialMarker()->center != FlankTarget->center &&
-                Horse->order && Horse->order->type == battle::OrderType::Attack &&
+                Horse->order && Horse->order->type == battle::OrderType::MeleeAssault &&
                 Horse->order->target_regiment == FlankOpponent->id &&
                 Horse->order->priority == battle::PlayerOrderPriority &&
                 battle::Distance(Horse->pose.position, BeforeAttack) >= 2.5f && !Horse->melee_engaged))
@@ -377,7 +402,7 @@ bool FRegimentTutorialCavalryTest::RunTest(const FString&)
     }
 
     const auto Enemy = Progress.TutorialMarker();
-    if (!Enemy || !Order(Horse->id, ERegimentPlayerOrder::Attack, Enemy->center))
+    if (!Enemy || !Order(Horse->id, ERegimentPlayerOrder::MeleeAssault, Enemy->center))
         return false;
     for (int32 Tick = 0; Tick < 420 && Progress.TutorialMarker() &&
         Progress.TutorialMarker()->center == Enemy->center; ++Tick)

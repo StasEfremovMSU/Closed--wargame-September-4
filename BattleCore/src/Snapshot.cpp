@@ -62,6 +62,7 @@ Result<World> Restore(const Snapshot &s) {
             uint8_t(u.control) > uint8_t(ControlMode::Dead) ||
             ((u.control == ControlMode::Dead) == u.alive) || !Finite(u.slot) ||
             !Finite(u.desired_velocity) || !Finite(u.contact_travel) ||
+            (u.rout_waypoint && !w.scenario.rules.individual_rout) ||
             !std::isfinite(u.jump_base_z) || !std::isfinite(u.parry_yaw) ||
             u.jump_started_tick > w.tick || (!u.jump_started_tick && u.jump_base_z != 0.f) ||
             (u.parry_until && (u.parry_until <= w.tick || u.parry_until > u.parry_ready_tick)) ||
@@ -98,13 +99,23 @@ Result<World> Restore(const Snapshot &s) {
             r.artillery_pressure < 0.f || r.artillery_pressure > 1.f ||
             !normalized(r.morale) || !normalized(r.cohesion) || !normalized(r.fatigue) ||
             (r.retreat_waypoint && !Finite(*r.retreat_waypoint)) ||
-            uint8_t(r.ai_action) > uint8_t(OrderType::Pursue) ||
+            uint8_t(r.ai_action) > uint8_t(OrderType::MeleeAssault) ||
+            r.rank_priority > RankPriority::MeleeFront || r.rank_layout > RankPriority::MeleeFront ||
             uint8_t(r.cavalry_phase) > uint8_t(CavalryPhase::Reform) ||
             !(r.charge_runup_m >= 0.f && r.charge_runup_m <= 12.f) ||
             r.separate_since > w.tick || r.contact_end_tick > w.tick ||
+            r.melee_contact_since > w.tick ||
+            ((r.melee_contact_since || r.melee_recovery_until) &&
+             (!w.scenario.rules.regiment_tactics || !w.scenario.rules.sustained_melee)) ||
+            (r.melee_contact_since && (!r.melee_engaged || r.melee_recovery_until)) ||
+            (r.melee_recovery_until &&
+             (r.melee_recovery_until <= w.tick || r.melee_recovery_until - w.tick > 34)) ||
             r.discipline_window_count > r.initial_count ||
             r.melee_attack_aspects > 3 ||
             !Finite(r.rout_direction) || Length(r.rout_direction) > 1.001f ||
+            (r.individual_routing && (!w.scenario.rules.individual_rout || !r.panic)) ||
+            ((r.rout_to_rally || r.rout_progress_tick) && !r.individual_routing) ||
+            r.rout_progress_tick > w.tick ||
             (r.ai_target && !FindRegiment(w, r.ai_target)) ||
             (r.cavalry_target && !FindRegiment(w, r.cavalry_target)) ||
             (r.pursuit_target && !FindRegiment(w, r.pursuit_target)) ||
@@ -131,6 +142,7 @@ Result<World> Restore(const Snapshot &s) {
         for (auto id : r.units) {
             auto *u = FindUnit(w, id);
             if (!u || !u->alive || u->regiment != r.id || u->slot_index >= r.slots.size() ||
+                (r.individual_routing && !r.route.empty() && u->rout_waypoint > r.route.size()) ||
                 !members.insert(id.value).second)
                 return bad("duplicate or missing live membership");
         }
@@ -161,7 +173,9 @@ Result<World> Restore(const Snapshot &s) {
             !std::isfinite(a.damage) || a.damage < 0 || !std::isfinite(a.range_m) || a.range_m <= 0 ||
             ((a.charge || a.pursuit) && a.projectile) || (a.charge && a.pursuit) ||
             (a.round_shot && (!a.projectile || FindUnit(w, a.source)->platform != BattlePlatform::FieldGun ||
-                              !Finite(a.round_shot->origin) || !Finite(a.round_shot->aim))))
+                              !Finite(a.round_shot->origin) || !Finite(a.round_shot->aim))) ||
+            (a.officer_arrow && (!w.scenario.rules.controlled_arrow_aim || !a.projectile || a.round_shot ||
+                                 !Finite(a.officer_arrow->origin) || !Finite(a.officer_arrow->aim))))
             return bad("invalid pending attack");
     for (const auto &cloud : w.smoke)
         if (!Finite(cloud.center) || !std::isfinite(cloud.radius_m) || cloud.radius_m <= 0.f ||
@@ -178,8 +192,11 @@ Result<World> Restore(const Snapshot &s) {
         if (!e.sequence || !queued.insert(e.sequence).second ||
             !std::binary_search(w.accepted_sequences.begin(), w.accepted_sequences.end(),
                                 e.sequence) ||
-            e.tick < w.tick || uint8_t(e.command.kind) > uint8_t(CommandKind::FireFieldGun) ||
+            e.tick < w.tick || uint8_t(e.command.kind) > uint8_t(CommandKind::SetStationaryThreatFacing) ||
             e.command.formation.shape > FormationShape::Circle ||
+            !ValidSlotStagger(e.command.formation.slot_stagger) ||
+            (e.command.kind == CommandKind::SetRankPriority &&
+             e.command.rank_priority > RankPriority::MeleeFront) ||
             !Finite(e.command.pose) || !Finite(e.command.velocity) ||
             !ValidOrderShape(e.command.order))
             return bad("invalid queued command");
@@ -258,6 +275,10 @@ struct Hash {
             n(0x5348415045ull);
             n(uint8_t(s.shape));
         }
+        if (s.slot_stagger != 0.f) {
+            n(0x53544147474552ull);
+            f(s.slot_stagger);
+        }
     }
     void weapon(const WeaponSpec &s) {
         f(s.damage);
@@ -313,6 +334,10 @@ struct Hash {
             n(c.skirmishers_enabled);
         if (c.kind == CommandKind::SetRegimentFollowing)
             n(c.follow_enabled);
+        if (c.kind == CommandKind::SetRankPriority)
+            n(uint8_t(c.rank_priority));
+        if (c.kind == CommandKind::SetStationaryThreatFacing)
+            n(c.stationary_threat_facing);
     }
     void unit(const UnitSpec &u) {
         n(u.id.value);
@@ -397,6 +422,10 @@ uint64_t StateHash(const World &w) {
             h.text("secondary javelin cooldown");
             h.n(u.ranged_ready_tick);
         }
+        if (u.rout_waypoint) {
+            h.text("rout_waypoint");
+            h.n(u.rout_waypoint);
+        }
         if (u.dagger_drawn || u.skirmisher || u.skirmisher_returning || u.bypassing ||
             u.dagger_ready_tick || u.contact_travel != Vec3{}) {
             h.text("local combat");
@@ -472,6 +501,11 @@ uint64_t StateHash(const World &w) {
         h.n(r.decision_until);
         h.n(uint8_t(r.ai_action));
         h.n(r.ai_target.value);
+        if (r.rank_priority != RankPriority::Automatic || r.rank_layout != RankPriority::Automatic) {
+            h.text("regiment ranks");
+            h.n(uint8_t(r.rank_priority));
+            h.n(uint8_t(r.rank_layout));
+        }
         if (r.following_officer || r.follow_replan_tick) {
             h.text("regiment follow");
             h.n(r.following_officer.value);
@@ -519,9 +553,19 @@ uint64_t StateHash(const World &w) {
             h.n(r.cannot_rally);
             h.vec(r.rout_direction);
         }
+        if (r.individual_routing) {
+            h.text("individual_routing");
+            h.n(r.rout_to_rally);
+            h.n(r.rout_progress_tick);
+        }
         if (r.melee_attack_aspects) {
             h.text("melee attack aspects");
             h.n(r.melee_attack_aspects);
+        }
+        if (r.melee_contact_since || r.melee_recovery_until) {
+            h.text("sustained melee");
+            h.n(r.melee_contact_since);
+            h.n(r.melee_recovery_until);
         }
     }
     for (const auto &o : w.officers) {
@@ -554,6 +598,11 @@ uint64_t StateHash(const World &w) {
             h.vec(a.round_shot->origin);
             h.vec(a.round_shot->aim);
         }
+        if (a.officer_arrow) {
+            h.text("officer arrow trajectory");
+            h.vec(a.officer_arrow->origin);
+            h.vec(a.officer_arrow->aim);
+        }
     }
     h.n(w.pending_orders.size());
     for (auto &o : w.pending_orders)
@@ -579,6 +628,22 @@ uint64_t StateHash(const World &w) {
         h.text("adaptive_battle");
     if (rules.linear_infantry)
         h.text("linear_infantry");
+    if (rules.mixed_rank_tactics)
+        h.text("mixed_rank_tactics");
+    if (rules.formed_fire_on_skirmishers)
+        h.text("formed_fire_on_skirmishers");
+    if (rules.sustained_melee)
+        h.text("sustained_melee");
+    if (rules.controlled_arrow_aim)
+        h.text("controlled_arrow_aim");
+    if (rules.individual_rout)
+        h.text("individual_rout");
+    if (rules.stationary_threat_facing) {
+        h.text("stationary_threat_facing");
+        h.n(*rules.stationary_threat_facing);
+    }
+    if (rules.meeting_engagement)
+        h.text("meeting_engagement");
     h.n(w.scenario.obstacles.size());
     for (auto &o : w.scenario.obstacles) {
         h.f(o.min_x);

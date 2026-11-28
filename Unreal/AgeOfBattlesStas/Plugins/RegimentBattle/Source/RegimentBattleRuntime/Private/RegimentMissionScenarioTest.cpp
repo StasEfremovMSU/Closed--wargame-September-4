@@ -283,7 +283,7 @@ bool FRegimentMissionScenarioTest::RunTest(const FString& Parameters)
         battle::Footprint(*MaximumMounted).width_m < 2.f * battle::MarchCrossings.front().half_width);
 
     for (auto& Entry : Roster)
-        Entry = {MissionMaxSwords, MissionMaxArchers};
+        Entry = {MissionMaxSwords, MissionMaxSpecialists - MissionMaxSwords};
     const auto LargeResult = battle::CreateWorld(BuildMissionBattle(Roster, Companies), 42);
     if (!TestTrue(TEXT("The maximum two-army roster deploys"), bool(LargeResult)))
         return false;

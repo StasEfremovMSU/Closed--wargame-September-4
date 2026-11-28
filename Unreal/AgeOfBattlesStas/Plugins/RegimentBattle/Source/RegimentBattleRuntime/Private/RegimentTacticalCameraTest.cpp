@@ -91,6 +91,41 @@ bool FRegimentCameraZoomTest::RunTest(const FString& Parameters)
     return !HasAnyErrors();
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentCameraFollowTest, "RegimentBattle.Presentation.RegimentFollow",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+
+bool FRegimentCameraFollowTest::RunTest(const FString&)
+{
+    const FVector Origin(0, 0, 50);
+    const battle::MarchField Field{540, 420};
+    FRegimentFollowCamera Follow;
+    Follow.Frame(78.0, 500);
+    const FVector FirstTarget(12500, -7600, 350);
+    FRegimentView View{Origin + FVector(-5500, 450, 3800), FRotator(-38, 20, 0)};
+    const auto First = Follow.Advance(View, FirstTarget, 1.f / 60.f, Origin, Field, {});
+    TestTrue(TEXT("A roster selection moves the camera into frame without teleporting"),
+        FVector::Dist(First.Location, View.Location) < 2500.f && !First.Location.Equals(View.Location));
+    const auto Track = [&](FVector Target)
+    {
+        for (int32 Frame = 0; Frame < 90; ++Frame)
+            View = Follow.Advance(View, Target, 1.f / 60.f, Origin, Field, {});
+    };
+    Track(FirstTarget);
+    TestTrue(TEXT("The regiment stays in the middle of the viewport"),
+        FVector::DotProduct(View.Rotation.Vector(), (FirstTarget - View.Location).GetSafeNormal()) > .999);
+    const auto Before = View.Location;
+    const FVector SecondTarget = FirstTarget + FVector(500, 250, 30);
+    Track(SecondTarget);
+    TestTrue(TEXT("The camera continues tracking a moving regiment"),
+        (View.Location - Before).Equals(SecondTarget - FirstTarget, 5.f));
+    const double BeforeZoom = FVector::Dist(View.Location, SecondTarget);
+    Follow.Zoom(2.f);
+    Track(SecondTarget);
+    TestTrue(TEXT("Zoom keeps following the same subject"), FVector::Dist(View.Location, SecondTarget) < BeforeZoom &&
+        FVector::DotProduct(View.Rotation.Vector(), (SecondTarget - View.Location).GetSafeNormal()) > .999);
+    return !HasAnyErrors();
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentOfficerLodRangeTest, "RegimentBattle.Presentation.OfficerLodRange",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
 

@@ -15,11 +15,11 @@ inline FVector RegimentTerrainLocation(const battle::Vec3& Position, const FVect
 
 enum class ERegimentGroundMaterial : int32
 {
-    Meadow, Crest, Road, Field, Wood, Water, Ford, Marsh, Ditch, EarthBank, BankTurf
+    Meadow, Crest, Road, Field, Wood, Water, Ford, Marsh, Ditch, EarthBank, BankTurf, Scree, Limestone
 };
 
 UE::Geometry::FDynamicMesh3 BuildRegimentGroundMesh(const battle::TerrainHill* Hill, double HalfWidthCm,
-    double HalfDepthCm, std::span<const battle::Obstacle> Areas);
+    double HalfDepthCm, std::span<const battle::Obstacle> Areas, bool bCoastalEscarpment = false);
 
 UE::Geometry::FDynamicMesh3 BuildRegimentRoadMesh(const battle::TerrainHill* Hill, double HalfWidthCm,
     double HalfDepthCm, std::span<const battle::Obstacle> Areas);

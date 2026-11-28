@@ -5,6 +5,7 @@ namespace battle {
 inline constexpr std::string_view FieldGunCanisterReason = "field gun canister";
 inline constexpr std::string_view FieldGunRoundShotReason = "field gun round shot";
 inline constexpr std::string_view FieldGunRejectedReason = "field gun unavailable or target blocked";
+inline constexpr std::string_view OfficerArrowDodgeReason = "officer moved clear of arrow";
 inline constexpr float FieldGunOfficerReachM = 14.f;
 enum class FireLaneMask : uint8_t { Clear, Cover, Terrain, Friendly, Melee, Risky };
 struct FireSectorSegment {

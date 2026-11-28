@@ -1122,4 +1122,62 @@ bool FExpandedBattalionPresetTest::RunTest(const FString&)
     return !HasAnyErrors();
 }
 
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentMissionShooterSpecializationTest,
+    "RegimentBattle.MissionPresets.ShooterSpecialization",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+
+bool FRegimentMissionShooterSpecializationTest::RunTest(const FString&)
+{
+    const FMissionPresetTestFolder Folder;
+    FMissionPreset Original;
+    Original.Name = TEXT("Стрелковый полк");
+    Original.Terrain = battle::MarchTerrain::OpenField;
+    Original.Roster[0] = {0, MissionMaxSpecialists};
+    Original.Roster[1] = {30, 28, 20};
+    TestEqual(TEXT("A dedicated shooter unit can use all the infantry slots"),
+        Original.Roster[0].Clamped().Archers, MissionMaxSpecialists);
+    TestEqual(TEXT("The combined infantry limit is respected even while editing"),
+        FMissionRosterEntry(MissionMaxSwords, MissionMaxSpecialists).Total(), MissionMaxRegiment);
+
+    FMissionPreset Loaded;
+    FGuid CopyId;
+    FText Error;
+    if (TestTrue(TEXT("Authoring accepts specialist and mixed formations"),
+        RegimentMissionPresets::SaveCopy(Folder.Path, Original, CopyId, Error)) &&
+        TestTrue(TEXT("The new preset loads again"),
+            RegimentMissionPresets::Load(Folder.Path, CopyId, Loaded, Error)))
+    {
+        TestEqual(TEXT("Keeps all archers in the specialized regiment"), Loaded.Roster[0].Archers, MissionMaxSpecialists);
+        TestTrue(TEXT("The player can still author a mixed regiment"),
+            Loaded.Roster[1].Swords == Original.Roster[1].Swords &&
+            Loaded.Roster[1].Archers == Original.Roster[1].Archers &&
+            Loaded.Roster[1].Spearmen == Original.Roster[1].Spearmen);
+    }
+
+    int32 Foot = 0, Specialist = 0, Ranged = 0;
+    for (const auto& Item : RegimentMissionPresets::BuiltIns())
+    {
+        if (!Item.bHistorical)
+            continue;
+        FMissionPreset Preset;
+        if (!TestTrue(TEXT("Historical preset loads"), RegimentMissionPresets::LoadBuiltIn(Item.Id, Preset)))
+            continue;
+        for (const auto& Entry : Preset.Roster)
+        {
+            if (!Entry.bEnabled || Entry.bCavalry || Entry.Platform != battle::BattlePlatform::None ||
+                !Entry.InfantryProfile.IsEmpty())
+                continue;
+            ++Foot;
+            const int32 Roles = int32(Entry.Swords > 0) + int32(Entry.Archers > 0) + int32(Entry.Spearmen > 0);
+            Specialist += Roles == 1;
+            Ranged += Roles == 1 && Entry.Archers > 0;
+        }
+    }
+    TestTrue(TEXT("At least two thirds of unprofiled historical infantry regiments specialize"),
+        Foot > 0 && Specialist * 3 >= Foot * 2);
+    TestTrue(TEXT("The campaign library contains dedicated shooter regiments"), Ranged >= 35);
+    return !HasAnyErrors();
+}
+
 #endif

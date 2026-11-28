@@ -3,25 +3,21 @@
 #include "battle/Control.h"
 #include "battle/command/Services.h"
 #include "FieldCombat.h"
+#include "LocalMelee.h"
+#include "Routing.h"
 #include <array>
 #include <limits>
 namespace battle {
 namespace {
 constexpr float RegimentSightRange = 60.f;
 
-PathResult FindRoutExit(const NavigationService &navigation, const World &world,
-                        const RegimentState &regiment, Vec3 limit) {
-    const auto current = regiment.pose.position;
+PathResult FindRoutExit(const NavigationService &navigation, const RegimentState &regiment,
+                        PathRequest request, Vec3 limit) {
+    const auto current = request.start.position;
     const float x = std::clamp(current.x, -limit.x, limit.x);
     const float y = std::clamp(current.y, -limit.y, limit.y);
     // Fleeing soldiers can pass through allied formations. The navigation terrain
     // and the formation's movement sweep still govern the route around obstacles.
-    PathRequest request{.start = regiment.pose, .footprint = Footprint(regiment), .face_travel = true};
-    const auto *lead = FindUnit(world, regiment.units.front());
-    if (world.scenario.hill && lead && lead->troop == UnitTroop::Mounted)
-        request.segment_clear = [hill = *world.scenario.hill](Pose from, Pose to) {
-            return HillSegmentPassable(hill, from.position, to.position, UnitTroop::Mounted);
-        };
     const auto path_to = [&](Vec3 goal) {
         request.goal = goal;
         return navigation.FindPath(request);
@@ -61,6 +57,83 @@ PathResult FindRoutExit(const NavigationService &navigation, const World &world,
     return {Status::NoPath, {}};
 }
 
+PathResult FindRoutExit(const NavigationService &navigation, const World &world,
+                        const RegimentState &regiment, Vec3 limit) {
+    PathRequest request{.start = regiment.pose, .footprint = Footprint(regiment), .face_travel = true};
+    const auto *lead = FindUnit(world, regiment.units.front());
+    if (world.scenario.hill && lead && lead->troop == UnitTroop::Mounted)
+        request.segment_clear = [hill = *world.scenario.hill](Pose from, Pose to) {
+            return HillSegmentPassable(hill, from.position, to.position, UnitTroop::Mounted);
+        };
+    return FindRoutExit(navigation, regiment, request, limit);
+}
+
+void PlanIndividualRout(World &world, const NavigationService &navigation, RegimentState &regiment,
+                        bool rallying) {
+    const bool changed_goal = regiment.rout_to_rally != rallying;
+    if (!changed_goal && !regiment.route.empty() && world.tick < regiment.rout_progress_tick + 30)
+        return;
+    if (!changed_goal && world.tick < regiment.decision_tick)
+        return;
+
+    const auto *lead = FindUnit(world, regiment.units.front());
+    const float radius = regiment.formation.body_radius_m;
+    Vec3 start = regiment.pose.position;
+    if (UnitTerrainLimit(world, start, start, radius) < 1.f) {
+        float nearest = std::numeric_limits<float>::infinity();
+        for (const auto id : regiment.units) {
+            const auto &unit = *FindUnit(world, id);
+            if (unit.control == ControlMode::PlayerControlled)
+                continue;
+            const auto at = unit.pose.position;
+            const float distance = Distance(at, regiment.pose.position);
+            if (distance < nearest && UnitTerrainLimit(world, at, at, radius) >= 1.f) {
+                start = at;
+                nearest = distance;
+            }
+        }
+    }
+    const auto *hill = world.scenario.hill ? &*world.scenario.hill : nullptr;
+    PathRequest request{.start = {start, 0.f}, .goal = regiment.rally_point,
+                        .footprint = {2.f * radius, 2.f * radius}, .preserve_facing = true};
+    request.segment_clear = [&world, hill, radius, troop = lead->troop](Pose from, Pose to) {
+        return UnitTerrainLimit(world, from.position, to.position, radius) >= 1.f &&
+            (!hill || HillSegmentPassable(*hill, from.position, to.position, troop));
+    };
+    // The static graph is shared by all fugitives. Include live enemy formations only after
+    // a previously valid escape stalled, so a regiment can still break from an existing contact.
+    std::vector<FormationBlock> enemies;
+    if (!changed_goal && !regiment.route.empty()) {
+        for (const auto &other : world.regiments)
+            if (other.team != regiment.team && !other.units.empty() && !other.panic &&
+                Distance(other.pose.position, regiment.pose.position) <= 12.f)
+                enemies.push_back({other.pose, Footprint(other)});
+        if (enemies.empty()) {
+            regiment.decision_tick = world.tick + 30;
+            return;
+        }
+        request.occupied = enemies;
+    }
+    const auto path = [&] {
+        if (rallying || !world.scenario.field_bounds)
+            return navigation.FindPath(request);
+        const auto limit = TerrainFieldInset(*world.scenario.field_bounds, 0.f, radius, radius);
+        return FindRoutExit(navigation, regiment, request, limit);
+    }();
+    regiment.decision_tick = world.tick + 30;
+    if (path.status != Status::Ok && !changed_goal && !regiment.route.empty())
+        return;
+    regiment.ai_action = OrderType::Withdraw;
+    regiment.ai_target = {};
+    regiment.retreat_waypoint.reset();
+    regiment.waypoint = 0;
+    regiment.rout_to_rally = rallying;
+    regiment.route = path.status == Status::Ok ? RoutWaypoints(start, path.waypoints) : std::vector<Pose>{};
+    regiment.rout_progress_tick = world.tick;
+    for (const auto id : regiment.units)
+        FindUnit(world, id)->rout_waypoint = 0;
+}
+
 Perception ObserveRegiment(const World &w, const RegimentState &r) {
     Perception p;
     p.regiment = r.id;
@@ -96,22 +169,87 @@ Perception ObserveRegiment(const World &w, const RegimentState &r) {
     return p;
 }
 
+void UpdateMixedRanks(World &world, RegimentState &regiment, const Perception &perception) {
+    if (regiment.panic || regiment.disordered || regiment.melee_engaged ||
+        !SupportsRankPriority(world, regiment))
+        return;
+    RankPriority automatic = RankPriority::RangedFront;
+    if (regiment.rank_priority == RankPriority::Automatic) {
+        if (UsesLinearInfantry(world, regiment)) {
+            // Linear doctrine already distinguishes firing lines from assault columns.
+            UpdateRegimentRankLayout(world, regiment, RankPriority::Automatic);
+            return;
+        }
+        const auto own = Footprint(regiment);
+        for (const auto &contact : perception.enemies) {
+            const auto &enemy = *FindRegiment(world, contact.id);
+            if (enemy.panic)
+                continue;
+            const auto delta = enemy.pose.position - regiment.pose.position;
+            const float distance = std::hypot(delta.x, delta.y);
+            const auto axis = distance > .001f ? Vec3{delta.x / distance, delta.y / distance, 0.f}
+                                                : Forward(regiment.pose.yaw);
+            const auto edge = [&](Pose pose, FormationFootprint size) {
+                return .5f * (std::abs(Dot(axis, Forward(pose.yaw))) * size.depth_m +
+                              std::abs(Dot(axis, Right(pose.yaw))) * size.width_m);
+            };
+            const float gap = distance - edge(regiment.pose, own) - edge(enemy.pose, Footprint(enemy));
+            // Allow time to cross into rank. Keep the screen up until the enemy is clearly away.
+            const float approach = std::max(8.f, 2.5f * FormationTravelSpeed(world, enemy));
+            const float buffer = regiment.rank_layout == RankPriority::MeleeFront ? 5.f : 0.f;
+            if (gap <= approach + buffer) {
+                automatic = RankPriority::MeleeFront;
+                break;
+            }
+        }
+    }
+    UpdateRegimentRankLayout(world, regiment, automatic);
+}
+
+void UpdateManeuverRanks(World &world, RegimentState &regiment, bool automatic_due) {
+    if (regiment.rank_priority != RankPriority::Automatic) {
+        UpdateRegimentRankLayout(world, regiment, regiment.rank_layout);
+    } else if (automatic_due && !regiment.melee_engaged && !regiment.panic &&
+               !regiment.disordered && SupportsRankPriority(world, regiment)) {
+        UpdateMixedRanks(world, regiment, ObserveRegiment(world, regiment));
+    }
+}
+
 std::optional<Pose> HoldingThreatFacing(const World &world, const RegimentState &regiment,
                                         const Perception &perception) {
     const auto size = Footprint(regiment);
     const float threat_range = std::max(30.f, 12.f + .5f * std::max(size.width_m, size.depth_m));
     const auto origin = regiment.pose.position;
+    const bool enhanced = world.scenario.rules.stationary_threat_facing.value_or(false);
+    const float facing = enhanced && regiment.waypoint < regiment.route.size()
+        ? regiment.route.back().yaw : regiment.pose.yaw;
+    constexpr float SwitchMargin = 4.f;
+    std::optional<Pose> closest, aligned;
+    float closest_distance = 0.f, aligned_distance = 0.f;
     for (const auto &contact : perception.enemies) {
-        if (contact.distance > threat_range)
+        if (contact.distance > threat_range + (enhanced ? SwitchMargin : 0.f))
             break;
         const auto delta = contact.position - origin;
         if (std::hypot(delta.x, delta.y) <= .01f ||
+            (enhanced && FindRegiment(world, contact.id)->panic) ||
             !command::HasLineOfSight(origin, contact.position, world.scenario.obstacles) ||
             SmokeObscures(world, origin, contact.position))
             continue;
-        return Pose{origin, std::atan2(delta.y, delta.x)};
+        const Pose aim{origin, std::atan2(delta.y, delta.x)};
+        if (!enhanced)
+            return aim;
+        if (!closest && contact.distance <= threat_range) {
+            closest = aim;
+            closest_distance = contact.distance;
+        }
+        if (!aligned && std::abs(std::remainder(aim.yaw - facing, 2.f * Pi)) <= .35f) {
+            aligned = aim;
+            aligned_distance = contact.distance;
+        }
+        if (closest && aligned)
+            break;
     }
-    return std::nullopt;
+    return aligned && (!closest || aligned_distance <= closest_distance + SwitchMargin) ? aligned : closest;
 }
 
 PathResult FindHoldPivot(const NavigationService &nav, const World &world,
@@ -329,6 +467,8 @@ Decision Evaluate(const Perception &p, const OfficerTraits &traits, const Order 
         } else {
             d.target = target->id;
             d.point = AttackPosition(p.pose.position, target->position, p.preferred_range);
+            if (d.action == OrderType::MeleeAssault)
+                d.reason = "close with the enemy in an ordered melee assault";
         }
     }
     return d;
@@ -422,7 +562,9 @@ void UpdateOfficers(World &w, const NavigationService &nav) {
             shared_maneuver[FindRegiment(w, id) - w.regiments.data()] = true;
     }
     for (auto &r : w.regiments) {
+        const bool follow_replan_due = w.tick >= r.follow_replan_tick;
         if (r.following_officer && UpdateRegimentFollowing(w, r, nav)) {
+            UpdateManeuverRanks(w, r, follow_replan_due);
             if (r.order && r.order->expiry_tick && r.order->expiry_tick <= w.tick)
                 r.order->status = OrderStatus::Cancelled;
             continue;
@@ -432,6 +574,11 @@ void UpdateOfficers(World &w, const NavigationService &nav) {
         if (shared_maneuver[&r - w.regiments.data()]) {
             r.ai_action = OrderType::MoveTo;
             r.ai_target = {};
+            // Long shared routes keep their route plan. Stagger the independent rank decisions.
+            constexpr Tick RankDecisionInterval = 10;
+            const bool rank_decision_due = w.tick % RankDecisionInterval == r.id.value % RankDecisionInterval ||
+                                           (r.separate_since && r.separate_since == w.tick);
+            UpdateManeuverRanks(w, r, rank_decision_due);
             continue;
         }
         bool emergency = false;
@@ -498,6 +645,7 @@ void UpdateOfficers(World &w, const NavigationService &nav) {
         if (!emergency && !active && w.tick < r.decision_tick)
             continue;
         auto p = ObserveRegiment(w, r);
+        UpdateMixedRanks(w, r, p);
         OfficerTraits traits;
         for (auto &o : w.officers)
             if (o.id == commander)
@@ -523,6 +671,8 @@ void UpdateOfficers(World &w, const NavigationService &nav) {
                 }
             }
         }
+        if (active && resolved.type == OrderType::MeleeAssault)
+            p.preferred_range = Perception{}.preferred_range;
         Decision d;
         const bool standing_position = !active && r.order && r.order->player_direct &&
             r.order->status == OrderStatus::Completed &&
@@ -549,7 +699,8 @@ void UpdateOfficers(World &w, const NavigationService &nav) {
                 d.reason = "pursue the fleeing regiment";
             }
         }
-        if (w.scenario.rules.regiment_tactics && d.action == OrderType::Attack && d.target &&
+        if (w.scenario.rules.regiment_tactics &&
+            (d.action == OrderType::Attack || d.action == OrderType::MeleeAssault) && d.target &&
             !r.pursuit_target && FindRegiment(w, d.target)->panic) {
             d.action = OrderType::HoldLine;
             d.reason = "hold the line as the enemy breaks";
@@ -575,6 +726,10 @@ void UpdateOfficers(World &w, const NavigationService &nav) {
             d.reason = "panic: withdraw";
             emergency = true;
             const bool rallying = active && r.order->type == OrderType::Rally && !r.cannot_rally;
+            if (w.scenario.rules.individual_rout && r.individual_routing) {
+                PlanIndividualRout(w, nav, r, rallying);
+                continue;
+            }
             if (w.scenario.rules.regiment_tactics && w.scenario.field_bounds && !rallying) {
                 if (r.retreat_waypoint)
                     continue;
@@ -589,6 +744,12 @@ void UpdateOfficers(World &w, const NavigationService &nav) {
                 if (r.ai_action == OrderType::Withdraw && w.tick < r.decision_tick)
                     continue;
                 d.path = FindRoutExit(nav, w, r, limit);
+                if (w.scenario.rules.individual_rout && d.path.status != Status::Ok) {
+                    r.individual_routing = true;
+                    r.decision_tick = 0;
+                    PlanIndividualRout(w, nav, r, false);
+                    continue;
+                }
                 d.reason = "panic: flee to the battlefield edge";
                 if (d.path.status != Status::Ok)
                     d.path = {Status::Ok, {}};
@@ -637,6 +798,14 @@ void UpdateOfficers(World &w, const NavigationService &nav) {
                                                  task->action == command::TaskKind::Defend);
             const bool holding_post = standing_position ||
                 (active && (resolved.player_direct || assigned_guard || !w.command_state));
+            const bool stationary = r.waypoint >= r.route.size() ||
+                (r.route[r.waypoint].position == r.pose.position && r.route.back().position == r.pose.position);
+            const auto auto_facing = w.scenario.rules.stationary_threat_facing;
+            const bool watch_threat = auto_facing ? *auto_facing && stationary && !r.disordered &&
+                !IsRecoveringFromMelee(w, r) && d.action != OrderType::Brace &&
+                !HasOutwardRanks(r.formation.shape) && r.formation.shape != FormationShape::Testudo &&
+                (!active || IsHolding(resolved.type)) && (!task || assigned_guard)
+                : holding_post;
             if (prescribed) {
                 const Pose facing{r.pose.position, *prescribed};
                 if (std::abs(std::remainder(r.pose.yaw - facing.yaw, 2 * Pi)) >= .01f) {
@@ -645,7 +814,7 @@ void UpdateOfficers(World &w, const NavigationService &nav) {
                     if (!d.keep_route)
                         d.path = FindHoldPivot(nav, w, r, facing);
                 }
-            } else if (w.scenario.rules.regiment_tactics && holding_post && !approach_report) {
+            } else if (w.scenario.rules.regiment_tactics && watch_threat && !approach_report) {
                 // A hold may turn its front toward local pressure, but it does not leave its post.
                 constexpr float FacingTolerance = .08f;
                 const auto aim = HoldingThreatFacing(w, r, p);
@@ -756,8 +925,19 @@ void UpdateOfficers(World &w, const NavigationService &nav) {
                     (d.action == OrderType::MoveTo || IsWithdrawing(d.action));
                 d.path = nav.FindPath({.start = r.pose, .goal = d.point, .footprint = Footprint(r),
                                        .face_travel = face_travel});
+                if (d.path.status == Status::NoPath && w.scenario.rules.meeting_engagement &&
+                    active && d.action == OrderType::MoveTo && !resolved.player_direct &&
+                    r.march_lane && r.march_lane->recovery_attempts == MarchLane::MaxAttempts)
+                    d.path = FindSupportRoute(nav, w, r, d.point);
             }
             d.keep_route = existing_route;
+        }
+        if (w.scenario.rules.regiment_tactics && w.scenario.rules.individual_rout && r.panic && IsWithdrawing(d.action) &&
+            !d.keep_route && d.path.status != Status::Ok) {
+            r.individual_routing = true;
+            r.decision_tick = 0;
+            PlanIndividualRout(w, nav, r, active && r.order->type == OrderType::Rally && !r.cannot_rally);
+            continue;
         }
         if (emergency || !active || w.tick >= r.decision_tick || r.route.empty()) {
             ApplyDecision(w, commander, d);

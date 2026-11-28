@@ -52,6 +52,10 @@ const FLinearColor Edge = FLinearColor(FColor::FromHex(TEXT("475562")));
 const FLinearColor AtlasAccent = FLinearColor(FColor::FromHex(TEXT("C6DAF6")));
 const FLinearColor AtlasSurface = FLinearColor(FColor::FromHex(TEXT("1B2A3B")));
 const FLinearColor AtlasSelected = FLinearColor(FColor::FromHex(TEXT("38546D")));
+const FLinearColor CampaignTint(FColor::FromHex(TEXT("573A2A")));
+const FLinearColor TrainingTint(FColor::FromHex(TEXT("214841")));
+const FLinearColor TrainingAccent(FColor::FromHex(TEXT("B6E8D7")));
+const FSlateRoundedBoxBrush CampaignPlate(CampaignTint, 9.f, FLinearColor(FColor::FromHex(TEXT("876547"))), 1.f);
 const FSlateRoundedBoxBrush Panel(FLinearColor(FColor::FromHex(TEXT("121B24F0"))), 12.f, Edge, 1.f);
 const FSlateRoundedBoxBrush RosterRow(FLinearColor(FColor::FromHex(TEXT("202D38"))), 3.f);
 const FSlateRoundedBoxBrush AtlasBriefing(AtlasSurface, 9.f);
@@ -82,21 +86,6 @@ TSharedRef<SWidget> MakeBackground(const TCHAR* Filename, TAttribute<EVisibility
         ];
 }
 const FSlateColorBrush ModuleRule(Edge);
-
-const FSlateBrush* WaterlooAtlasArt()
-{
-    static const FString Path = FPaths::ConvertRelativePathToFull(
-        FPaths::ProjectContentDir() / TEXT("Battle/UI/AtlasWaterloo.png"));
-    if (!FPaths::FileExists(Path))
-        return &MenuFallback;
-    static const auto Brush = []
-    {
-        auto Art = MakeShared<FSlateDynamicImageBrush>(FName(*Path), FVector2D(1086, 724));
-        Art->SetUVRegion(FBox2f(FVector2f::ZeroVector, FVector2f(1.f, .5f)));
-        return Art;
-    }();
-    return &Brush.Get();
-}
 
 constexpr float EnabledWidth = 44.f;
 constexpr float NameWidth = 114.f;
@@ -152,6 +141,20 @@ const FButtonStyle& ModuleButtonStyle()
         .SetHovered(FSlateRoundedBoxBrush(FLinearColor(FColor::FromHex(TEXT("344653F2"))), 10.f, Brass, 1.f))
         .SetPressed(FSlateRoundedBoxBrush(FLinearColor(FColor::FromHex(TEXT("2E3842"))), 10.f, Brass, 1.f));
     return Style;
+}
+
+const FButtonStyle& ModeButtonStyle(bool bCampaign)
+{
+    const auto MakeStyle = [](const FLinearColor& Base, const FLinearColor& Accent)
+    {
+        return FButtonStyle(ControlStyle())
+            .SetNormal(FSlateRoundedBoxBrush(Base, 10.f, FMath::Lerp(Base, Accent, .38f), 1.f))
+            .SetHovered(FSlateRoundedBoxBrush(FMath::Lerp(Base, Accent, .17f), 10.f, Accent, 1.f))
+            .SetPressed(FSlateRoundedBoxBrush(Base * .85f, 10.f, Accent, 1.f));
+    };
+    static const FButtonStyle Campaign = MakeStyle(CampaignTint, Brass);
+    static const FButtonStyle Training = MakeStyle(TrainingTint, TrainingAccent);
+    return bCampaign ? Campaign : Training;
 }
 
 const FButtonStyle& AtlasRowStyle()
@@ -320,6 +323,69 @@ FText GoalDescription(EMissionGoal Goal)
     }
 }
 
+FText MissionInstruction(const FMissionPreset& Preset)
+{
+    const auto& Goal = Preset.Objective;
+    switch (Goal.Goal)
+    {
+        case EMissionGoal::Crossing:
+            if (Goal.CrossingTeam != 0)
+                return FText::Format(LOCTEXT("DefendCrossingBrief", "Удержите переправу {0} с. Помешайте противнику провести через неё полки."), Goal.TimeLimitSeconds);
+            return FText::Format(LOCTEXT("CrossingBrief", "Проведите полки через переправу. Требуется {0} полков за {1} с."), Goal.RequiredRegiments, Goal.TimeLimitSeconds);
+        case EMissionGoal::Breakthrough:
+            if (Goal.Breakthrough)
+                return FText::Format(LOCTEXT("BreakthroughBrief",
+                    "Выведите пехоту группы {0} к отмеченному рубежу за {1} с. Не менее половины исходного состава каждого из {2} полков должно войти в зону."),
+                    Goal.Breakthrough->Group, Goal.TimeLimitSeconds, Goal.RequiredRegiments);
+            break;
+        case EMissionGoal::HillDefense:
+            return FText::Format(LOCTEXT("HillDefenseBrief", "Удерживайте гребень {0} с. Введите резерв, когда передовой полк ослабнет."), Goal.TimeLimitSeconds);
+        default:
+            break;
+    }
+    return GoalDescription(Goal.Goal);
+}
+
+FText PlayerBriefing(const FMissionPreset& Preset)
+{
+    const auto* Era = RegimentEraCatalog::Find(FStringView(Preset.Era.Id));
+    const auto* Faction = Era ? RegimentEraCatalog::FindFaction(*Era, FStringView(Preset.Era.BlueFaction)) : nullptr;
+    const FText Side = Faction ? FText::FromString(Faction->Name) : LOCTEXT("BriefingBlue", "Синие полки");
+    return FText::Format(LOCTEXT("PlayerBriefing",
+        "{0} под вашим командованием. В бою выберите «Вселиться в офицера» и отдавайте приказы через Tab."), Side);
+}
+
+FText OpeningBriefing(const FMissionPreset& Preset)
+{
+    if (Preset.StartsInBattle())
+        return LOCTEXT("DirectOpeningBrief", "Начало на позициях. Управление офицерами доступно сразу.");
+    return LOCTEXT("MarchOpeningBrief", "Марш → уточнение приказов → бой. Задавайте маршруты с начала марша. После обнаружения противника движение приостановится.");
+}
+
+TSharedRef<SWidget> MakeBriefingMaps(const TOptional<FMissionAuthoringPreview>* Preview)
+{
+    const auto View = [Preview](FText Label, EMissionMapView Kind)
+    {
+        return SNew(SVerticalBox)
+            + SVerticalBox::Slot().AutoHeight().Padding(2, 0, 0, 4)
+            [SNew(STextBlock).Text(Label).Font(FCoreStyle::GetDefaultFontStyle("Bold", 13)).ColorAndOpacity(AtlasAccent)]
+            + SVerticalBox::Slot().AutoHeight()
+            [
+                SNew(SBox).HeightOverride(149.f)
+                [
+                    SNew(SBorder).Padding(0.f).BorderImage(&RosterRow)
+                    [MakeMissionDeploymentMap(Preview, Kind)]
+                ]
+            ];
+    };
+    return SNew(SHorizontalBox)
+        .Visibility_Lambda([Preview] { return Preview->IsSet() ? EVisibility::HitTestInvisible : EVisibility::Collapsed; })
+        + SHorizontalBox::Slot().FillWidth(1.f).Padding(0, 0, 8, 0)
+        [View(LOCTEXT("BriefingTerrainMap", "Местность"), EMissionMapView::Terrain)]
+        + SHorizontalBox::Slot().FillWidth(1.f)
+        [View(LOCTEXT("BriefingDeploymentMap", "Стартовая расстановка"), EMissionMapView::Opening)];
+}
+
 FText RegimentNumber(int32 RegimentIndex)
 {
     return FText::AsNumber(MissionTeamSlot(RegimentIndex) + 1);
@@ -330,11 +396,11 @@ FText MarchTitle(EMissionHudStage Stage)
     switch (Stage)
     {
         case EMissionHudStage::EnemyFound:
-            return LOCTEXT("EnemyFound", "Противник обнаружен");
+            return LOCTEXT("EnemyFound", "Приказы на сближение");
         case EMissionHudStage::MarchWithOrders:
-            return LOCTEXT("MarchWithOrders", "Поход продолжается");
+            return LOCTEXT("MarchWithOrders", "Сближение");
         default:
-            return LOCTEXT("March", "Полки на марше");
+            return LOCTEXT("March", "Марш");
     }
 }
 
@@ -345,9 +411,9 @@ FText MarchDetail(EMissionHudStage Stage)
         case EMissionHudStage::EnemyFound:
             return LOCTEXT("AwaitingWaypoint", "Пауза до назначения точки маршрута");
         case EMissionHudStage::MarchWithOrders:
-            return LOCTEXT("OrdersInEffect", "Противник замечен. Меняйте маршрут.");
+            return LOCTEXT("OrdersInEffect", "Полки выполняют приказы. При контакте начнётся бой.");
         default:
-            return LOCTEXT("InitialMarch", "Полки следуют по начальным маршрутам.");
+            return LOCTEXT("InitialMarch", "Выберите полк и задайте маршрут на карте.");
     }
 }
 
@@ -617,6 +683,8 @@ void SRegimentMissionHud::ShowModuleMenu()
 void SRegimentMissionHud::ShowCampaignMenu()
 {
     CampaignNotice = FText::GetEmpty();
+    CampaignBriefingMap.Reset();
+    CampaignPreview.Reset();
     SetStatus(EMissionHudStage::Campaigns, 0);
 }
 
@@ -1104,7 +1172,10 @@ void SRegimentMissionHud::SetSetupStep(ESetupStep Step)
     if (Step == ESetupStep::Scenario || !ScenarioPreview)
     {
         SetupStep = Step;
-        Invalidate(EInvalidateWidgetReason::Layout);
+        if (SetupStep == ESetupStep::Scenario)
+            RefreshBriefingSources();
+        else
+            Invalidate(EInvalidateWidgetReason::Layout);
     }
 }
 
@@ -1379,13 +1450,12 @@ TSharedRef<SWidget> SRegimentMissionHud::MakeObjectiveControls()
         ];
 }
 
-void SRegimentMissionHud::RefreshBriefingSources()
+static void FillBriefingSources(const TSharedPtr<SVerticalBox>& BriefingSources, const TArray<FString>& Sources)
 {
     using namespace MissionHudSlate;
     if (!BriefingSources)
         return;
     BriefingSources->ClearChildren();
-    const auto& Sources = PreviewedPreset().Sources;
     if (Sources.IsEmpty())
         return;
     BriefingSources->AddSlot().AutoHeight().Padding(0, 10, 0, 6)
@@ -1421,6 +1491,19 @@ void SRegimentMissionHud::RefreshBriefingSources()
             [MakeText(UrlText, 13, FSlateColor(Muted))];
         }
     }
+}
+
+void SRegimentMissionHud::RefreshBriefingSources()
+{
+    const auto& Preset = PreviewedPreset();
+    ScenarioBriefingMap.Reset();
+    if (Preset.HistoricalIdentity.IsValid() || !Preset.Sources.IsEmpty())
+    {
+        FText Error;
+        ScenarioBriefingMap = BuildMissionAuthoringPreview(Preset, Error);
+    }
+    FillBriefingSources(BriefingSources, Preset.Sources);
+    Invalidate(EInvalidateWidgetReason::Layout);
 }
 
 TSharedRef<SWidget> SRegimentMissionHud::MakeScenarioStep()
@@ -1461,31 +1544,6 @@ TSharedRef<SWidget> SRegimentMissionHud::MakeScenarioStep()
             SNew(SBorder).BorderImage(&AtlasBriefing).Padding(FMargin(17, 15))
             [
                 SNew(SScrollBox)
-                + SScrollBox::Slot().Padding(0, 0, 12, 0)
-                [
-                    SNew(SBox).HeightOverride(146.f).Padding(0, 0, 0, 12)
-                    .Visibility_Lambda([this]
-                    {
-                        const auto& Preset = PreviewedPreset();
-                        return Preset.Terrain == battle::MarchTerrain::Waterloo &&
-                            Preset.Name.StartsWith(TEXT("Ватерлоо,"))
-                            ? EVisibility::HitTestInvisible : EVisibility::Collapsed;
-                    })
-                    [
-                        SNew(SOverlay)
-                        + SOverlay::Slot()
-                        [
-                            SNew(SScaleBox).Stretch(EStretch::ScaleToFill)
-                            .Clipping(EWidgetClipping::ClipToBoundsAlways)
-                            [SNew(SImage).Image(WaterlooAtlasArt())]
-                        ]
-                        + SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Bottom)
-                        [
-                            SNew(SBorder).BorderImage(&Panel).Padding(FMargin(7, 3))
-                            [MakeText(LOCTEXT("WaterlooSketch", "Эскиз Ватерлоо"), 11, FSlateColor(Ink))]
-                        ]
-                    ]
-                ]
                 + SScrollBox::Slot().Padding(0, 0, 12, 12)
                 [
                     SNew(STextBlock)
@@ -1507,7 +1565,15 @@ TSharedRef<SWidget> SRegimentMissionHud::MakeScenarioStep()
                 {
                     return FText::Format(LOCTEXT("ScenarioGoal", "Цель · {0}"), GoalName(PreviewedPreset().Objective.Goal));
                 }))]
-                + SScrollBox::Slot().Padding(0, 0, 0, 16)
+                + SScrollBox::Slot().Padding(0, 0, 0, 6)
+                [Readout(TAttribute<FText>::CreateLambda([this] { return MissionInstruction(PreviewedPreset()); }))]
+                + SScrollBox::Slot().Padding(0, 0, 0, 6)
+                [Readout(TAttribute<FText>::CreateLambda([this] { return PlayerBriefing(PreviewedPreset()); }))]
+                + SScrollBox::Slot().Padding(0, 0, 0, 10)
+                [Readout(TAttribute<FText>::CreateLambda([this] { return OpeningBriefing(PreviewedPreset()); }))]
+                + SScrollBox::Slot().Padding(0, 4, 0, 14)
+                [MakeBriefingMaps(&ScenarioBriefingMap)]
+                + SScrollBox::Slot().Padding(0, 0, 0, 10)
                 [Readout(TAttribute<FText>::CreateLambda([this]
                 {
                     const auto& Preset = PreviewedPreset();
@@ -1519,7 +1585,7 @@ TSharedRef<SWidget> SRegimentMissionHud::MakeScenarioStep()
                 [Readout(TAttribute<FText>::CreateLambda([this]
                 {
                     const auto& Preset = PreviewedPreset();
-                    return Preset.Briefing.IsEmpty() ? GoalDescription(Preset.Objective.Goal) : FText::FromString(Preset.Briefing);
+                    return FText::FromString(Preset.Briefing);
                 }))]
                 + SScrollBox::Slot()
                 [SAssignNew(BriefingSources, SVerticalBox)]
@@ -1663,7 +1729,7 @@ TSharedRef<SWidget> SRegimentMissionHud::MakeLaunchStep()
                         return LOCTEXT("RequiresDeployment", "Для этой цели бой начинается с заданных позиций.");
                     return Draft.bDirectDeployment
                         ? LOCTEXT("DeploymentHelp", "Полки начинают бой на позициях из шага «Расстановка».")
-                        : LOCTEXT("MarchOpeningHelp", "Полки идут походным строем. После обнаружения противника можно задать маршруты.");
+                        : OpeningBriefing(Draft);
                 }))]
             ]
             + SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 16)
@@ -1689,7 +1755,7 @@ TSharedRef<SWidget> SRegimentMissionHud::MakeLaunchStep()
                 + SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 8)
                 [Readout(TAttribute<FText>::CreateLambda([this]
                 {
-                    return FText::Format(LOCTEXT("ScenarioGoal", "Цель · {0}"), GoalName(Draft.Objective.Goal));
+                    return MissionInstruction(Draft);
                 }))]
                 + SVerticalBox::Slot().AutoHeight()
                 [Readout(TAttribute<FText>::CreateLambda([this]
@@ -1898,22 +1964,34 @@ TSharedRef<SWidget> SRegimentMissionHud::MakeModulePanel()
             FirstModuleButton = Button;
         ++AvailableCount;
     }
-    Available->AddSlot().AutoHeight().Padding(0, 0, 10, 10)
-    [
-        SNew(SButton)
-        .ButtonStyle(&ModuleButtonStyle())
-        .ContentPadding(FMargin(15.f, 11.f))
-        .OnClicked_Lambda([this] { ShowTutorialMenu(); return FReply::Handled(); })
-        [MakeText(LOCTEXT("TutorialEntrance", "Обучение"), 18, FSlateColor(Ink), true)]
-    ];
-    Available->AddSlot().AutoHeight().Padding(0, 0, 10, 10)
-    [
-        SNew(SButton)
-        .ButtonStyle(&ModuleButtonStyle())
-        .ContentPadding(FMargin(15.f, 11.f))
-        .OnClicked_Lambda([this] { ShowCampaignMenu(); return FReply::Handled(); })
-        [MakeText(LOCTEXT("CampaignEntrance", "Исторические кампании"), 18, FSlateColor(Ink), true)]
-    ];
+    const auto Mode = [this](bool bCampaign, FText Title, FText Description)
+    {
+        const FLinearColor& Accent = bCampaign ? Brass : TrainingAccent;
+        return SNew(SButton).ButtonStyle(&ModeButtonStyle(bCampaign))
+            .HAlign(HAlign_Fill).ContentPadding(FMargin(15.f, 12.f))
+            .OnClicked_Lambda([this, bCampaign]
+            {
+                if (bCampaign)
+                    ShowCampaignMenu();
+                else
+                    ShowTutorialMenu();
+                return FReply::Handled();
+            })
+            [
+                SNew(SVerticalBox)
+                + SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 4)
+                [MakeText(Title, 18, FSlateColor(Accent), true)]
+                + SVerticalBox::Slot().AutoHeight()
+                [MakeText(Description, 13, FSlateColor(Ink))]
+            ];
+    };
+    const auto MainModes = SNew(SHorizontalBox)
+        + SHorizontalBox::Slot().FillWidth(1.f).Padding(0, 0, 10, 0)
+        [Mode(true, LOCTEXT("CampaignEntrance", "Исторические кампании"),
+            LOCTEXT("CampaignModeHint", "Победы открывают новые битвы"))]
+        + SHorizontalBox::Slot().FillWidth(1.f).Padding(0, 0, 10, 0)
+        [Mode(false, LOCTEXT("TutorialEntrance", "Обучение"),
+            LOCTEXT("TrainingModeHint", "Управление офицером и войсками"))];
     if (AvailableCount == 0)
         Available->AddSlot().AutoHeight()[MakeText(LOCTEXT("ModulesUnavailable", "Игровые модули пока недоступны."),
             17, FSlateColor(Muted))];
@@ -1977,8 +2055,10 @@ TSharedRef<SWidget> SRegimentMissionHud::MakeModulePanel()
             .ShadowOffset(FVector2D(0, 2))
             .ShadowColorAndOpacity(FLinearColor(0, 0, 0, .48f))
         ]
-        + SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 26)
-        [MakeText(LOCTEXT("ModuleMenuTitle", "Выберите эпоху"), 19, FSlateColor(Brass), true)]
+        + SVerticalBox::Slot().AutoHeight().Padding(0, 8, 0, 18)
+        [MainModes]
+        + SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 9)
+        [MakeText(LOCTEXT("ModuleMenuTitle", "Отдельные сражения"), 19, FSlateColor(Brass), true)]
         + SVerticalBox::Slot().AutoHeight()
         [Available]
         + SVerticalBox::Slot().AutoHeight()
@@ -2040,7 +2120,7 @@ TSharedRef<SWidget> SRegimentMissionHud::MakeTutorialPanel()
     [
         SNew(SVerticalBox)
         + SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 18)
-        [MakeText(LOCTEXT("TutorialMenu", "Обучение"), 34, FSlateColor(Ink), true)]
+        [MakeText(LOCTEXT("TutorialMenu", "Обучение"), 34, FSlateColor(TrainingAccent), true)]
         + SVerticalBox::Slot().AutoHeight()
         [Entries]
         + SVerticalBox::Slot().AutoHeight().Padding(0, 5, 0, 8)
@@ -2118,9 +2198,7 @@ TSharedRef<SWidget> SRegimentMissionHud::MakeCampaignPanel()
                 { return OnCampaignUnlocked && OnCampaignUnlocked(Campaign, Mission); })
                 .OnClicked_Lambda([this, Campaign, Mission]
                 {
-                    if (OnStartCampaign)
-                        OnStartCampaign(Campaign, Mission);
-                    return FReply::Handled();
+                    return PreviewCampaignStage(Campaign, Mission);
                 })
                 [
                     SNew(SVerticalBox)
@@ -2134,7 +2212,7 @@ TSharedRef<SWidget> SRegimentMissionHud::MakeCampaignPanel()
         }
         Columns->AddSlot().FillWidth(1.f).Padding(0, 0, 16, 0)[Column];
     }
-    return SNew(SBox).WidthOverride(1010.f)
+    const auto List = SNew(SBox).WidthOverride(1010.f)
     [
         SNew(SVerticalBox)
         + SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 16)
@@ -2149,6 +2227,105 @@ TSharedRef<SWidget> SRegimentMissionHud::MakeCampaignPanel()
         [
             MakeControl(LOCTEXT("CampaignBack", "В атлас"), FText::GetEmpty(), 120.f, 40.f, FSlateColor(ControlTint),
                 FOnClicked::CreateLambda([this] { ShowModuleMenu(); return FReply::Handled(); }), true)
+        ]
+    ];
+    return SNew(SWidgetSwitcher)
+        .WidgetIndex_Lambda([this] { return CampaignPreview ? 1 : 0; })
+        + SWidgetSwitcher::Slot()[List]
+        + SWidgetSwitcher::Slot()[MakeCampaignBriefing()];
+}
+
+FReply SRegimentMissionHud::PreviewCampaignStage(int32 Campaign, int32 Mission)
+{
+    const auto& Routes = RegimentHistoricalCampaign::Catalog();
+    if (!Routes.IsValidIndex(Campaign) || !Routes[Campaign].Stages.IsValidIndex(Mission) ||
+        !OnCampaignUnlocked || !OnCampaignUnlocked(Campaign, Mission))
+        return FReply::Handled();
+    FMissionPreset Preview;
+    if (!RegimentMissionPresets::LoadBuiltIn(Routes[Campaign].Stages[Mission].MissionId, Preview))
+    {
+        CampaignNotice = LOCTEXT("CampaignBriefingUnavailable", "Не удалось открыть брифинг миссии.");
+        return FReply::Handled();
+    }
+    CampaignNotice = FText::GetEmpty();
+    CampaignIndex = Campaign;
+    CampaignMission = Mission;
+    FText Error;
+    CampaignBriefingMap = BuildMissionAuthoringPreview(Preview, Error);
+    CampaignPreview = MoveTemp(Preview);
+    FillBriefingSources(CampaignSources, CampaignPreview->Sources);
+    Invalidate(EInvalidateWidgetReason::Layout);
+    return FReply::Handled();
+}
+
+FReply SRegimentMissionHud::LaunchCampaignStage()
+{
+    if (CampaignPreview && OnStartCampaign && OnCampaignUnlocked && OnCampaignUnlocked(CampaignIndex, CampaignMission))
+        OnStartCampaign(CampaignIndex, CampaignMission);
+    return FReply::Handled();
+}
+
+TSharedRef<SWidget> SRegimentMissionHud::MakeCampaignBriefing()
+{
+    using namespace MissionHudSlate;
+    return SNew(SBox).WidthOverride(1020.f).HeightOverride(600.f)
+    [
+        SNew(SBorder).BorderImage(&Panel).Padding(FMargin(22, 18))
+        [
+            SNew(SVerticalBox)
+            + SVerticalBox::Slot().AutoHeight().Padding(0, 0, 0, 12)
+            [
+                SNew(STextBlock)
+                .Text_Lambda([this] { return CampaignPreview ? FText::FromString(CampaignPreview->Name) : FText::GetEmpty(); })
+                .ColorAndOpacity(Brass).Font(FCoreStyle::GetDefaultFontStyle("Bold", 31)).AutoWrapText(true)
+            ]
+            + SVerticalBox::Slot().FillHeight(1.f)
+            [
+                SNew(SHorizontalBox)
+                + SHorizontalBox::Slot().FillWidth(.93f).Padding(0, 0, 18, 0)
+                [
+                    SNew(SScrollBox)
+                    + SScrollBox::Slot().Padding(0, 0, 0, 10)
+                    [
+                        SNew(SBorder).BorderImage(&CampaignPlate).Padding(FMargin(14, 11))
+                        [Readout(TAttribute<FText>::CreateLambda([this]
+                            { return CampaignPreview ? MissionInstruction(*CampaignPreview) : FText::GetEmpty(); }))]
+                    ]
+                    + SScrollBox::Slot().Padding(0, 0, 0, 8)
+                    [Readout(TAttribute<FText>::CreateLambda([this]
+                        { return CampaignPreview ? PlayerBriefing(*CampaignPreview) : FText::GetEmpty(); }))]
+                    + SScrollBox::Slot().Padding(0, 0, 0, 13)
+                    [Readout(TAttribute<FText>::CreateLambda([this]
+                        { return CampaignPreview ? OpeningBriefing(*CampaignPreview) : FText::GetEmpty(); }))]
+                    + SScrollBox::Slot()
+                    [Readout(TAttribute<FText>::CreateLambda([this]
+                        { return CampaignPreview ? FText::FromString(CampaignPreview->Briefing) : FText::GetEmpty(); }))]
+                    + SScrollBox::Slot()[SAssignNew(CampaignSources, SVerticalBox)]
+                ]
+                + SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Top)
+                [MakeBriefingMaps(&CampaignBriefingMap)]
+            ]
+            + SVerticalBox::Slot().AutoHeight().Padding(0, 10, 0, 8)
+            [MakeText(TAttribute<FText>::CreateLambda([this] { return GetCampaignNotice(); }), 15, FSlateColor(Brass))]
+            + SVerticalBox::Slot().AutoHeight()
+            [
+                SNew(SHorizontalBox)
+                + SHorizontalBox::Slot().AutoWidth()
+                [
+                    MakeControl(LOCTEXT("BackToCampaignStages", "К этапам"), FText::GetEmpty(),
+                        133.f, 42.f, FSlateColor(ControlTint), FOnClicked::CreateLambda([this]
+                        {
+                            ShowCampaignMenu();
+                            return FReply::Handled();
+                        }), true)
+                ]
+                + SHorizontalBox::Slot().FillWidth(1.f).HAlign(HAlign_Right)
+                [
+                    MakeControl(LOCTEXT("StartCampaignBattle", "Начать бой"), FText::GetEmpty(),
+                        177.f, 42.f, FSlateColor(SelectedTint),
+                        FOnClicked::CreateSP(this, &SRegimentMissionHud::LaunchCampaignStage), true)
+                ]
+            ]
         ]
     ];
 }
@@ -2797,8 +2974,8 @@ TSharedRef<SWidget> SRegimentMissionHud::MakeMarchStatus()
                                 if (!MarchNotice.IsEmpty())
                                     return MarchNotice;
                                 if (Stage == EMissionHudStage::EnemyFound)
-                                    return bCanResume ? LOCTEXT("OrderReady", "Расставьте флажки и продолжите марш.")
-                                        : LOCTEXT("OrderNeeded", "Поставьте флажок для одного из полков.");
+                                    return bCanResume ? LOCTEXT("OrderReady", "Противник замечен. Уточните маршруты и нажмите «К сближению».")
+                                        : LOCTEXT("OrderNeeded", "Противник замечен. Укажите точку для полка.");
                                 return MissionHudSlate::MarchDetail(Stage);
                             }),
                             14, FSlateColor(MissionHudSlate::Muted))
@@ -2843,7 +3020,7 @@ TSharedRef<SWidget> SRegimentMissionHud::MakeMarchStatus()
                     ? EVisibility::SelfHitTestInvisible : EVisibility::Collapsed; })
                 .IsEnabled_Lambda([this] { return bCanResume; })
                 [
-                    MissionHudSlate::MakeControl(LOCTEXT("ResumeMarch", "Продолжить марш"),
+                    MissionHudSlate::MakeControl(LOCTEXT("ResumeMarch", "К сближению"),
                         LOCTEXT("ResumeMarchHint", "Отправить полки по указанным маршрутам"),
                         210.f, 40.f, FSlateColor(MissionHudSlate::SelectedTint), FOnClicked::CreateLambda([this]
                         {

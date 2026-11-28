@@ -65,4 +65,63 @@ bool FRegimentEraBattleTest::RunTest(const FString& Parameters)
     }
     return !HasAnyErrors();
 }
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRegimentFormationDrillTest, "RegimentBattle.Eras.FormationDrill",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::EngineFilter)
+
+bool FRegimentFormationDrillTest::RunTest(const FString&)
+{
+    const auto Load = [this](const TCHAR* Id, FMissionPreset& Preset)
+    {
+        const auto* Era = RegimentEraCatalog::Find(Id);
+        return TestNotNull(Id, Era) &&
+            TestTrue(TEXT("The real era mission is available"), RegimentMissionPresets::LoadBuiltIn(Era->MissionId, Preset));
+    };
+    const auto Deploy = [](const FMissionPreset& Preset)
+    {
+        return BuildPresetBattle(Preset, MakeMissionOpening(Preset.Roster, Preset.Terrain), EMissionDeployment::AuthoredStart);
+    };
+    FMissionPreset Ancient;
+    if (Load(TEXT("ancient"), Ancient))
+    {
+        Ancient.Era.BlueFaction = TEXT("rome");
+        Ancient.Era.OrangeFaction = TEXT("macedon");
+        Ancient.Roster[0].InfantryProfile = TEXT("legionaries");
+        Ancient.Roster[MissionRegimentsPerTeam].InfantryProfile = TEXT("sarissa_phalanx");
+
+        const auto Check = [this](const battle::Scenario& Scenario, battle::RegimentId Id,
+            const TCHAR* Expected, bool bTight)
+        {
+            const auto Regiment = std::ranges::find(Scenario.regiments, Id, &battle::RegimentSpec::id);
+            if (!TestTrue(TEXT("The authored regiment deploys"), Regiment != Scenario.regiments.end()))
+                return 0.f;
+            TestEqual(Expected, Regiment->formation.slot_stagger == 0.f, bTight);
+            return Regiment->formation.slot_stagger;
+        };
+        const auto Scenario = Deploy(Ancient);
+        Check(Scenario, {1}, TEXT("Roman legionaries retain even alignment"), true);
+        const float Foot = Check(Scenario, {2}, TEXT("Ordinary foot varies slightly"), false);
+        const float Cavalry = Check(Scenario, {3}, TEXT("Ordinary cavalry varies"), false);
+        TestTrue(TEXT("Cavalry is less rigid than ordinary foot"), Cavalry > Foot);
+        Check(Scenario, {MissionRegimentsPerTeam + 1}, TEXT("The Macedonian phalanx stays aligned"), true);
+        Ancient.Era.OrangeFaction = TEXT("greece");
+        Ancient.Roster[MissionRegimentsPerTeam].InfantryProfile = TEXT("hoplites");
+        Check(Deploy(Ancient), {MissionRegimentsPerTeam + 1}, TEXT("Greek hoplites stay aligned"), true);
+    }
+    for (const TCHAR* Id : {TEXT("great_northern_war"), TEXT("napoleonic")})
+    {
+        FMissionPreset Preset;
+        if (!Load(Id, Preset))
+            continue;
+        const auto Scenario = Deploy(Preset);
+        TestTrue(TEXT("The line infantry-era mission deploys"), !Scenario.regiments.empty());
+        for (const auto& Regiment : Scenario.regiments)
+        {
+            const auto Entry = Preset.Roster[Regiment.id.value - 1].Clamped();
+            if (!Entry.bCavalry && Entry.Platform == battle::BattlePlatform::None)
+                TestEqual(TEXT("Line infantry retains straight ranks"), Regiment.formation.slot_stagger, 0.f);
+        }
+    }
+    return !HasAnyErrors();
+}
 #endif

@@ -14,6 +14,7 @@ bool FRegimentOfficerSettingsTest::RunTest(const FString&)
     using Action = ERegimentOfficerInputAction;
     FRegimentOfficerSettings Settings;
     TestTrue(TEXT("First person is the default on possession"), Settings.IsFirstPerson());
+    TestTrue(TEXT("Stationary threat facing is enabled by default"), Settings.StationaryThreatFacing());
     TestEqual(TEXT("V switches the view by default"), Settings.Key(Action::Camera), EKeys::V);
     TestEqual(TEXT("Previous mouse attack by default"), Settings.Key(Action::Attack), EKeys::LeftMouseButton);
     TestFalse(TEXT("Protects the existing regiment panel shortcut"), Settings.Bind(Action::Jump, EKeys::Tab));
@@ -21,6 +22,7 @@ bool FRegimentOfficerSettingsTest::RunTest(const FString&)
     TestTrue(TEXT("An unused key can be assigned to a personal action"), Settings.Bind(Action::Jump, EKeys::J));
     Settings.SetMouse(1.75f);
     Settings.SetFirstPerson(false);
+    Settings.SetStationaryThreatFacing(false);
     const FString Filename = FPaths::CreateTempFilename(*FPaths::ProjectIntermediateDir(), TEXT("OfficerSettings"), TEXT(".ini"));
     Settings.Save(Filename);
     FRegimentOfficerSettings Loaded;
@@ -28,11 +30,13 @@ bool FRegimentOfficerSettingsTest::RunTest(const FString&)
     TestEqual(TEXT("Jump binding persists"), Loaded.Key(Action::Jump), EKeys::J);
     TestEqual(TEXT("Mouse sensitivity persists"), Loaded.Mouse(), 1.75f);
     TestFalse(TEXT("The shoulder view choice persists"), Loaded.IsFirstPerson());
+    TestFalse(TEXT("Choosing to disable threat facing persists"), Loaded.StationaryThreatFacing());
 
     FConfigFile Legacy;
     Legacy.SetString(TEXT("OfficerControls"), TEXT("Jump"), TEXT("V"));
     Legacy.Write(Filename, false);
     Loaded.Load(Filename);
+    TestTrue(TEXT("Older settings default to stationary threat facing"), Loaded.StationaryThreatFacing());
     TestEqual(TEXT("An existing V binding stays with its original action"), Loaded.Key(Action::Jump), EKeys::V);
     TestTrue(TEXT("A legacy profile receives a free view key"),
         Loaded.Key(Action::Camera).IsValid() && Loaded.Key(Action::Camera) != EKeys::V);

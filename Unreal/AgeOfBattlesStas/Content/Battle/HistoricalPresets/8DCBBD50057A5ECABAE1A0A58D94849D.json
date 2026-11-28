@@ -34,9 +34,9 @@
       "start_x": -52,
       "start_y": -10,
       "formation_files": 24,
-      "swords": 13,
-      "archers": 9,
-      "spearmen": 28,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 50,
       "mounted": 0
     },
     {
@@ -70,9 +70,9 @@
       "start_x": -105,
       "start_y": 8,
       "formation_files": 21,
-      "swords": 19,
-      "archers": 12,
-      "spearmen": 18,
+      "swords": 5,
+      "archers": 32,
+      "spearmen": 12,
       "mounted": 0
     },
     {
@@ -82,9 +82,9 @@
       "start_x": -111,
       "start_y": -75,
       "formation_files": 18,
-      "swords": 17,
-      "archers": 11,
-      "spearmen": 16,
+      "swords": 44,
+      "archers": 0,
+      "spearmen": 0,
       "mounted": 0
     },
     {
@@ -106,9 +106,9 @@
       "start_x": 55,
       "start_y": 0,
       "formation_files": 24,
-      "swords": 19,
-      "archers": 7,
-      "spearmen": 27,
+      "swords": 0,
+      "archers": 0,
+      "spearmen": 53,
       "mounted": 0
     },
     {
@@ -142,9 +142,9 @@
       "start_x": 104,
       "start_y": 9,
       "formation_files": 22,
-      "swords": 24,
-      "archers": 9,
-      "spearmen": 18,
+      "swords": 51,
+      "archers": 0,
+      "spearmen": 0,
       "mounted": 0
     },
     {
@@ -166,9 +166,9 @@
       "start_x": 121,
       "start_y": 80,
       "formation_files": 20,
-      "swords": 17,
-      "archers": 13,
-      "spearmen": 17,
+      "swords": 9,
+      "archers": 29,
+      "spearmen": 9,
       "mounted": 0
     }
   ],

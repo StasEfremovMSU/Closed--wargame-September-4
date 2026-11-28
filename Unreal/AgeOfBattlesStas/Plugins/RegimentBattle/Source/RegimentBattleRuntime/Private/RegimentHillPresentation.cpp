@@ -137,7 +137,7 @@ UE::Geometry::FDynamicMesh3 BuildRegimentHillMesh(const battle::TerrainHill& Hil
 }
 
 UE::Geometry::FDynamicMesh3 BuildRegimentGroundMesh(const battle::TerrainHill* Hill, double HalfWidthCm,
-    double HalfDepthCm, std::span<const battle::Obstacle> Areas)
+    double HalfDepthCm, std::span<const battle::Obstacle> Areas, bool bCoastalEscarpment)
 {
     using namespace UE::Geometry;
     FDynamicMesh3 Mesh;
@@ -194,8 +194,19 @@ UE::Geometry::FDynamicMesh3 BuildRegimentGroundMesh(const battle::TerrainHill* H
         {
             const int32 LowerLeft = Row * X.Num() + Column;
             const int32 UpperLeft = LowerLeft + X.Num();
-            const int32 Material = TerrainMaterial(.5 * (X[Column] + X[Column + 1]),
-                .5 * (Y[Row] + Y[Row + 1]), Areas);
+            const double CenterX = .5 * (X[Column] + X[Column + 1]);
+            const double CenterY = .5 * (Y[Row] + Y[Row + 1]);
+            int32 Material = TerrainMaterial(CenterX, CenterY, Areas);
+            if (bCoastalEscarpment && Hill && CenterY > HalfDepthCm * .30 &&
+                (Material == int32(G::Meadow) || Material == int32(G::Wood)))
+            {
+                const double H = Height(CenterX, CenterY);
+                const double Grade = FMath::Abs(Height(CenterX, Y[Row + 1]) - Height(CenterX, Y[Row])) /
+                    (Y[Row + 1] - Y[Row]);
+                const double Fracture = FMath::PerlinNoise2D(FVector2D(CenterX / 1900.0, CenterY / 830.0));
+                if (H > 295.0 && Grade + .13 * Fracture > .12)
+                    Material = int32(Grade + .09 * Fracture < .22 ? G::Scree : G::Limestone);
+            }
             AddTriangle(LowerLeft, LowerLeft + 1, UpperLeft + 1, Material);
             AddTriangle(LowerLeft, UpperLeft + 1, UpperLeft, Material);
         }
